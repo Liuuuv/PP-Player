@@ -1,0 +1,319 @@
+from __init__ import *
+from ytmusicapi import YTMusic
+import re
+import threading
+import time
+
+class RecommendationSystem:
+    """Système de recommandation basé sur YouTube Music"""
+    
+    def __init__(self, main_app):
+        self.main_app = main_app
+        self.ytmusic = YTMusic()  # Session anonyme
+        self.is_processing = False
+        self.last_processed_song = None
+        
+        # Configuration
+        self.recommendations_count = 3
+        self.enable_auto_recommendations = True
+        
+    def extract_video_id_from_filepath(self, filepath):
+        """Extrait l'ID vidéo YouTube depuis les métadonnées du fichier"""
+        try:
+            # Récupérer les métadonnées YouTube du fichier
+            metadata = self.main_app.get_youtube_metadata(filepath)
+            if metadata and metadata.get('url'):
+                youtube_url = metadata['url']
+                # Extraire l'ID vidéo de l'URL
+                video_id_match = re.search(r'(?:v=|/)([a-zA-Z0-9_-]{11})', youtube_url)
+                if video_id_match:
+                    return video_id_match.group(1)
+            return None
+        except Exception as e:
+            print(f"Erreur extraction video_id: {e}")
+            return None
+    
+    def get_recommendations_for_video(self, video_id):
+        """Récupère les recommandations YouTube Music pour une vidéo"""
+        try:
+            if not video_id:
+                return []
+            
+            print(f"Récupération des recommandations pour video_id: {video_id}")
+            
+            # Obtenir la playlist d'autoplay
+            autoplay_playlist = self.ytmusic.get_watch_playlist(video_id)
+            
+            if not autoplay_playlist or 'tracks' not in autoplay_playlist:
+                print("Aucune recommandation trouvée")
+                return []
+            
+            recommendations = []
+            for track in autoplay_playlist['tracks']:
+                if track.get('videoId') and track.get('title'):
+                    recommendations.append({
+                        'title': track['title'],
+                        'videoId': track['videoId'],
+                        'url': f"https://youtube.com/watch?v={track['videoId']}",
+                        'artists': track.get('artists', [])
+                    })
+            
+            print(f"Trouvé {len(recommendations)} recommandations")
+            return recommendations
+            
+        except Exception as e:
+            print(f"Erreur récupération recommandations: {e}")
+            return []
+    
+    def filter_new_recommendations(self, recommendations):
+        """Filtre les recommandations pour éviter les doublons avec la playlist actuelle"""
+        try:
+            # Récupérer les URLs YouTube déjà présentes dans la playlist
+            existing_video_ids = set()
+            
+            for filepath in self.main_app.main_playlist:
+                metadata = self.main_app.get_youtube_metadata(filepath)
+                if metadata and metadata.get('url'):
+                    video_id_match = re.search(r'(?:v=|/)([a-zA-Z0-9_-]{11})', metadata['url'])
+                    if video_id_match:
+                        existing_video_ids.add(video_id_match.group(1))
+            
+            # Filtrer les recommandations
+            filtered_recommendations = []
+            for rec in recommendations:
+                if rec['videoId'] not in existing_video_ids:
+                    filtered_recommendations.append(rec)
+                    if len(filtered_recommendations) >= self.recommendations_count:
+                        break
+            
+            print(f"Recommandations filtrées: {len(filtered_recommendations)}/{len(recommendations)}")
+            return filtered_recommendations
+            
+        except Exception as e:
+            print(f"Erreur filtrage recommandations: {e}")
+            return recommendations[:self.recommendations_count]
+    
+    def download_recommendations(self, recommendations):
+        """Télécharge les recommandations et les ajoute à la playlist"""
+        if not recommendations:
+            return
+        
+        def download_thread():
+            try:
+                downloaded_count = 0
+                
+                for i, rec in enumerate(recommendations):
+                    try:
+                        # Mettre à jour le statut
+                        self.main_app.root.after(0, lambda i=i, total=len(recommendations), title=rec['title']: 
+                            self.main_app.status_bar.config(
+                                text=f"Téléchargement recommandation {i+1}/{total}: {title[:30]}..."
+                            ))
+                        
+                        # Préparer les options de téléchargement
+                        title = rec['title']
+                        safe_title = "".join(c for c in title if c.isalnum() or c in " -_")
+                        
+                        downloads_dir = os.path.abspath("downloads")
+                        if not os.path.exists(downloads_dir):
+                            os.makedirs(downloads_dir)
+                        
+                        ydl_opts = {
+                            'format': 'bestaudio/best',
+                            'outtmpl': os.path.join(downloads_dir, f'{safe_title}.%(ext)s'),
+                            'postprocessors': [{
+                                'key': 'FFmpegExtractAudio',
+                                'preferredcodec': 'mp3',
+                                'preferredquality': '192',
+                            }],
+                            'writethumbnail': True,
+                            'quiet': True,
+                            'no_warnings': True,
+                        }
+                        
+                        # Télécharger
+                        with YoutubeDL(ydl_opts) as ydl:
+                            info = ydl.extract_info(rec['url'], download=True)
+                            downloaded_file = ydl.prepare_filename(info)
+                            
+                            # Déterminer le chemin final du fichier MP3
+                            final_path = downloaded_file.replace('.webm', '.mp3').replace('.m4a', '.mp3').replace('.mp4', '.mp3')
+                            if not final_path.endswith('.mp3'):
+                                final_path += '.mp3'
+                            
+                            # Gérer la thumbnail
+                            thumbnail_path = os.path.splitext(final_path)[0] + ".jpg"
+                            if os.path.exists(downloaded_file + ".jpg"):
+                                os.rename(downloaded_file + ".jpg", thumbnail_path)
+                            elif os.path.exists(downloaded_file + ".webp"):
+                                os.rename(downloaded_file + ".webp", thumbnail_path)
+                            
+                            # Sauvegarder les métadonnées YouTube
+                            upload_date = info.get('upload_date') if info else None
+                            self.main_app.root.after(0, lambda path=final_path, url=rec['url'], date=upload_date:
+                                self.main_app.save_youtube_url_metadata(path, url, date))
+                            
+                            # Ajouter à la playlist principale
+                            self.main_app.root.after(0, lambda path=final_path:
+                                self.main_app.add_to_main_playlist(path, show_status=False))
+                            
+                            downloaded_count += 1
+                            print(f"Recommandation téléchargée: {safe_title}")
+                            
+                    except Exception as e:
+                        print(f"Erreur téléchargement recommandation {rec['title']}: {e}")
+                        continue
+                
+                # Mettre à jour l'affichage final
+                self.main_app.root.after(0, lambda count=downloaded_count:
+                    self.main_app.status_bar.config(
+                        text=f"{count} recommandation(s) téléchargée(s) et ajoutée(s) à la playlist"
+                    ))
+                
+                # Rafraîchir l'affichage de la playlist
+                self.main_app.root.after(0, self.main_app._refresh_playlist_display)
+                
+                # Mettre à jour le compteur de fichiers téléchargés
+                self.main_app.root.after(0, lambda: file_services._count_downloaded_files(self.main_app))
+                self.main_app.root.after(0, self.main_app._update_downloads_button)
+                self.main_app.root.after(0, self.main_app._refresh_downloads_library)
+                
+            except Exception as e:
+                print(f"Erreur générale téléchargement recommandations: {e}")
+                self.main_app.root.after(0, lambda:
+                    self.main_app.status_bar.config(text="Erreur lors du téléchargement des recommandations"))
+            finally:
+                self.is_processing = False
+        
+        # Lancer le téléchargement dans un thread séparé
+        threading.Thread(target=download_thread, daemon=True).start()
+    
+    def process_recommendations_for_current_song(self):
+        """Traite les recommandations pour la chanson en cours"""
+        if self.is_processing:
+            return
+        
+        try:
+            # Vérifier qu'il y a une chanson en cours
+            if (not self.main_app.main_playlist or 
+                self.main_app.current_index >= len(self.main_app.main_playlist)):
+                return
+            
+            current_song = self.main_app.main_playlist[self.main_app.current_index]
+            
+            # Éviter de traiter la même chanson plusieurs fois
+            if current_song == self.last_processed_song:
+                return
+            
+            self.last_processed_song = current_song
+            self.is_processing = True
+            
+            print(f"Traitement des recommandations pour: {os.path.basename(current_song)}")
+            
+            def process_thread():
+                try:
+                    # Extraire l'ID vidéo
+                    video_id = self.extract_video_id_from_filepath(current_song)
+                    if not video_id:
+                        print("Aucun video_id trouvé pour cette chanson")
+                        return
+                    
+                    # Récupérer les recommandations
+                    recommendations = self.get_recommendations_for_video(video_id)
+                    if not recommendations:
+                        print("Aucune recommandation disponible")
+                        return
+                    
+                    # Filtrer les doublons
+                    filtered_recommendations = self.filter_new_recommendations(recommendations)
+                    if not filtered_recommendations:
+                        print("Toutes les recommandations sont déjà dans la playlist")
+                        return
+                    
+                    # Télécharger les recommandations
+                    self.download_recommendations(filtered_recommendations)
+                    
+                except Exception as e:
+                    print(f"Erreur traitement recommandations: {e}")
+                finally:
+                    if not hasattr(self, '_download_in_progress'):
+                        self.is_processing = False
+            
+            # Lancer le traitement dans un thread séparé
+            threading.Thread(target=process_thread, daemon=True).start()
+            
+        except Exception as e:
+            print(f"Erreur process_recommendations_for_current_song: {e}")
+            self.is_processing = False
+    
+    def enable_recommendations(self):
+        """Active le système de recommandations automatiques"""
+        self.enable_auto_recommendations = True
+        print("Système de recommandations activé")
+    
+    def disable_recommendations(self):
+        """Désactive le système de recommandations automatiques"""
+        self.enable_auto_recommendations = False
+        print("Système de recommandations désactivé")
+    
+    def manual_recommendations(self):
+        """Lance manuellement les recommandations pour la chanson en cours"""
+        if not self.enable_auto_recommendations:
+            self.enable_auto_recommendations = True
+        self.last_processed_song = None  # Force le retraitement
+        self.process_recommendations_for_current_song()
+
+# Fonction d'intégration avec le lecteur principal
+def init_recommendation_system(main_app):
+    """Initialise le système de recommandation et l'intègre au lecteur"""
+    main_app.recommendation_system = RecommendationSystem(main_app)
+    
+    # Sauvegarder la fonction play_track originale
+    original_play_track = main_app.play_track
+    
+    def enhanced_play_track():
+        """Version améliorée de play_track avec recommandations"""
+        # Appeler la fonction originale
+        result = original_play_track()
+        
+        # Déclencher les recommandations si activées
+        if (hasattr(main_app, 'recommendation_system') and 
+            main_app.recommendation_system.enable_auto_recommendations):
+            # Petit délai pour laisser la musique commencer
+            def delayed_recommendations():
+                time.sleep(1)  # Attendre 1 seconde
+                main_app.recommendation_system.process_recommendations_for_current_song()
+            
+            threading.Thread(target=delayed_recommendations, daemon=True).start()
+        
+        return result
+    
+    # Remplacer la fonction play_track
+    main_app.play_track = enhanced_play_track
+    
+    print("Système de recommandation initialisé et intégré")
+    return main_app.recommendation_system
+
+# Fonction utilitaire pour tester le système
+def test_recommendations(video_id="SRF8d_wPXSI"):
+    """Fonction de test pour le système de recommandations"""
+    try:
+        ytmusic = YTMusic()
+        autoplay_playlist = ytmusic.get_watch_playlist(video_id)
+        
+        print(f"Test avec video_id: {video_id}")
+        print("Titres dans la playlist :")
+        
+        if autoplay_playlist and 'tracks' in autoplay_playlist:
+            for i, track in enumerate(autoplay_playlist['tracks'][:5]):  # Afficher les 5 premiers
+                print(f"{i+1}. {track['title']} - {track['videoId']}")
+                print(f"   https://youtube.com/watch?v={track['videoId']}")
+        else:
+            print("Aucune recommandation trouvée")
+            
+    except Exception as e:
+        print(f"Erreur test: {e}")
+
+if __name__ == "__main__":
+    # Test du système si exécuté directement
+    test_recommendations()

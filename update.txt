@@ -1,0 +1,13 @@
+1 à 2 :
+ajout d'une selection multiple de musiques pour ajouter à des playlists
+selection de musiques possible de partout
+boutons "play" et "play random" ajoutés dans la liste des musiques téléchargées
+possibilité de chercher des musiques et ou des artistes
+bouton pour vider la liste de lecture
+bouton pour revenir à la musique en cours
+ajout de stats
+ajout de si on clique + glisse musique, alors ça la met en dernier ou en premier dans liste de lecture
+ajout de crtl + clic gauche pour avoir la vidéo dans youtube
+ajout d'un autoscroll
+ajout d'un bouton clear pour clear la liste de lecture
+possibilité de changer l'output

@@ -1,0 +1,221 @@
+import tkinter as tk
+from tkinter import ttk
+import math
+
+class CustomVolumeSlider(tk.Frame):
+    """Slider de volume personnalisé avec affichage de la valeur lors du drag"""
+    
+    def __init__(self, parent, from_=0, to=100, value=50, command=None, orient='horizontal', 
+                 length=160, label_text="Volume", suffix="%", **kwargs):
+        super().__init__(parent, **kwargs)
+        
+        self.from_ = from_
+        self.to = to
+        self.current_value = value
+        self.command = command
+        self.orient = orient
+        self.length = length
+        self.label_text = label_text
+        self.suffix = suffix
+        self.dragging = False
+        
+        # Configuration du style
+        self.configure(bg='#2d2d2d')
+        
+        # Label du titre
+        self.title_label = tk.Label(self, text=label_text, bg='#2d2d2d', fg='white', font=('Arial', 9))
+        self.title_label.pack(pady=(10, 2))
+        
+        # Frame pour le slider et la valeur
+        self.slider_frame = tk.Frame(self, bg='#2d2d2d')
+        self.slider_frame.pack(pady=(0, 5))
+        
+        # Canvas pour le slider personnalisé
+        self.canvas = tk.Canvas(self.slider_frame, width=length, height=20, 
+                               bg='#3d3d3d', highlightthickness=0)
+        self.canvas.pack()
+        
+        # Label pour afficher la valeur (initialement caché)
+        self.value_label = tk.Label(self, text=f"{value}{suffix}", 
+                                   bg='#4a8fe7', fg='white', font=('Arial', 8, 'bold'),
+                                   relief='solid', bd=1)
+        
+        # Variables pour le dessin
+        self.track_color = '#555555'
+        self.fill_color = '#4a8fe7'
+        self.thumb_color = '#ffffff'
+        self.thumb_hover_color = '#e0e0e0'
+        self.thumb_drag_color = '#4a8fe7'
+        
+        self.track_height = 4
+        self.thumb_radius = 8
+        
+        # Bindings
+        self.canvas.bind('<Button-1>', self.on_click)
+        self.canvas.bind('<B1-Motion>', self.on_drag)
+        self.canvas.bind('<ButtonRelease-1>', self.on_release)
+        self.canvas.bind('<Motion>', self.on_hover)
+        self.canvas.bind('<Leave>', self.on_leave)
+        
+        # Dessiner le slider initial
+        self.draw_slider()
+    
+    def draw_slider(self):
+        """Dessine le slider sur le canvas"""
+        self.canvas.delete('all')
+        
+        width = self.canvas.winfo_width() or self.length
+        height = self.canvas.winfo_height() or 20
+        
+        # Position du track (centré verticalement)
+        track_y = height // 2
+        track_start_x = self.thumb_radius
+        track_end_x = width - self.thumb_radius
+        track_width = track_end_x - track_start_x
+        
+        # Dessiner le track de fond
+        self.canvas.create_rectangle(
+            track_start_x, track_y - self.track_height // 2,
+            track_end_x, track_y + self.track_height // 2,
+            fill=self.track_color, outline=''
+        )
+        
+        # Calculer la position du thumb
+        value_ratio = (self.current_value - self.from_) / (self.to - self.from_)
+        thumb_x = track_start_x + (track_width * value_ratio)
+        
+        # Dessiner la partie remplie du track
+        if value_ratio > 0:
+            self.canvas.create_rectangle(
+                track_start_x, track_y - self.track_height // 2,
+                thumb_x, track_y + self.track_height // 2,
+                fill=self.fill_color, outline=''
+            )
+        
+        # Couleur du thumb selon l'état
+        thumb_color = self.thumb_color
+        if self.dragging:
+            thumb_color = self.thumb_drag_color
+        
+        # Dessiner le thumb
+        self.canvas.create_oval(
+            thumb_x - self.thumb_radius, track_y - self.thumb_radius,
+            thumb_x + self.thumb_radius, track_y + self.thumb_radius,
+            fill=thumb_color, outline='#333333', width=1
+        )
+        
+        # Stocker la position du thumb pour les interactions
+        self.thumb_x = thumb_x
+        self.track_y = track_y
+        self.track_start_x = track_start_x
+        self.track_end_x = track_end_x
+    
+    def get_value_from_x(self, x):
+        """Convertit une position X en valeur"""
+        if not hasattr(self, 'track_start_x'):
+            return self.current_value
+            
+        # Limiter x aux bornes du track
+        x = max(self.track_start_x, min(self.track_end_x, x))
+        
+        # Calculer la valeur
+        track_width = self.track_end_x - self.track_start_x
+        if track_width <= 0:
+            return self.current_value
+            
+        ratio = (x - self.track_start_x) / track_width
+        value = self.from_ + (ratio * (self.to - self.from_))
+        
+        # Arrondir selon le type de valeur
+        if isinstance(self.from_, int) and isinstance(self.to, int):
+            return int(round(value))
+        else:
+            return round(value, 1)
+    
+    def on_click(self, event):
+        """Gère le clic sur le slider"""
+        self.dragging = True
+        new_value = self.get_value_from_x(event.x)
+        self.set_value(new_value)
+        self.show_value_label(event)
+        
+        if self.command:
+            self.command(new_value)
+    
+    def on_drag(self, event):
+        """Gère le drag du slider"""
+        if self.dragging:
+            new_value = self.get_value_from_x(event.x)
+            self.set_value(new_value)
+            self.update_value_label_position(event)
+            
+            if self.command:
+                self.command(new_value)
+    
+    def on_release(self, event):
+        """Gère le relâchement du clic"""
+        self.dragging = False
+        self.draw_slider()
+        self.hide_value_label()
+    
+    def on_hover(self, event):
+        """Gère le survol du slider"""
+        if not self.dragging:
+            # Vérifier si on survole le thumb
+            if hasattr(self, 'thumb_x'):
+                distance = abs(event.x - self.thumb_x)
+                if distance <= self.thumb_radius:
+                    self.canvas.configure(cursor='hand2')
+                else:
+                    self.canvas.configure(cursor='')
+    
+    def on_leave(self, event):
+        """Gère la sortie du curseur du slider"""
+        if not self.dragging:
+            self.canvas.configure(cursor='')
+    
+    def show_value_label(self, event):
+        """Affiche le label de valeur près du curseur"""
+        # Calculer la position du label
+        x = self.canvas.winfo_rootx() + event.x
+        y = self.canvas.winfo_rooty() - 30
+        
+        # Mettre à jour le texte
+        self.value_label.config(text=f"{self.current_value}{self.suffix}")
+        
+        # Positionner et afficher le label
+        self.value_label.place(x=x - self.winfo_rootx(), y=y - self.winfo_rooty())
+        self.value_label.lift()
+    
+    def update_value_label_position(self, event):
+        """Met à jour la position du label de valeur pendant le drag"""
+        if self.value_label.winfo_viewable():
+            x = self.canvas.winfo_rootx() + event.x
+            y = self.canvas.winfo_rooty() - 30
+            
+            # Mettre à jour le texte et la position
+            self.value_label.config(text=f"{self.current_value}{self.suffix}")
+            self.value_label.place(x=x - self.winfo_rootx(), y=y - self.winfo_rooty())
+    
+    def hide_value_label(self):
+        """Cache le label de valeur"""
+        self.value_label.place_forget()
+    
+    def set_value(self, value):
+        """Définit la valeur du slider"""
+        # Limiter la valeur aux bornes
+        value = max(self.from_, min(self.to, value))
+        self.current_value = value
+        self.draw_slider()
+    
+    def get(self):
+        """Retourne la valeur actuelle"""
+        return self.current_value
+    
+    def set(self, value):
+        """Définit la valeur (compatibilité avec ttk.Scale)"""
+        self.set_value(value)
+    
+    def bind_right_click(self, callback):
+        """Ajoute un binding pour le clic droit"""
+        self.canvas.bind('<Button-3>', callback)

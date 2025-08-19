@@ -1,0 +1,11 @@
+# Pipi Player - Dépendances
+pygame>=2.1.0
+Pillow>=9.0.0
+mutagen>=1.45.0
+yt-dlp>=2023.1.0
+pydub>=0.25.0
+numpy>=1.21.0
+
+# Optionnel pour une meilleure recherche
+# fuzzywuzzy>=0.18.0
+# python-Levenshtein>=0.12.0
