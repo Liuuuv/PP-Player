@@ -1,0 +1,19 @@
+{
+  "source_html": "c:\\Users\\olivi\\Downloads\\exemple.html",
+  "date_creation": "2024-01-15 14:30:25",
+  "total_videos_ignorees": 2,
+  "videos": [
+    {
+      "title": "Vidéo très longue - 2 heures",
+      "url": "https://www.youtube.com/watch?v=exemple1",
+      "duration": 7200,
+      "reason": "Durée trop longue (7200s > 600s)"
+    },
+    {
+      "title": "Autre vidéo longue",
+      "url": "https://www.youtube.com/watch?v=exemple2",
+      "duration": 1800,
+      "reason": "Durée trop longue (1800s > 600s)"
+    }
+  ]
+}
