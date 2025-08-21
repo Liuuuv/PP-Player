@@ -1,0 +1,182 @@
+{
+  "session_id": "HTML_20250821_125720",
+  "type": "HTML",
+  "source": "C:/Users/olivi/Downloads/test - YouTube.html",
+  "start_time": "2025-08-21T12:57:20.795282",
+  "status": "running",
+  "total_links": 13,
+  "processed_links": 13,
+  "successful_downloads": 0,
+  "failed_downloads": 0,
+  "skipped_links": 13,
+  "logs": [
+    {
+      "timestamp": "2025-08-21T12:57:20.795282",
+      "level": "INFO",
+      "message": "Démarrage de la session HTML"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:20.795282",
+      "level": "INFO",
+      "message": "Source: C:/Users/olivi/Downloads/test - YouTube.html"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:20.795282",
+      "level": "INFO",
+      "message": "Total de liens à traiter: 13"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:20.796282",
+      "level": "INFO",
+      "message": "Configuration: 13 liens, vagues de 10, durée max: 600s"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:20.797282",
+      "level": "INFO",
+      "message": "Démarrage du traitement par vagues de 13 liens"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:21.299308",
+      "level": "INFO",
+      "message": "Vague 1/2 - Vérification des liens 1-10"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:21.399682",
+      "level": "INFO",
+      "message": "Vérification 1/13: https://www.youtube.com/watch?v=_2quiyHfJQw"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:24.017725",
+      "level": "WARNING",
+      "message": "⚠️ Ignoré: MONDO GROSSO / ラビリンス - Fichier déjà téléchargé"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:24.018726",
+      "level": "INFO",
+      "message": "Vérification 2/13: https://www.youtube.com/watch?v=99-dvtlgMSs"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:25.626086",
+      "level": "WARNING",
+      "message": "⚠️ Ignoré: A Flower is not a Flower - Fichier déjà téléchargé"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:25.627087",
+      "level": "INFO",
+      "message": "Vérification 3/13: https://www.youtube.com/watch?v=QG_b2_bl1SY"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:27.395918",
+      "level": "WARNING",
+      "message": "⚠️ Ignoré: 100年ビール - Fichier déjà téléchargé"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:27.396919",
+      "level": "INFO",
+      "message": "Vérification 4/13: https://www.youtube.com/watch?v=CHI_hzWF7qY"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:29.174188",
+      "level": "WARNING",
+      "message": "⚠️ Ignoré: ラヴコリーダ - Fichier déjà téléchargé"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:29.175189",
+      "level": "INFO",
+      "message": "Vérification 5/13: https://www.youtube.com/watch?v=11Fr8U7HArA"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:30.713095",
+      "level": "WARNING",
+      "message": "⚠️ Ignoré: 食虫植物 - Fichier déjà téléchargé"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:30.721661",
+      "level": "INFO",
+      "message": "Vérification 6/13: https://www.youtube.com/watch?v=tMKrECxEpq8"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:32.921061",
+      "level": "WARNING",
+      "message": "⚠️ Ignoré: 花譜　#22　「過去を喰らう」 【オリジナルMV】 - Fichier déjà téléchargé"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:32.921061",
+      "level": "INFO",
+      "message": "Vérification 7/13: https://www.youtube.com/watch?v=yk8dB6LvyAQ"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:34.697078",
+      "level": "WARNING",
+      "message": "⚠️ Ignoré: 105☻ - Fichier déjà téléchargé"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:34.698079",
+      "level": "INFO",
+      "message": "Vérification 8/13: https://www.youtube.com/watch?v=Jj1_mfUzjOs"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:36.813966",
+      "level": "WARNING",
+      "message": "⚠️ Ignoré: YOASOBI「UNDEAD」 Official Music Video／『〈物語〉シリーズ オフ&モンスターシーズン』主題歌 - Fichier déjà téléchargé"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:36.814965",
+      "level": "INFO",
+      "message": "Vérification 9/13: https://www.youtube.com/watch?v=COhKiPzij78"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:38.689949",
+      "level": "WARNING",
+      "message": "⚠️ Ignoré: 明日を鳴らせ - Fichier déjà téléchargé"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:38.690949",
+      "level": "INFO",
+      "message": "Vérification 10/13: https://www.youtube.com/watch?v=6vb3OGN_Evk"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:40.505176",
+      "level": "WARNING",
+      "message": "⚠️ Ignoré: Affirming - Fichier déjà téléchargé"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:41.506661",
+      "level": "INFO",
+      "message": "Vague 2/2 - Vérification des liens 11-13"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:41.607305",
+      "level": "INFO",
+      "message": "Vérification 11/13: https://www.youtube.com/watch?v=UmlRxmbBcB4"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:43.461980",
+      "level": "WARNING",
+      "message": "⚠️ Ignoré: Chilli Beans. - Welcome (Official Music Video) - Fichier déjà téléchargé"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:43.462981",
+      "level": "INFO",
+      "message": "Vérification 12/13: https://www.youtube.com/watch?v=Uc7_odOapH0"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:45.026248",
+      "level": "WARNING",
+      "message": "⚠️ Ignoré: さみしいひと - Fichier déjà téléchargé"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:45.027780",
+      "level": "INFO",
+      "message": "Vérification 13/13: https://www.youtube.com/watch?v=DZ4_1NGOlko"
+    },
+    {
+      "timestamp": "2025-08-21T12:57:46.485508",
+      "level": "WARNING",
+      "message": "⚠️ Ignoré: The Sheltering Sky - Fichier déjà téléchargé"
+    }
+  ],
+  "processed_urls": [],
+  "pending_urls": [],
+  "failed_urls": []
+}

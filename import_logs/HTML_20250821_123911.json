@@ -1,0 +1,48 @@
+{
+  "session_id": "HTML_20250821_123911",
+  "type": "HTML",
+  "source": "C:/Users/olivi/Downloads/test - YouTube.html",
+  "start_time": "2025-08-21T12:39:11.052918",
+  "status": "running",
+  "total_links": 15,
+  "processed_links": 0,
+  "successful_downloads": 0,
+  "failed_downloads": 0,
+  "skipped_links": 0,
+  "logs": [
+    {
+      "timestamp": "2025-08-21T12:39:11.052918",
+      "level": "INFO",
+      "message": "Démarrage de la session HTML"
+    },
+    {
+      "timestamp": "2025-08-21T12:39:11.052918",
+      "level": "INFO",
+      "message": "Source: C:/Users/olivi/Downloads/test - YouTube.html"
+    },
+    {
+      "timestamp": "2025-08-21T12:39:11.053918",
+      "level": "INFO",
+      "message": "Total de liens à traiter: 15"
+    }
+  ],
+  "processed_urls": [],
+  "pending_urls": [
+    "https://www.youtube.com/watch?v=DZ4_1NGOlko&amp;list=PLd-zJRILbNSAsC-wiJFfLD384gxxOBg1i&amp;index=3&amp;pp=gAQBiAQB8AUB",
+    "https://www.youtube.com/watch?v=Uc7_odOapH0&amp;list=PLd-zJRILbNSAsC-wiJFfLD384gxxOBg1i&amp;index=2&amp;pp=gAQBiAQB8AUB",
+    "https://www.youtube.com/watch?v=CHI_hzWF7qY&amp;list=PLd-zJRILbNSAsC-wiJFfLD384gxxOBg1i&amp;index=4&amp;pp=gAQBiAQB8AUB",
+    "https://www.youtube.com/watch?v=99-dvtlgMSs&amp;list=PLd-zJRILbNSAsC-wiJFfLD384gxxOBg1i&amp;index=11&amp;pp=gAQBiAQB8AUB",
+    "https://www.youtube.com/watch?v=tMKrECxEpq8&amp;list=PLd-zJRILbNSAsC-wiJFfLD384gxxOBg1i&amp;index=10&amp;pp=gAQBiAQB8AUB",
+    "https://www.youtube.com/watch?v=yk8dB6LvyAQ&amp;list=PLd-zJRILbNSAsC-wiJFfLD384gxxOBg1i&amp;index=1&amp;pp=gAQBiAQB8AUB",
+    "https://www.youtube.com/watch?v=UmlRxmbBcB4&amp;list=PLd-zJRILbNSAsC-wiJFfLD384gxxOBg1i&amp;index=6&amp;pp=gAQBiAQB8AUB0gcJCa0JAYcqIYzv",
+    "https://www.youtube.com/watch?v=COhKiPzij78&amp;list=PLd-zJRILbNSAsC-wiJFfLD384gxxOBg1i&amp;index=5&amp;pp=gAQBiAQB8AUB",
+    "https://www.youtube.com/watch?v=6vb3OGN_Evk&amp;list=PLd-zJRILbNSAsC-wiJFfLD384gxxOBg1i&amp;index=9&amp;pp=gAQBiAQB8AUB",
+    "https://www.youtube.com/watch?v=11Fr8U7HArA&amp;list=PLd-zJRILbNSAsC-wiJFfLD384gxxOBg1i&amp;index=7&amp;pp=gAQBiAQB8AUB",
+    "https://www.youtube.com/watch?v=QG_b2_bl1SY&amp;list=PLd-zJRILbNSAsC-wiJFfLD384gxxOBg1i&amp;pp=gAQBiAQB8AUB",
+    "https://www.youtube.com/watch?v=yk8dB6LvyAQ&amp;list=PLd-zJRILbNSAsC-wiJFfLD384gxxOBg1i&amp;pp=gAQBiAQB8AUB",
+    "https://www.youtube.com/watch?v=Jj1_mfUzjOs&amp;list=PLd-zJRILbNSAsC-wiJFfLD384gxxOBg1i&amp;index=13&amp;pp=gAQBiAQB8AUB",
+    "https://www.youtube.com/watch?v=_2quiyHfJQw&amp;list=PLd-zJRILbNSAsC-wiJFfLD384gxxOBg1i&amp;index=8&amp;pp=gAQBiAQB8AUB",
+    "https://www.youtube.com/watch?v=QG_b2_bl1SY&amp;list=PLd-zJRILbNSAsC-wiJFfLD384gxxOBg1i&amp;index=12&amp;pp=gAQBiAQB8AUB"
+  ],
+  "failed_urls": []
+}
