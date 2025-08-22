@@ -1,5 +1,5 @@
-pycache/*
-.history/*
+/pycache/*
+/.history/*
 .dist/
 .zencoder/
 .cache/
