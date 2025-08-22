@@ -359,15 +359,15 @@ def toggle_loop_mode(self):
     # Mettre à jour l'apparence du bouton selon le mode
     if self.loop_mode == 0:
         # Désactivé
-        self.loop_button.config(bg="#3d3d3d", image=self.icons["loop"])
+        self.loop_button.configure(fg_color="#3d3d3d", image=self.icons["loop"])
         self.status_bar.config(text="Mode boucle désactivé")
     elif self.loop_mode == 1:
         # Loop playlist
-        self.loop_button.config(bg="#4a8fe7", image=self.icons["loop"])
+        self.loop_button.configure(fg_color="#4a8fe7", image=self.icons["loop"])
         self.status_bar.config(text="Mode boucle playlist activé")
     elif self.loop_mode == 2:
         # Loop chanson actuelle
-        self.loop_button.config(bg="#4a8fe7", image=self.icons["loop1"])
+        self.loop_button.configure(fg_color="#4a8fe7", image=self.icons["loop1"])
         self.status_bar.config(text="Mode boucle chanson activé")
 
 def toggle_random_mode(self):
@@ -376,12 +376,12 @@ def toggle_random_mode(self):
     
     # Mettre à jour l'apparence du bouton
     if self.random_mode:
-        self.random_button.config(bg="#4a8fe7")
+        self.random_button.configure(fg_color="#4a8fe7")
         self.status_bar.config(text="Mode aléatoire activé")
         # Mélanger la suite de la playlist à partir de la chanson suivante
         self._shuffle_remaining_playlist()
     else:
-        self.random_button.config(bg="#3d3d3d")
+        self.random_button.configure(fg_color="#3d3d3d")
         self.status_bar.config(text="Mode aléatoire désactivé")
 
 def _start_text_animation(self, full_title, frame):

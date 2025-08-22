@@ -72,7 +72,7 @@ def show_downloads_content(self):
         takefocus=0
     )
     play_all_btn.pack(side=tk.LEFT, padx=(0, 10))
-    create_tooltip(play_all_btn, "Jouer toutes les musiques\nLit toutes les musiques téléchargées dans l'ordre")
+    tooltip.create_tooltip(play_all_btn, "Jouer toutes les musiques\nLit toutes les musiques téléchargées dans l'ordre")
     
     # Bouton pour jouer toutes les musiques en mode aléatoire
     shuffle_all_btn = tk.Button(
@@ -89,7 +89,7 @@ def show_downloads_content(self):
         takefocus=0
     )
     shuffle_all_btn.pack(side=tk.LEFT)
-    create_tooltip(shuffle_all_btn, "Jouer en mode aléatoire\nLit toutes les musiques téléchargées dans un ordre aléatoire")
+    tooltip.create_tooltip(shuffle_all_btn, "Jouer en mode aléatoire\nLit toutes les musiques téléchargées dans un ordre aléatoire")
     
     # Canvas avec scrollbar pour les téléchargements
     self.downloads_canvas = tk.Canvas(
@@ -225,7 +225,7 @@ def _display_filtered_downloads(self, files_to_display, preserve_scroll=False):
         return
     
     # Afficher avec chargement différé des miniatures
-    limit = 30
+    # limit = 30
     for i, filepath in enumerate(files_to_display):
         # if i >= limit:
         #     break
@@ -757,7 +757,7 @@ def play_all_downloads_ordered(self):
     self.current_index = 0
     
     # Mettre à jour l'apparence du bouton random
-    self.random_button.config(bg="#3d3d3d")
+    self.random_button.configure(fg_color="#3d3d3d")
     
     # Démarrer la lecture immédiatement
     self.play_track()
@@ -793,7 +793,7 @@ def play_all_downloads_shuffle(self):
     self.current_index = 0
     
     # Mettre à jour l'apparence du bouton random
-    self.random_button.config(bg="#4a8fe7")
+    self.random_button.configure(fg_color="#4a8fe7")
     
     # Démarrer la lecture immédiatement
     self._refresh_main_playlist_display_async()

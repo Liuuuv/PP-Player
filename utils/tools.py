@@ -350,7 +350,7 @@ def _add_downloaded_file(self, filepath, thumbnail_path, title, url=None, add_to
         del self.pending_playlist_additions[url]
     
     # Mettre à jour le compteur de fichiers téléchargés
-    file_services._count_downloaded_files(self)
+    self.FileServices._count_downloaded_files(self)
     self._update_downloads_button()
     
     # Mettre à jour la liste des téléchargements dans l'onglet bibliothèque
@@ -835,7 +835,7 @@ def _add_downloaded_to_playlist(self, filepath, thumbnail_path, title, playlist_
         del self.pending_playlist_additions[url]
     
     # Mettre à jour le compteur de fichiers téléchargés
-    file_services._count_downloaded_files(self)
+    self.FileServices._count_downloaded_files(self)
     self._update_downloads_button()
     
     # Mettre à jour la liste des téléchargements dans l'onglet bibliothèque
@@ -1139,7 +1139,7 @@ def _delete_from_downloads(self, filepath, frame):
             frame.destroy()
             
             # Mettre à jour le compteur
-            file_services._count_downloaded_files(self)
+            self.FileServices._count_downloaded_files(self)
             self._update_downloads_button()
             
             self.status_bar.config(text=f"Fichier supprimé définitivement: {os.path.basename(filepath)}")
@@ -1563,7 +1563,6 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
         else:
             bg_color = COLOR_SELECTED if is_current_song else COLOR_BACKGROUND
         
-        
         # Frame principal
         item_frame = tk.Frame(
             container,
@@ -1574,8 +1573,6 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
             highlightthickness=1,
         )
         item_frame.selected = is_current_song
-        
-        
 
         # Déterminer le padding selon le type et le container
         if item_type == "search_result":
@@ -1661,6 +1658,7 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
         thumbnail_label.grid(row=0, column=2, sticky='nsew', padx=(5, 4), pady=2)
         thumbnail_label.grid_propagate(False)
         
+        
         # Stocker la référence pour le chargement différé
         thumbnail_label.filepath = filepath
         
@@ -1673,7 +1671,7 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
         text_frame.columnconfigure(0, weight=1)
         
         # Titre principal
-        truncated_title = self._truncate_text_for_display(filename, max_width_pixels=328, font_family='TkDefaultFont', font_size=9)
+        truncated_title = self._truncate_text_for_display(filename, max_width_pixels=DOWNLOADS_TITLE_MAX_WIDTH, font_family='TkDefaultFont', font_size=9)
         title_label = tk.Label(
             text_frame,
             text=truncated_title,
@@ -1887,7 +1885,7 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
         )
         
         delete_btn.grid(row=0, column=5, sticky='ns', padx=(0, 10), pady=8)
-        create_tooltip(delete_btn, "Supprimer de la playlist\nDouble-clic: Retirer de cette playlist\nCtrl + Double-clic: Supprimer définitivement du disque")
+        tooltip.create_tooltip(delete_btn, "Supprimer de la playlist\nDouble-clic: Retirer de cette playlist\nCtrl + Double-clic: Supprimer définitivement du disque")
         
         # Gestion des clics pour la sélection multiple
         def on_item_left_click(event):
@@ -1950,7 +1948,7 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
             # Ajouter les événements de survol
             widget.bind("<Enter>", on_enter)
             widget.bind("<Leave>", on_leave)
-        create_tooltip(title_label, "Double click: start music\nRight click: open context menu\nShift + click: select multiple items\nCtrl + click: open on YouTube\nClick+drag right: Play next\nClick+drag left: Add to queue")
+        tooltip.create_tooltip(title_label, "Double click: start music\nRight click: open context menu\nShift + click: select multiple items\nCtrl + click: open on YouTube\nClick+drag right: Play next\nClick+drag left: Add to queue")
         
         def on_delete_double_click_download(event):
             if event.state & 0x4:
@@ -3183,7 +3181,7 @@ def _download_and_add_to_playlists(self, video_url, playlist_names):
                     self.save_playlists()
                     
                     # Mettre à jour le compteur de fichiers téléchargés
-                    self.safe_after(0, self._count_downloaded_files)
+                    self.safe_after(0, self.FileServices._count_downloaded_files)
                     self.safe_after(0, self._update_downloads_button)
                     
                     # Rafraîchir l'affichage si nécessaire
@@ -3313,7 +3311,7 @@ def _download_youtube_selection(self, youtube_urls, target_playlist):
         self.save_playlists()
         
         # Mettre à jour l'interface
-        self.safe_after(0, self._count_downloaded_files)
+        self.safe_after(0, self.FileServices._count_downloaded_files)
         self.safe_after(0, self._update_downloads_button)
         self.safe_after(0, self.load_downloaded_files)
         self.safe_after(0, self._refresh_main_playlist_display)
@@ -3467,7 +3465,7 @@ def _download_youtube_selection_to_queue(self, youtube_urls, queue_position):
         self.selected_items_order = original_selected_order
     
     # Mettre à jour l'interface
-    self.safe_after(0, self._count_downloaded_files)
+    self.safe_after(0, self.FileServices._count_downloaded_files)
     self.safe_after(0, self._update_downloads_button)
     self.safe_after(0, self.load_downloaded_files)
     self.safe_after(0, self._refresh_main_playlist_display)

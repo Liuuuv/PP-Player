@@ -22,14 +22,13 @@ import customtkinter as ctk
 
 # Importer les modules du projet
 import config
-import setup
+from utils import setup
 import file_services
 import inputs
-import tools
+from utils import tools
+from utils import tooltip
 import control
 
-# Importer create_tooltip
-from tooltip import create_tooltip
 
 # Importer toutes les variables de config
 from config import *

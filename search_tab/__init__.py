@@ -21,17 +21,16 @@ from yt_dlp import YoutubeDL
 
 # Importer les modules du projet
 from config import *
-import setup
+from utils import setup
 import file_services
 import inputs
-import tools
+from utils import tools
+from utils import tooltip
 import library_tab.playlists
 import search_tab.results
 import library_tab.downloads
 import control
 
-# Importer create_tooltip
-from tooltip import create_tooltip
 
 # Importer toutes les variables de config
 from config import *

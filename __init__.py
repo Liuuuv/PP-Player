@@ -18,13 +18,13 @@ import Pmw
 import customtkinter as ctk
 
 from config import *
-from tooltip import create_tooltip
+from utils import tooltip
 from drag_drop_handler import DragDropHandler
 
-import setup
+from utils import setup
 import file_services
 import inputs
-import tools
+from utils import tools
 import library_tab.playlists
 import control
 import player
@@ -42,3 +42,4 @@ import artist_tab.playlists
 import downloads_tab
 import file_tracker
 import recommendation
+import loader

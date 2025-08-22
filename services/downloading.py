@@ -86,7 +86,7 @@ def _download_youtube_selection(self, youtube_urls, target_playlist):
         ))
     
     # Mettre à jour le nombre de fichiers téléchargés
-    self.root.after(0, file_services._count_downloaded_files(self))
+    self.root.after(0, self.FileServices._count_downloaded_files(self))
     self.root.after(0, self._update_downloads_button)
     
     # Rafraîchir la bibliothèque (peu importe l'onglet actuel)

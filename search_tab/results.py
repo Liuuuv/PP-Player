@@ -12,13 +12,6 @@ if parent_dir not in sys.path:
 # Importer depuis le __init__.py du dossier search_tab
 from search_tab import *
 
-# Import direct de create_tooltip pour éviter les erreurs
-try:
-    from tooltip import create_tooltip
-except ImportError:
-    # Fonction de fallback si create_tooltip n'est pas disponible
-    def create_tooltip(widget, text):
-        pass
 
 def _ensure_results_container_exists(self):
     """S'assure que le results_container existe, le recrée si nécessaire"""
@@ -1703,7 +1696,7 @@ def _add_search_result(self, video, index):
                                 traceback.print_exc()
                                 self.status_bar.config(text=f"Erreur lors de l'ouverture de l'onglet artiste")
                         
-                        create_tooltip(artist_label, f"Clic: ouvrir l'onglet artiste pour {artist}")
+                        tooltip.create_tooltip(artist_label, f"Clic: ouvrir l'onglet artiste pour {artist}")
                         
                         # Ajouter le séparateur si on a un album
                         if album:
@@ -1847,12 +1840,12 @@ def _add_search_result(self, video, index):
                 tooltip_text = "Chaîne YouTube\nDouble-clic: Ouvrir l'onglet artiste\nCtrl + Clic: Ouvrir dans le navigateur\nShift + Clic: Sélection multiple"
             else:
                 tooltip_text = "Vidéo YouTube\nDouble-clic: Télécharger (sans ajouter à la playlist)\nDrag vers la droite: Télécharger et ajouter à la queue\nDrag vers la gauche: Télécharger et placer en premier dans la queue\nShift + Clic: Sélection multiple"
-            create_tooltip(text_frame, tooltip_text)
-            create_tooltip(title_label, tooltip_text)
+            tooltip.create_tooltip(text_frame, tooltip_text)
+            tooltip.create_tooltip(title_label, tooltip_text)
             if metadata_label is not None:
-                create_tooltip(metadata_label, tooltip_text)
-            create_tooltip(duration_label, tooltip_text)
-            create_tooltip(thumbnail_label, tooltip_text)
+                tooltip.create_tooltip(metadata_label, tooltip_text)
+            tooltip.create_tooltip(duration_label, tooltip_text)
+            tooltip.create_tooltip(thumbnail_label, tooltip_text)
             result_frame.bind("<ButtonPress-1>", on_result_click)
             result_frame.bind("<Double-1>", on_result_double_click)
             

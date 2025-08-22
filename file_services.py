@@ -10,23 +10,28 @@ import numpy as np
 from PIL import Image, ImageTk
 from yt_dlp import YoutubeDL
 
-def _count_downloaded_files(self):
-    """Compte les fichiers téléchargés sans les afficher"""
-    downloads_dir = self.downloads_folder
-    
-    # Créer le dossier s'il n'existe pas
-    if not os.path.exists(downloads_dir):
-        os.makedirs(downloads_dir)
-        self.num_downloaded_files = 0
-        return
-    
-    # Extensions audio supportées
-    audio_extensions = ('.mp3', '.wav', '.ogg', '.flac', '.m4a')
-    
-    # Compter les fichiers
-    count = 0
-    for filename in os.listdir(downloads_dir):
-        if filename.lower().endswith(audio_extensions):
-            count += 1
-    
-    self.num_downloaded_files = count
+
+class FileServices:
+    def __init__(self, music_player):
+        self.music_player = music_player
+
+    def _count_downloaded_files(self):
+        """Compte les fichiers téléchargés sans les afficher"""
+        downloads_dir = self.music_player.downloads_folder
+        
+        # Créer le dossier s'il n'existe pas
+        if not os.path.exists(downloads_dir):
+            os.makedirs(downloads_dir)
+            self.music_player.num_downloaded_files = 0
+            return
+        
+        # Extensions audio supportées
+        audio_extensions = ('.mp3', '.wav', '.ogg', '.flac', '.m4a')
+        
+        # Compter les fichiers
+        count = 0
+        for filename in os.listdir(downloads_dir):
+            if filename.lower().endswith(audio_extensions):
+                count += 1
+        
+        self.music_player.num_downloaded_files = count

@@ -8,83 +8,147 @@ if parent_dir not in sys.path:
 
 # Importer depuis le __init__.py du dossier library_tab
 from library_tab import *
-from tooltip import create_tooltip
 
-def show_playlists_content(self):
-    """Affiche le contenu de l'onglet playlists"""
-    
-    # Frame pour les boutons de gestion
-    management_frame = ttk.Frame(self.library_content_frame)
-    management_frame.pack(fill=tk.X, padx=10, pady=(0, 20))
-    
-    # Bouton créer nouvelle playlist
-    create_btn = tk.Button(
-        management_frame,
-        # text="➕",
-        image=self.icons["add"],
-        command=lambda: self._create_new_playlist_dialog(),
-        bg='#4d4d4d',
-        fg="white",
-        activebackground="#5a9fd8",
-        relief="flat",
-        bd=0,
-        padx=15,
-        pady=8,
-        font=('TkDefaultFont', 14),
-        takefocus=0
-    )
-    create_btn.pack(side=tk.LEFT, padx=(0, 10))
-    
-    # Bouton reload playlists
-    reload_btn = tk.Button(
-        management_frame,
-        image=self.icons["reload"],
-        command=lambda: self._reload_playlists(),
-        bg='#4d4d4d',
-        fg="white",
-        activebackground="#5a9fd8",
-        relief="flat",
-        bd=0,
-        padx=15,
-        pady=8,
-        font=('TkDefaultFont', 14),
-        takefocus=0
-    )
-    reload_btn.pack(side=tk.LEFT, padx=(0, 10))
-    create_tooltip(reload_btn, "Recharger les playlists\nRecharge la liste des playlists depuis le fichier")
-    
-    # Canvas avec scrollbar pour les playlists
-    self.playlists_canvas = tk.Canvas(
-        self.library_content_frame,
-        bg='#3d3d3d',
-        highlightthickness=0,
-        takefocus=0
-    )
-    self.playlists_scrollbar = ttk.Scrollbar(
-        self.library_content_frame,
-        orient="vertical",
-        command=self.playlists_canvas.yview
-    )
-    self.playlists_canvas.configure(yscrollcommand=self.playlists_scrollbar.set)
-    
-    self.playlists_scrollbar.pack(side="right", fill="y")
-    self.playlists_canvas.pack(side="left", fill="both", expand=True)
-    
-    self.playlists_container = ttk.Frame(self.playlists_canvas)
-    self.playlists_canvas.create_window((0, 0), window=self.playlists_container, anchor="nw")
-    
-    self.playlists_container.bind(
-        "<Configure>",
-        lambda e: self.playlists_canvas.configure(
-            scrollregion=self.playlists_canvas.bbox("all")
+class Playlists:
+    def __init__(self, music_player):
+        self.music_player = music_player
+
+    def show_playlists_content(self):
+        """Affiche le contenu de l'onglet playlists"""
+        
+        # Frame pour les boutons de gestion
+        management_frame = ttk.Frame(self.music_player.library_content_frame)
+        management_frame.pack(fill=tk.X, padx=10, pady=(0, 20))
+        
+        # Bouton créer nouvelle playlist
+        create_btn = tk.Button(
+            management_frame,
+            # text="➕",
+            image=self.music_player.icons["add"],
+            command=lambda: self.music_player._create_new_playlist_dialog(),
+            bg='#4d4d4d',
+            fg="white",
+            activebackground="#5a9fd8",
+            relief="flat",
+            bd=0,
+            padx=15,
+            pady=8,
+            font=('TkDefaultFont', 14),
+            takefocus=0
         )
-    )
+        create_btn.pack(side=tk.LEFT, padx=(0, 10))
+        
+        # Bouton reload playlists
+        reload_btn = tk.Button(
+            management_frame,
+            image=self.music_player.icons["reload"],
+            command=lambda: self.music_player._reload_playlists(),
+            bg='#4d4d4d',
+            fg="white",
+            activebackground="#5a9fd8",
+            relief="flat",
+            bd=0,
+            padx=15,
+            pady=8,
+            font=('TkDefaultFont', 14),
+            takefocus=0
+        )
+        reload_btn.pack(side=tk.LEFT, padx=(0, 10))
+        tooltip.create_tooltip(reload_btn, "Recharger les playlists\nRecharge la liste des playlists depuis le fichier")
+        
+        # Canvas avec scrollbar pour les playlists
+        self.music_player.playlists_canvas = tk.Canvas(
+            self.music_player.library_content_frame,
+            bg='#3d3d3d',
+            highlightthickness=0,
+            takefocus=0
+        )
+        self.music_player.playlists_scrollbar = ttk.Scrollbar(
+            self.music_player.library_content_frame,
+            orient="vertical",
+            command=self.music_player.playlists_canvas.yview
+        )
+        self.music_player.playlists_canvas.configure(yscrollcommand=self.music_player.playlists_scrollbar.set)
+        
+        self.music_player.playlists_scrollbar.pack(side="right", fill="y")
+        self.music_player.playlists_canvas.pack(side="left", fill="both", expand=True)
+        
+        self.music_player.playlists_container = ttk.Frame(self.music_player.playlists_canvas)
+        self.music_player.playlists_canvas.create_window((0, 0), window=self.music_player.playlists_container, anchor="nw")
+        
+        self.music_player.playlists_container.bind(
+            "<Configure>",
+            lambda e: self.music_player.playlists_canvas.configure(
+                scrollregion=self.music_player.playlists_canvas.bbox("all")
+            )
+        )
+        
+        self.music_player._bind_mousewheel(self.music_player.playlists_canvas, self.music_player.playlists_canvas)
+        self.music_player._bind_mousewheel(self.music_player.playlists_container, self.music_player.playlists_canvas)
+        
+        # Charger et afficher les playlists
+        self.music_player._display_playlists()
     
-    self._bind_mousewheel(self.playlists_canvas, self.playlists_canvas)
-    self._bind_mousewheel(self.playlists_container, self.playlists_canvas)
-    
-    # Charger et afficher les playlists
-    self._display_playlists()
+    def _reload_playlists(self):
+        """Recharge les playlists depuis le fichier JSON"""
+        try:
+            # Sauvegarder la Main Playlist actuelle
+            main_playlist_backup = self.music_player.playlists.get("Main Playlist", []).copy()
+            
+            # Effacer toutes les playlists sauf la Main Playlist
+            playlists_to_keep = {"Main Playlist": main_playlist_backup}
+            self.music_player.playlists.clear()
+            self.music_player.playlists.update(playlists_to_keep)
+            
+            # Recharger les playlists depuis le fichier
+            self.music_player.load_playlists()
+            
+            # Vider le contenu actuel
+            try:
+                if hasattr(self.music_player, 'library_content_frame') and self.music_player.library_content_frame.winfo_exists():
+                    for widget in self.music_player.library_content_frame.winfo_children():
+                        try:
+                            if widget.winfo_exists():
+                                widget.destroy()
+                        except tk.TclError:
+                            # Widget déjà détruit, ignorer
+                            continue
+            except tk.TclError:
+                # Container détruit, ignorer
+                pass
+            # Rafraîchir l'affichage si on est sur l'onglet playlists
+            if hasattr(self.music_player, 'current_library_tab') and self.music_player.current_library_tab == "playlists":
+                self.show_playlists_content()
+            
+            # Afficher un message de confirmation
+            if hasattr(self, 'status_bar'):
+                self.music_player.status_bar.config(text="Playlists rechargées avec succès")
+                self.music_player.root.after(3000, lambda: self.music_player.status_bar.config(text=""))
+            
+            print("Playlists rechargées avec succès")
+            
+        except Exception as e:
+            error_msg = f"Erreur lors du rechargement des playlists: {e}"
+            print(error_msg)
+            if hasattr(self.music_player, 'status_bar'):
+                self.music_player.status_bar.config(text="Erreur lors du rechargement des playlists")
+                self.music_player.root.after(3000, lambda: self.music_player.status_bar.config(text=""))
+        
+    def _back_to_playlists(self):
+        """Retourne à l'affichage des playlists"""
+        self.music_player.current_viewing_playlist = None
+        
+        # Supprimer le binding Échap spécifique aux playlists
+        self.music_player.root.unbind('<Escape>')
+        # Remettre le binding Échap général
+        self.music_player.setup_keyboard_bindings()
+        
+        # Nettoyer complètement le contenu actuel
+        for widget in self.music_player.library_content_frame.winfo_children():
+            widget.destroy()
+        
+        # Réafficher le contenu des playlists
+        self.show_playlists_content()
 
 def _display_playlists(self):
     """Affiche toutes les playlists en grille 4x4"""
@@ -394,50 +458,7 @@ def save_playlists(self):
     except Exception as e:
         print(f"Erreur sauvegarde playlists: {e}")
 
-def _reload_playlists(self):
-    """Recharge les playlists depuis le fichier JSON"""
-    try:
-        # Sauvegarder la Main Playlist actuelle
-        main_playlist_backup = self.playlists.get("Main Playlist", []).copy()
-        
-        # Effacer toutes les playlists sauf la Main Playlist
-        playlists_to_keep = {"Main Playlist": main_playlist_backup}
-        self.playlists.clear()
-        self.playlists.update(playlists_to_keep)
-        
-        # Recharger les playlists depuis le fichier
-        self.load_playlists()
-        
-        # Vider le contenu actuel
-        try:
-            if hasattr(self, 'library_content_frame') and self.library_content_frame.winfo_exists():
-                for widget in self.library_content_frame.winfo_children():
-                    try:
-                        if widget.winfo_exists():
-                            widget.destroy()
-                    except tk.TclError:
-                        # Widget déjà détruit, ignorer
-                        continue
-        except tk.TclError:
-            # Container détruit, ignorer
-            pass
-        # Rafraîchir l'affichage si on est sur l'onglet playlists
-        if hasattr(self, 'current_library_tab') and self.current_library_tab == "playlists":
-            self.show_playlists_content()
-        
-        # Afficher un message de confirmation
-        if hasattr(self, 'status_bar'):
-            self.status_bar.config(text="Playlists rechargées avec succès")
-            self.root.after(3000, lambda: self.status_bar.config(text=""))
-        
-        print("Playlists rechargées avec succès")
-        
-    except Exception as e:
-        error_msg = f"Erreur lors du rechargement des playlists: {e}"
-        print(error_msg)
-        if hasattr(self, 'status_bar'):
-            self.status_bar.config(text="Erreur lors du rechargement des playlists")
-            self.root.after(3000, lambda: self.status_bar.config(text=""))
+
 
 def _rename_playlist_dialog(self, old_name):
     """Dialogue pour renommer une playlist"""
@@ -629,21 +650,7 @@ def _display_playlist_songs(self, playlist_name):
 
         self._start_thumbnail_loading(files_to_display, self.playlist_content_container)
 
-def _back_to_playlists(self):
-    """Retourne à l'affichage des playlists"""
-    self.current_viewing_playlist = None
-    
-    # Supprimer le binding Échap spécifique aux playlists
-    self.root.unbind('<Escape>')
-    # Remettre le binding Échap général
-    self.setup_keyboard_bindings()
-    
-    # Nettoyer complètement le contenu actuel
-    for widget in self.library_content_frame.winfo_children():
-        widget.destroy()
-    
-    # Réafficher le contenu des playlists
-    self.show_playlists_content()
+
 
 
 # def _add_playlist_song_item(self, filepath, playlist_name, song_index):
@@ -946,7 +953,7 @@ def _remove_from_playlist_view(self, filepath, playlist_name, event=None):
                 self.save_playlists()
                 
                 # Mettre à jour le compteur
-                file_services._count_downloaded_files(self)
+                self.FileServices._count_downloaded_files(self)
                 self._update_downloads_button()
                 
                 self.status_bar.config(text=f"Fichier supprimé définitivement: {os.path.basename(filepath)}")

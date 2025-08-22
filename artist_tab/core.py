@@ -153,7 +153,7 @@ def _add_artist_playlist_result(self, playlist, index, container, target_tab="so
             tooltip_text = f"Playlist: {title}\nDouble-clic pour voir le contenu"
             if playlist_count > 0:
                 tooltip_text += f"\n{playlist_count} vidéos"
-            create_tooltip(title_label, tooltip_text)
+            tooltip.create_tooltip(title_label, tooltip_text)
             
         except Exception as e:
             print(f"Erreur lors de l'ajout de la playlist artiste: {e}")
@@ -966,8 +966,7 @@ def _create_artist_tabs(self):
         
         # Ajouter un tooltip au bouton croix
         try:
-            from tooltip import create_tooltip
-            create_tooltip(self.artist_close_btn, "Retourner à la recherche\nQuitte l'affichage de l'artiste et retourne aux résultats de recherche\n(Raccourci: Échap)")
+            tooltip.create_tooltip(self.artist_close_btn, "Retourner à la recherche\nQuitte l'affichage de l'artiste et retourne aux résultats de recherche\n(Raccourci: Échap)")
         except:
             pass  # Si le tooltip ne peut pas être créé, continuer
         
@@ -1290,8 +1289,8 @@ def _add_artist_result(self, video, index, container):
             
             # Tooltip avec toutes les interactions
             tooltip_text = f"Vidéo de {self.current_artist_name}\nDouble-clic: Télécharger\nDrag vers la droite: Télécharger et ajouter à la queue\nDrag vers la gauche: Télécharger et placer en premier dans la queue\nShift + Clic: Sélection multiple\nClic droit: Menu playlists"
-            create_tooltip(result_frame, tooltip_text)
-            create_tooltip(title_label, tooltip_text)
+            tooltip.create_tooltip(result_frame, tooltip_text)
+            tooltip.create_tooltip(title_label, tooltip_text)
             
         except Exception as e:
             print(f"Erreur lors de l'ajout du résultat vidéo artiste: {e}")
@@ -1684,8 +1683,6 @@ def _start_artist_name_animation(self):
     if not hasattr(self, 'artist_name_label') or not self.artist_name_label.winfo_exists():
         return
     
-    # Utiliser la fonction existante pour vérifier si le texte est tronqué
-    import tools
     try:
         from search_tab.config import get_artist_config
         max_width = get_artist_config('max_width_artist_name') or 90
@@ -1743,7 +1740,6 @@ def _animate_artist_name_step(self):
         return
     
     # Calculer le texte visible
-    import tools
     full_text = self.artist_name_full_text
     text_length = len(full_text)
     
@@ -1785,7 +1781,6 @@ def _handle_right_click(self, event, frame):
     """Gère le clic droit - menu de sélection multiple ou menu normal"""
     if self.selected_items:
         # Si on a des éléments sélectionnés, afficher le menu de sélection multiple
-        import tools
         tools.show_selection_menu(self, event)
     else:
         # Sinon, afficher le menu normal pour les pages d'artiste

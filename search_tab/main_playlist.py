@@ -11,6 +11,7 @@ if parent_dir not in sys.path:
 # Importer depuis le __init__.py du dossier search_tab
 from search_tab import *
 
+
 # Importer la configuration des optimisations
 try:
     from playlist_config import should_use_windowing, get_window_size, get_preload_size, get_config
@@ -325,7 +326,7 @@ def _add_main_playlist_item(self, filepath, thumbnail_path=None, song_index=None
             )
             delete_btn.grid(row=0, column=3+col_offset, sticky='ns', padx=(0, 10), pady=8)
             delete_btn.bind("<Double-1>", lambda event, f=filepath, frame=item_frame, idx=current_song_index: self._remove_from_main_playlist(f, frame, event, idx))
-            create_tooltip(delete_btn, "Supprimer de la playlist\nDouble-clic pour retirer cette chanson de la playlist")
+            tooltip.create_tooltip(delete_btn, "Supprimer de la playlist\nDouble-clic pour retirer cette chanson de la playlist")
             
             item_frame.filepath = filepath
             item_frame.song_index = current_song_index  # Stocker l'index réel
@@ -599,18 +600,18 @@ def _add_main_playlist_item(self, filepath, thumbnail_path=None, song_index=None
             
             # Tooltip pour expliquer les interactions
             tooltip_text = "Musique de la playlist principale\nDouble-clic: Jouer cette musique\nCtrl + Clic: Ouvrir sur YouTube\nDrag vers la droite: Ajouter à la queue (prochaines musiques)\nDrag vers la gauche: Placer en premier dans la queue\nShift + Clic: Sélection multiple\nClic droit: Ouvrir le menu contextuel"
-            create_tooltip(text_frame, tooltip_text)
-            create_tooltip(title_label, tooltip_text)
+            tooltip.create_tooltip(text_frame, tooltip_text)
+            tooltip.create_tooltip(title_label, tooltip_text)
             # Ajouter les tooltips pour les labels de métadonnées s'ils existent
             # if artist:
-            #     create_tooltip(artist_label, tooltip_text)
+            #     tooltip.create_tooltip(artist_label, tooltip_text)
             #     if other_metadata_label:
-            #         create_tooltip(other_metadata_label, tooltip_text)
+            #         tooltip.create_tooltip(other_metadata_label, tooltip_text)
             # else:
             #     # Pas d'artiste, utiliser le label de métadonnées normal
             #     if 'metadata_label' in locals():
-            #         create_tooltip(metadata_label, tooltip_text)
-            # create_tooltip(thumbnail_label, tooltip_text)
+            #         tooltip.create_tooltip(metadata_label, tooltip_text)
+            # tooltip.create_tooltip(thumbnail_label, tooltip_text)
             
             # Retourner le frame créé pour pouvoir l'utiliser
             return item_frame
@@ -1570,11 +1571,11 @@ def _add_playlist_indicator(self, text, position):
             # Ajouter un tooltip pour expliquer la fonctionnalité
             try:
                 if position == "top":
-                    create_tooltip(indicator_label, "Cliquez pour remonter de 15 chansons")
+                    tooltip.create_tooltip(indicator_label, "Cliquez pour remonter de 15 chansons")
                 else:
-                    create_tooltip(indicator_label, "Cliquez pour descendre de 15 chansons")
+                    tooltip.create_tooltip(indicator_label, "Cliquez pour descendre de 15 chansons")
             except:
-                pass  # Si create_tooltip n'est pas disponible, ignorer
+                pass  # Si tooltip.create_tooltip n'est pas disponible, ignorer
             
         except Exception as e:
             print(f"Erreur lors de l'ajout de l'indicateur: {e}")
@@ -1853,6 +1854,7 @@ def _setup_infinite_scroll(self):
 
 def _setup_dynamic_scroll(self):
         """Configure le système de scroll dynamique unifié (combine infinite et progressive)"""
+        print("_setup_dynamic_scroll appelée")
         try:
             if not hasattr(self, 'main_playlist_canvas'):
                 return

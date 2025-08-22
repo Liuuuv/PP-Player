@@ -1,3 +1,5 @@
+from __init__ import*
+
 import pygame
 import os
 import tkinter as tk
@@ -9,367 +11,500 @@ from pydub import AudioSegment
 import numpy as np
 from PIL import Image, ImageTk
 from yt_dlp import YoutubeDL
-from tooltip import create_tooltip
 from custom_slider import CustomVolumeSlider
 
-from __init__ import*
+from downloads_tab import DownloadManager
 
 
 
-def setup_window_icon(self):
-    """Set up the window icon and performance optimizations for the main application window."""
-    try:
-        icon_path = os.path.join(os.path.dirname(__file__), "assets", "icon.ico")
-        if os.path.exists(icon_path):
-            self.root.iconbitmap(icon_path)
-    except Exception as e:
-        print(f"Impossible de charger l'icône: {e}")
+class Setup:
+    def __init__(self, music_player):
+        self.music_player = music_player
     
-    # Optimisations de performance pour le déplacement de fenêtre
-    try:
-        # Désactiver la composition sur Windows pour améliorer les performances
-        if os.name == 'nt':  # Windows
-            self.root.attributes('-toolwindow', False)
-            # Éviter les interactions indésirables avec d'autres fenêtres
-            self.root.attributes('-topmost', False)
-    except Exception as e:
-        print(f"Impossible d'appliquer les optimisations de fenêtre: {e}")
+    def setup(self):
+        self.setup_window_icon()
+        self.load_icons()
+        self.create_ui()
 
-def load_icons(self):
-    """Load icons for the application from the assets directory."""
-    icon_names = {
-        "add": "add.png",
-        "prev": "prev.png",
-        "play": "play.png",
-        "next": "next.png",
-        "hey": "hey.png",
-        "pause": "pause.png",
-        "delete": "delete.png",
-        "back": "back.png",
-        "loop": "loop.png",
-        "loop1": "loop1.png",
-        "shuffle": "shuffle.png",
-        "rename": "rename.png",
-        "cross": "cross.png",
-        "search": "search.png",
-        "clear": "clear.png",
-        "find": "find.png",
-        "auto_scroll": "auto_scroll.png",
-        "output": "output.png",
-        "stats": "stats.png",
-        "import": "import.png",
-        "clear_cache": "clear_cache.png",
-        "select_downloads_folder": "select_downloads_folder.png",
-        "none": "none.png",
-        "recommendation": "recommendation.png",
-        "sparse_recommendation": "sparse_recommendation.png",
-        "add_recommendation": "add_recommendation.png",
-        "reload": "reload.png",
-        "errors": "errors.png",
-        "like_empty": "like_empty.png",
-        "like_full": "like_full.png",
-        "favorite_empty": "favorite_empty.png",
-        "favorite_full": "favorite_full.png",
-        "activate_ai": "activate_ai.png",
-        "settings": "settings.png",
-    }
-
-    # Chemin absolu vers le dossier assets
-    base_path = os.path.join(os.path.dirname(__file__), "assets")
-
-    self.icons = {}
-    for key, filename in icon_names.items():
+    def setup_window_icon(self):
+        """Set up the window icon and performance optimizations for the main application window."""
         try:
-            path = os.path.join(base_path, filename)
-            image = Image.open(path).resize((32, 32), Image.Resampling.LANCZOS)
-            self.icons[key] = ImageTk.PhotoImage(image)
-            
-            # Créer une version plus petite pour certaines icônes
-            if key in ["cross", "search"]:
-                image_small = Image.open(path).resize((16, 16), Image.Resampling.LANCZOS)
-                self.icons[key + "_small"] = ImageTk.PhotoImage(image_small)
-            
-            # Créer une version plus petite pour les icônes clear, find, auto_scroll et pause
-            if key in ["clear", "find", "auto_scroll", "pause", "play", "activate_ai"]:
-                image_small = Image.open(path).resize((20, 20), Image.Resampling.LANCZOS)
-                self.icons[key + "_small"] = ImageTk.PhotoImage(image_small)
-            
-            # Créer une version plus petite pour les icônes output, stats, import, clear_cache, select_downloads_folder et errors
-            if key in ["output", "stats", "import", "clear_cache", "select_downloads_folder", "errors", "rename", "delete", "settings"]:
-                image_small = Image.open(path).resize((16, 16), Image.Resampling.LANCZOS)
-                self.icons[key + "_small"] = ImageTk.PhotoImage(image_small)
+            icon_path = os.path.join(self.music_player.root_path, "assets", "icon.ico")
+            if os.path.exists(icon_path):
+                self.music_player.root.iconbitmap(icon_path)
         except Exception as e:
-            print(f"Erreur chargement {filename}: {e}")
-
-def create_ui(self):
-    # Style
-    style = ttk.Style()
-    style.theme_use('clam')
-    style.configure('TFrame', background='#2d2d2d')
-    style.configure('TLabel', background='#2d2d2d', foreground='white')
-    style.configure('TButton', background='#3d3d3d', foreground='white')
-    style.configure('TScale', background='#2d2d2d')
-    
-    # config +
-    style = ttk.Style()
-    style.theme_use('clam')
-
-    # Style de base des boutons
-    style.configure('TButton',
-        background='#3d3d3d',
-        foreground='white',
-        borderwidth=0,
-        focusthickness=0,
-        padding=6
-    )
-
-    # Réduction de l'effet hover (état 'active')
-    style.map('TButton',
-        background=[('active', '#4a4a4a'), ('!active', '#3d3d3d')],
-        relief=[('pressed', 'flat'), ('!pressed', 'flat')],
-        focuscolor=[('focus', '')]
-    )
-    
-    # Ajoutez ceci dans la section des styles au début de create_ui()
-    style.configure('Downloading.TFrame', background='#ff4444')  # Style rouge pour téléchargement
-    style.map('Downloading.TFrame',
-            background=[('active', '#ff6666')])  # Variation au survol
-    style.configure('ErrorDownloading.TFrame', background="#ffcc00")  # Style jaune pour erreur
-    
-    # Configuration des onglets
-    style.configure('TNotebook', background='#2d2d2d', borderwidth=0)
-    style.configure('TNotebook.Tab', 
-                background='#3d3d3d', 
-                foreground='white',
-                padding=[10, 5],
-                borderwidth=0)
-    style.map('TNotebook.Tab',
-            background=[('selected', '#4a8fe7'), ('!selected', '#3d3d3d')],
-            foreground=[('selected', 'white'), ('!selected', 'white')])
-
-    # Main Frame
-    self.main_frame = ttk.Frame(self.root)
-    self.main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-    
-    # Contrôles de lecture (créés en premier pour être toujours visibles en bas)
-    self.setup_controls()
-    
-        # Création du Notebook (onglets) - prend l'espace restant
-    self.notebook = ttk.Notebook(self.main_frame, takefocus=0)
-    self.notebook.pack(fill=tk.BOTH, expand=True)
-    
-    # Désactiver complètement la navigation par clavier dans le notebook
-    def disable_notebook_keyboard_navigation(event):
-        return "break"
-    
-    self.notebook.bind('<Key>', disable_notebook_keyboard_navigation)
-    self.notebook.bind('<Left>', disable_notebook_keyboard_navigation)
-    self.notebook.bind('<Right>', disable_notebook_keyboard_navigation)
-    self.notebook.bind('<Up>', disable_notebook_keyboard_navigation)
-    self.notebook.bind('<Down>', disable_notebook_keyboard_navigation)
-    
-    # Bouton Select Downloads Folder plus petit et plus haut que les onglets, à gauche du bouton clear_cache
-    self.select_downloads_folder_button = tk.Button(
-        self.main_frame, 
-        image=self.icons["select_downloads_folder_small"],
-        bg="#3d3d3d",
-        fg="white",
-        activebackground="#4a4a4a",
-        relief="raised",
-        bd=1,
-        width=20,
-        height=20,
-        command=self.select_downloads_folder,
-        takefocus=0,
-        cursor='hand2'
-    )
-    # Positionner le bouton à gauche du bouton clear_cache
-    self.select_downloads_folder_button.place(in_=self.notebook, relx=1.0, rely=0.0, anchor="ne", x=-125, y=0)
-    create_tooltip(self.select_downloads_folder_button, "Changer le dossier de téléchargements\nDéplacer les téléchargements et caches vers un nouveau dossier")
-    
-    # Bouton Clear Cache plus petit et plus haut que les onglets, à gauche du bouton import
-    self.clear_cache_button = tk.Button(
-        self.main_frame, 
-        image=self.icons["clear_cache_small"],
-        bg="#3d3d3d",
-        fg="white",
-        activebackground="#4a4a4a",
-        relief="raised",
-        bd=1,
-        width=20,
-        height=20,
-        command=self.show_cache_menu,
-        takefocus=0,
-        cursor='hand2'
-    )
-    # Positionner le bouton à gauche du bouton import
-    self.clear_cache_button.place(in_=self.notebook, relx=1.0, rely=0.0, anchor="ne", x=-95, y=0)
-    create_tooltip(self.clear_cache_button, "Gestion du cache\nSupprimer les caches de recherches, artistes, etc.")
-
-    # Bouton Import plus petit et plus haut que les onglets, à gauche du bouton stats
-    self.import_button = tk.Button(
-        self.main_frame, 
-        image=self.icons["import_small"],
-        bg="#3d3d3d",
-        fg="white",
-        activebackground="#4a4a4a",
-        relief="raised",
-        bd=1,
-        width=20,
-        height=20,
-        command=self.show_download_dialog,
-        takefocus=0,
-        cursor='hand2'
-    )
-    # Positionner le bouton à gauche du bouton stats
-    self.import_button.place(in_=self.notebook, relx=1.0, rely=0.0, anchor="ne", x=-65, y=0)
-    create_tooltip(self.import_button, "Importer des musiques\nTélécharge une musique ou une playlist YouTube\nClic droit pour voir les logs")
-    
-    # Configurer le menu contextuel pour le bouton d'import
-    self.setup_import_context_menu()
-    
-    # Bouton Stats plus petit et plus haut que les onglets, à gauche du bouton output
-    self.stats_button = tk.Button(
-        self.main_frame, 
-        image=self.icons["stats_small"],
-        bg="#3d3d3d",
-        fg="white",
-        activebackground="#4a4a4a",
-        relief="raised",
-        bd=1,
-        width=20,
-        height=20,
-        command=self.show_stats_menu,
-        takefocus=0,
-        cursor='hand2'
-    )
-    # Positionner le bouton à gauche du bouton output
-    self.stats_button.place(in_=self.notebook, relx=1.0, rely=0.0, anchor="ne", x=-35, y=0)
-    create_tooltip(self.stats_button, "Statistiques d'écoute\nAffiche vos statistiques d'utilisation")
-    
-    # Bouton Output plus petit et plus haut que les onglets, tout à droite
-    self.output_button = tk.Button(
-        self.main_frame, 
-        image=self.icons["output_small"],
-        bg="#3d3d3d",
-        fg="white",
-        activebackground="#4a4a4a",
-        relief="raised",
-        bd=1,
-        width=20,
-        height=20,
-        command=self.show_output_menu,
-        takefocus=0,
-        cursor='hand2'
-    )
-    # Positionner le bouton plus haut que les onglets
-    self.output_button.place(in_=self.notebook, relx=1.0, rely=0.0, anchor="ne", x=-185, y=0)
-    create_tooltip(self.output_button, "Périphérique de sortie\nChanger le périphérique audio de sortie")
-    
-    
-    # Bouton Errors plus petit et plus haut que les onglets, à droite du bouton output
-    self.errors_button = tk.Button(
-        self.main_frame, 
-        image=self.icons["errors_small"],
-        bg="#3d3d3d",
-        fg="white",
-        activebackground="#4a4a4a",
-        relief="raised",
-        bd=1,
-        width=20,
-        height=20,
-        command=self.show_errors_dialog,
-        takefocus=0,
-        cursor='hand2'
-    )
-    # Positionner le bouton à droite du bouton output
-    self.errors_button.place(in_=self.notebook, relx=1.0, rely=0.0, anchor="ne", x=-155, y=0)
-    create_tooltip(self.errors_button, "Erreurs système\nAffiche les erreurs détectées dans l'application")
-    
-    # Bouton settings
-    self.settings_button = tk.Button(
-        self.main_frame, 
-        image=self.icons["settings_small"],
-        bg="#3d3d3d",
-        fg="white",
-        activebackground="#4a4a4a",
-        relief="raised",
-        bd=1,
-        width=20,
-        height=20,
-        command=self.show_settings_menu,
-        takefocus=0,
-        cursor='hand2'
-    )
-    # Positionner le bouton à droite du bouton output
-    self.settings_button.place(in_=self.notebook, relx=1.0, rely=0.0, anchor="ne", x=-5, y=0)
-    create_tooltip(self.errors_button, "Erreurs système\nAffiche les erreurs détectées dans l'application")
-    
-    """Frame pour l'onglet Recherche"""
-    self.search_tab = ttk.Frame(self.notebook)
-    self.notebook.add(self.search_tab, text="Recherche")
-    
-    # Frame pour l'onglet Bibliothèque
-    self.library_tab = ttk.Frame(self.notebook)
-    self.notebook.add(self.library_tab, text="Bibliothèque")
-    
-    # Contenu de l'onglet Recherche (identique à votre ancienne UI)
-    self.setup_search_tab()
-    
-    # Contenu de l'onglet Bibliothèque (pour l'instant vide)
-    self.setup_library_tab()
-    
-    # Contenu de l'onglet Téléchargements
-    self.setup_downloads_tab()
-    
-    # Lier le changement d'onglet à une fonction
-    self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_changed)
-    
-    # Ajouter des bindings pour retirer le focus des champs de saisie
-    self.setup_focus_bindings()
-    
-    
-def setup_focus_bindings(self):
-    """Configure les bindings pour retirer le focus des champs de saisie"""
-    def remove_focus(event):
-        """Retire le focus des champs de saisie"""
-        focused_widget = self.root.focus_get()
-        if focused_widget and isinstance(focused_widget, (tk.Entry, tk.Text)):
-            self.root.focus_set()
-    
-    # Ajouter le binding sur les éléments principaux
-    widgets_to_bind = [
-        self.main_frame,
-        self.notebook,
-        self.search_tab,
-        self.library_tab
-    ]
-    
-    for widget in widgets_to_bind:
-        if hasattr(self, widget.__class__.__name__.lower()) or widget:
-            widget.bind('<Button-1>', remove_focus)
-    
-    # Ajouter aussi sur les canvas et containers qui seront créés
-    def bind_canvas_focus():
-        """Bind les canvas après leur création"""
-        canvas_widgets = []
+            print(f"Impossible de charger l'icône: {e}")
         
-        # Ajouter les canvas s'ils existent
-        if hasattr(self, 'main_playlist_canvas'):
-            canvas_widgets.append(self.main_playlist_canvas)
-        if hasattr(self, 'youtube_canvas'):
-            canvas_widgets.append(self.youtube_canvas)
-        if hasattr(self, 'downloads_canvas'):
-            canvas_widgets.append(self.downloads_canvas)
-        if hasattr(self, 'playlists_canvas'):
-            canvas_widgets.append(self.playlists_canvas)
-        
-        for canvas in canvas_widgets:
-            canvas.bind('<Button-1>', remove_focus)
-    
-    # Programmer le binding des canvas après un court délai pour s'assurer qu'ils sont créés
-    self.root.after(100, bind_canvas_focus)
+        # Optimisations de performance pour le déplacement de fenêtre
+        try:
+            # Désactiver la composition sur Windows pour améliorer les performances
+            if os.name == 'nt':  # Windows
+                self.music_player.root.attributes('-toolwindow', False)
+                # Éviter les interactions indésirables avec d'autres fenêtres
+                self.music_player.root.attributes('-topmost', False)
+        except Exception as e:
+            print(f"Impossible d'appliquer les optimisations de fenêtre: {e}")
 
+    def load_icons(self):
+        """Load icons for the application from the assets directory."""
+        icon_names = {
+            "add": "add.png",
+            "prev": "prev.png",
+            "play": "play.png",
+            "next": "next.png",
+            "hey": "hey.png",
+            "pause": "pause.png",
+            "delete": "delete.png",
+            "back": "back.png",
+            "loop": "loop.png",
+            "loop1": "loop1.png",
+            "shuffle": "shuffle.png",
+            "rename": "rename.png",
+            "cross": "cross.png",
+            "search": "search.png",
+            "clear": "clear.png",
+            "find": "find.png",
+            "auto_scroll": "auto_scroll.png",
+            "output": "output.png",
+            "stats": "stats.png",
+            "import": "import.png",
+            "clear_cache": "clear_cache.png",
+            "select_downloads_folder": "select_downloads_folder.png",
+            "none": "none.png",
+            "recommendation": "recommendation.png",
+            "sparse_recommendation": "sparse_recommendation.png",
+            "add_recommendation": "add_recommendation.png",
+            "reload": "reload.png",
+            "errors": "errors.png",
+            "like_empty": "like_empty.png",
+            "like_full": "like_full.png",
+            "favorite_empty": "favorite_empty.png",
+            "favorite_full": "favorite_full.png",
+            "activate_ai": "activate_ai.png",
+            "settings": "settings.png",
+        }
+
+        # Chemin absolu vers le dossier assets
+        base_path = os.path.join(self.music_player.root_path, "assets")
+        
+
+        self.music_player.icons = {}
+        for key, filename in icon_names.items():
+            try:
+                path = os.path.join(base_path, filename)
+                image = Image.open(path).resize((32, 32), Image.Resampling.LANCZOS)
+                self.music_player.icons[key] = ImageTk.PhotoImage(image)
+                
+                # Créer une version plus petite pour certaines icônes
+                if key in ["cross", "search"]:
+                    image_small = Image.open(path).resize((16, 16), Image.Resampling.LANCZOS)
+                    self.music_player.icons[key + "_small"] = ImageTk.PhotoImage(image_small)
+                
+                # Créer une version plus petite pour les icônes clear, find, auto_scroll et pause
+                if key in ["clear", "find", "auto_scroll", "pause", "play", "activate_ai"]:
+                    image_small = Image.open(path).resize((20, 20), Image.Resampling.LANCZOS)
+                    self.music_player.icons[key + "_small"] = ImageTk.PhotoImage(image_small)
+                
+                # Créer une version plus petite pour les icônes output, stats, import, clear_cache, select_downloads_folder et errors
+                if key in ["output", "stats", "import", "clear_cache", "select_downloads_folder", "errors", "rename", "delete", "settings"]:
+                    image_small = Image.open(path).resize((16, 16), Image.Resampling.LANCZOS)
+                    self.music_player.icons[key + "_small"] = ImageTk.PhotoImage(image_small)
+            except Exception as e:
+                print(f"Erreur chargement {filename}: {e}")
+
+    def create_ui(self):
+        # Style
+        style = ttk.Style()
+        style.theme_use('clam')
+        style.configure('TFrame', background='#2d2d2d')
+        style.configure('TLabel', background='#2d2d2d', foreground='white')
+        style.configure('TButton', background='#3d3d3d', foreground='white')
+        style.configure('TScale', background='#2d2d2d')
+        
+        # config +
+        style = ttk.Style()
+        style.theme_use('clam')
+
+        # Style de base des boutons
+        style.configure('TButton',
+            background='#3d3d3d',
+            foreground='white',
+            borderwidth=0,
+            focusthickness=0,
+            padding=6
+        )
+
+        # Réduction de l'effet hover (état 'active')
+        style.map('TButton',
+            background=[('active', '#4a4a4a'), ('!active', '#3d3d3d')],
+            relief=[('pressed', 'flat'), ('!pressed', 'flat')],
+            focuscolor=[('focus', '')]
+        )
+        
+        # Ajoutez ceci dans la section des styles au début de create_ui()
+        style.configure('Downloading.TFrame', background='#ff4444')  # Style rouge pour téléchargement
+        style.map('Downloading.TFrame',
+                background=[('active', '#ff6666')])  # Variation au survol
+        style.configure('ErrorDownloading.TFrame', background="#ffcc00")  # Style jaune pour erreur
+        
+        # Configuration des onglets
+        style.configure('TNotebook', background='#2d2d2d', borderwidth=0)
+        style.configure('TNotebook.Tab', 
+                    background='#3d3d3d', 
+                    foreground='white',
+                    padding=[10, 5],
+                    borderwidth=0)
+        style.map('TNotebook.Tab',
+                background=[('selected', '#4a8fe7'), ('!selected', '#3d3d3d')],
+                foreground=[('selected', 'white'), ('!selected', 'white')])
+
+        # Main Frame
+        self.music_player.main_frame = ttk.Frame(self.music_player.root)
+        self.music_player.main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Contrôles de lecture (créés en premier pour être toujours visibles en bas)
+        self.music_player.setup_controls()
+        
+            # Création du Notebook (onglets) - prend l'espace restant
+        self.music_player.notebook = ttk.Notebook(self.music_player.main_frame, takefocus=0)
+        self.music_player.notebook.pack(fill=tk.BOTH, expand=True)
+        
+        # Désactiver complètement la navigation par clavier dans le notebook
+        def disable_notebook_keyboard_navigation(event):
+            return "break"
+        
+        self.music_player.notebook.bind('<Key>', disable_notebook_keyboard_navigation)
+        self.music_player.notebook.bind('<Left>', disable_notebook_keyboard_navigation)
+        self.music_player.notebook.bind('<Right>', disable_notebook_keyboard_navigation)
+        self.music_player.notebook.bind('<Up>', disable_notebook_keyboard_navigation)
+        self.music_player.notebook.bind('<Down>', disable_notebook_keyboard_navigation)
+        
+        # Bouton Select Downloads Folder plus petit et plus haut que les onglets, à gauche du bouton clear_cache
+        self.music_player.select_downloads_folder_button = tk.Button(
+            self.music_player.main_frame, 
+            image=self.music_player.icons["select_downloads_folder_small"],
+            bg="#3d3d3d",
+            fg="white",
+            activebackground="#4a4a4a",
+            relief="raised",
+            bd=1,
+            width=20,
+            height=20,
+            command=self.music_player.select_downloads_folder,
+            takefocus=0,
+            cursor='hand2'
+        )
+        # Positionner le bouton à gauche du bouton clear_cache
+        self.music_player.select_downloads_folder_button.place(in_=self.music_player.notebook, relx=1.0, rely=0.0, anchor="ne", x=-125, y=0)
+        tooltip.create_tooltip(self.music_player.select_downloads_folder_button, "Changer le dossier de téléchargements\nDéplacer les téléchargements et caches vers un nouveau dossier")
+        
+        # Bouton Clear Cache plus petit et plus haut que les onglets, à gauche du bouton import
+        self.music_player.clear_cache_button = tk.Button(
+            self.music_player.main_frame, 
+            image=self.music_player.icons["clear_cache_small"],
+            bg="#3d3d3d",
+            fg="white",
+            activebackground="#4a4a4a",
+            relief="raised",
+            bd=1,
+            width=20,
+            height=20,
+            command=self.music_player.show_cache_menu,
+            takefocus=0,
+            cursor='hand2'
+        )
+        # Positionner le bouton à gauche du bouton import
+        self.music_player.clear_cache_button.place(in_=self.music_player.notebook, relx=1.0, rely=0.0, anchor="ne", x=-95, y=0)
+        tooltip.create_tooltip(self.music_player.clear_cache_button, "Gestion du cache\nSupprimer les caches de recherches, artistes, etc.")
+
+        # Bouton Import plus petit et plus haut que les onglets, à gauche du bouton stats
+        self.music_player.import_button = tk.Button(
+            self.music_player.main_frame, 
+            image=self.music_player.icons["import_small"],
+            bg="#3d3d3d",
+            fg="white",
+            activebackground="#4a4a4a",
+            relief="raised",
+            bd=1,
+            width=20,
+            height=20,
+            command=self.music_player.show_download_dialog,
+            takefocus=0,
+            cursor='hand2'
+        )
+        # Positionner le bouton à gauche du bouton stats
+        self.music_player.import_button.place(in_=self.music_player.notebook, relx=1.0, rely=0.0, anchor="ne", x=-65, y=0)
+        tooltip.create_tooltip(self.music_player.import_button, "Importer des musiques\nTélécharge une musique ou une playlist YouTube\nClic droit pour voir les logs")
+        
+        # Configurer le menu contextuel pour le bouton d'import
+        self.music_player.setup_import_context_menu()
+        
+        # Bouton Stats plus petit et plus haut que les onglets, à gauche du bouton output
+        self.music_player.stats_button = tk.Button(
+            self.music_player.main_frame, 
+            image=self.music_player.icons["stats_small"],
+            bg="#3d3d3d",
+            fg="white",
+            activebackground="#4a4a4a",
+            relief="raised",
+            bd=1,
+            width=20,
+            height=20,
+            command=self.music_player.show_stats_menu,
+            takefocus=0,
+            cursor='hand2'
+        )
+        # Positionner le bouton à gauche du bouton output
+        self.music_player.stats_button.place(in_=self.music_player.notebook, relx=1.0, rely=0.0, anchor="ne", x=-35, y=0)
+        tooltip.create_tooltip(self.music_player.stats_button, "Statistiques d'écoute\nAffiche vos statistiques d'utilisation")
+        
+        # Bouton Output plus petit et plus haut que les onglets, tout à droite
+        self.music_player.output_button = tk.Button(
+            self.music_player.main_frame, 
+            image=self.music_player.icons["output_small"],
+            bg="#3d3d3d",
+            fg="white",
+            activebackground="#4a4a4a",
+            relief="raised",
+            bd=1,
+            width=20,
+            height=20,
+            command=self.music_player.show_output_menu,
+            takefocus=0,
+            cursor='hand2'
+        )
+        # Positionner le bouton plus haut que les onglets
+        self.music_player.output_button.place(in_=self.music_player.notebook, relx=1.0, rely=0.0, anchor="ne", x=-185, y=0)
+        tooltip.create_tooltip(self.music_player.output_button, "Périphérique de sortie\nChanger le périphérique audio de sortie")
+        
+        
+        # Bouton Errors plus petit et plus haut que les onglets, à droite du bouton output
+        self.music_player.errors_button = tk.Button(
+            self.music_player.main_frame, 
+            image=self.music_player.icons["errors_small"],
+            bg="#3d3d3d",
+            fg="white",
+            activebackground="#4a4a4a",
+            relief="raised",
+            bd=1,
+            width=20,
+            height=20,
+            command=self.music_player.show_errors_dialog,
+            takefocus=0,
+            cursor='hand2'
+        )
+        # Positionner le bouton à droite du bouton output
+        self.music_player.errors_button.place(in_=self.music_player.notebook, relx=1.0, rely=0.0, anchor="ne", x=-155, y=0)
+        tooltip.create_tooltip(self.music_player.errors_button, "Erreurs système\nAffiche les erreurs détectées dans l'application")
+        
+        # Bouton settings
+        self.music_player.settings_button = tk.Button(
+            self.music_player.main_frame, 
+            image=self.music_player.icons["settings_small"],
+            bg="#3d3d3d",
+            fg="white",
+            activebackground="#4a4a4a",
+            relief="raised",
+            bd=1,
+            width=20,
+            height=20,
+            command=self.music_player.show_settings_menu,
+            takefocus=0,
+            cursor='hand2'
+        )
+        # Positionner le bouton à droite du bouton output
+        self.music_player.settings_button.place(in_=self.music_player.notebook, relx=1.0, rely=0.0, anchor="ne", x=-5, y=0)
+        tooltip.create_tooltip(self.music_player.errors_button, "Erreurs système\nAffiche les erreurs détectées dans l'application")
+        
+        """Frame pour l'onglet Recherche"""
+        self.music_player.search_tab = ttk.Frame(self.music_player.notebook)
+        self.music_player.notebook.add(self.music_player.search_tab, text="Recherche")
+        
+        # Frame pour l'onglet Bibliothèque
+        self.music_player.library_tab = ttk.Frame(self.music_player.notebook)
+        self.music_player.notebook.add(self.music_player.library_tab, text="Bibliothèque")
+        
+        # Contenu de l'onglet Recherche (identique à votre ancienne UI)
+        self.music_player.setup_search_tab()
+        
+        # Contenu de l'onglet Bibliothèque (pour l'instant vide)
+        self.music_player.setup_library_tab()
+        
+        # Contenu de l'onglet Téléchargements
+        self.setup_downloads_tab()
+        
+        # Lier le changement d'onglet à une fonction
+        self.music_player.notebook.bind("<<NotebookTabChanged>>", self.music_player.on_tab_changed)
+        
+        # Ajouter des bindings pour retirer le focus des champs de saisie
+        self.setup_focus_bindings()
+    
+    
+    def setup_focus_bindings(self):
+        """Configure les bindings pour retirer le focus des champs de saisie"""
+        def remove_focus(event):
+            """Retire le focus des champs de saisie"""
+            focused_widget = self.music_player.root.focus_get()
+            if focused_widget and isinstance(focused_widget, (tk.Entry, tk.Text)):
+                self.music_player.root.focus_set()
+        
+        # Ajouter le binding sur les éléments principaux
+        widgets_to_bind = [
+            self.music_player.main_frame,
+            self.music_player.notebook,
+            self.music_player.search_tab,
+            self.music_player.library_tab
+        ]
+        
+        for widget in widgets_to_bind:
+            if hasattr(self.music_player, widget.__class__.__name__.lower()) or widget:
+                widget.bind('<Button-1>', remove_focus)
+        
+        # Ajouter aussi sur les canvas et containers qui seront créés
+        def bind_canvas_focus():
+            """Bind les canvas après leur création"""
+            canvas_widgets = []
+            
+            # Ajouter les canvas s'ils existent
+            if hasattr(self.music_player, 'main_playlist_canvas'):
+                canvas_widgets.append(self.music_player.main_playlist_canvas)
+            if hasattr(self.music_player, 'youtube_canvas'):
+                canvas_widgets.append(self.music_player.youtube_canvas)
+            if hasattr(self.music_player, 'downloads_canvas'):
+                canvas_widgets.append(self.music_player.downloads_canvas)
+            if hasattr(self.music_player, 'playlists_canvas'):
+                canvas_widgets.append(self.music_player.playlists_canvas)
+            
+            for canvas in canvas_widgets:
+                canvas.bind('<Button-1>', remove_focus)
+        
+        # Programmer le binding des canvas après un court délai pour s'assurer qu'ils sont créés
+        self.music_player.root.after(100, bind_canvas_focus)
+
+    def setup_downloads_tab(self):
+        """Configure l'onglet de téléchargement"""
+        # Créer l'onglet
+        self.music_player.downloads_tab = ttk.Frame(self.music_player.notebook)
+        self.music_player.notebook.add(self.music_player.downloads_tab, text="Téléchargements")
+        
+        # Initialiser le gestionnaire de téléchargements
+        if not hasattr(self.music_player, 'download_manager'):
+            self.music_player.download_manager = DownloadManager()
+        
+        # Frame principal
+        main_frame = tk.Frame(self.music_player.downloads_tab, bg='#2d2d2d')
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Frame pour le header avec bouton find
+        header_frame = tk.Frame(main_frame, bg='#2d2d2d')
+        header_frame.pack(fill=tk.X, padx=10, pady=(10, 0))
+        
+        # Titre
+        title_label = tk.Label(
+            header_frame,
+            text="Téléchargements",
+            font=("Arial", 16, "bold"),
+            bg='#2d2d2d',
+            fg='white'
+        )
+        title_label.pack(side=tk.LEFT)
+        
+        # Frame pour les boutons à droite
+        buttons_frame = tk.Frame(header_frame, bg='#2d2d2d')
+        buttons_frame.pack(side=tk.RIGHT)
+        
+        # Bouton pour nettoyer les téléchargements terminés
+        clean_btn = tk.Button(
+            buttons_frame,
+            image=self.music_player.icons["clear_small"],
+            bg="#d32f2f",
+            fg="white",
+            activebackground="#f44336",
+            relief="flat",
+            bd=0,
+            width=20,
+            height=20,
+            takefocus=0,
+            command=self.music_player.clean_completed_downloads,
+            cursor='hand2'
+        )
+        clean_btn.pack(side=tk.RIGHT, padx=(5, 5))
+        
+        # Bouton pause pour mettre en pause/reprendre les téléchargements
+        self.music_player.downloads_pause_btn = tk.Button(
+            buttons_frame,
+            image=self.music_player.icons["pause_small"],
+            bg="#ff9800",
+            fg="white",
+            activebackground="#ffb74d",
+            relief="flat",
+            bd=0,
+            width=20,
+            height=20,
+            takefocus=0,
+            command=self.music_player.toggle_downloads_pause,
+            cursor='hand2'
+        )
+        self.music_player.downloads_pause_btn.pack(side=tk.RIGHT, padx=(10, 0))
+        
+        # Variable pour l'état de pause
+        self.music_player.downloads_paused = False
+        
+        # Bouton find pour aller au téléchargement en cours
+        self.music_player.downloads_find_btn = tk.Button(
+            buttons_frame,
+            image=self.music_player.icons["find_small"],
+            bg="#4a8fe7",
+            fg="white",
+            activebackground="#5a9fd8",
+            relief="flat",
+            bd=0,
+            width=20,
+            height=20,
+            takefocus=0,
+            command=self.music_player.scroll_to_current_download,
+            cursor='hand2'
+        )
+        self.music_player.downloads_find_btn.pack(side=tk.RIGHT, padx=(10, 0))
+        
+        # Frame pour la liste des téléchargements avec scrollbar
+        list_frame = tk.Frame(main_frame, bg='#2d2d2d')
+        list_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Canvas et scrollbar pour la liste
+        self.music_player.downloads_canvas = tk.Canvas(list_frame, bg='#2d2d2d', highlightthickness=0)
+        downloads_scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.music_player.downloads_canvas.yview)
+        self.music_player.downloads_scrollable_frame = tk.Frame(self.music_player.downloads_canvas, bg='#2d2d2d')
+        
+        self.music_player.downloads_scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.music_player.downloads_canvas.configure(scrollregion=self.music_player.downloads_canvas.bbox("all"))
+        )
+        
+        self.music_player.downloads_canvas.create_window((0, 0), window=self.music_player.downloads_scrollable_frame, anchor="nw")
+        self.music_player.downloads_canvas.configure(yscrollcommand=downloads_scrollbar.set)
+        
+        self.music_player.downloads_canvas.pack(side="left", fill="both", expand=True)
+        downloads_scrollbar.pack(side="right", fill="y")
+        
+        # Bind mousewheel
+        def _on_downloads_mousewheel(event):
+            self.music_player.downloads_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        self.music_player.downloads_canvas.bind("<MouseWheel>", _on_downloads_mousewheel)
+        
+        # Message quand aucun téléchargement
+        self.music_player.no_downloads_label = tk.Label(
+            self.music_player.downloads_scrollable_frame,
+            text="Aucun téléchargement en cours",
+            font=("Arial", 12),
+            bg='#2d2d2d',
+            fg='#888888'
+        )
+        self.music_player.no_downloads_label.pack(pady=50)
+        
+        # Mettre à jour l'affichage
+        self.music_player.update_downloads_display()
 
 def _update_volume_sliders(self):
     """Met à jour les sliders de volume avec les valeurs chargées"""
@@ -582,13 +717,13 @@ def setup_controls(self):
         from custom_slider import CustomProgressSlider
         self.progress = CustomProgressSlider(
             control_frame, from_=0, to=100, value=0,
-            command=self.set_position, length=1000,
+            command=None, length=1000,
             on_progress_press=self.on_progress_press,
             on_progress_drag=self.on_progress_drag,
             on_progress_release=self.on_progress_release
         )
         self.progress.pack(fill=tk.X, pady=2, padx=10)
-        create_tooltip(self.progress, "Barre de progression\nCliquez ou glissez pour naviguer dans la chanson")
+        tooltip.create_tooltip(self.progress, "Barre de progression\nCliquez ou glissez pour naviguer dans la chanson")
         
         # Les événements sont gérés dans CustomProgressSlider
         
@@ -616,7 +751,7 @@ def setup_controls(self):
             length=160
         )
         self.volume_offset_slider.pack(padx=15, pady=(0, 25))
-        create_tooltip(self.volume_offset_slider, "Volume Offset\nAjuste le volume spécifiquement pour cette chanson\nClic droit: Remettre à 0")
+        tooltip.create_tooltip(self.volume_offset_slider, "Volume Offset\nAjuste le volume spécifiquement pour cette chanson\nClic droit: Remettre à 0")
         
         # Ajouter le clic droit pour remettre à 0
         self.volume_offset_slider.bind_right_click(self._reset_volume_offset)
@@ -647,7 +782,6 @@ def setup_controls(self):
         # )
         self.recommendation_button = ctk.CTkButton(button_frame,
                                       image=self.icons["recommendation"],
-                                      command=self.toggle_random_mode,
                                       cursor='hand2',
                                       text="",
                                       width=42,
@@ -658,7 +792,7 @@ def setup_controls(self):
                                     )
         self.recommendation_button.grid_propagate(False)
         self.recommendation_button.grid(row=0, column=0, padx=3)
-        create_tooltip(self.recommendation_button, "Recommandations automatiques\nClic gauche: Active/désactive\nClic droit: Options")
+        tooltip.create_tooltip(self.recommendation_button, "Recommandations automatiques\nClic gauche: Active/désactive\nClic droit: Options")
         
         # Bind des événements pour le bouton recommandations
         self.recommendation_button.bind("<Button-1>", self.on_recommendation_left_click)
@@ -690,11 +824,11 @@ def setup_controls(self):
                                       height=42,
                                       anchor='s',
                                       fg_color=COLOR_APP_BG if not self.random_mode else COLOR_SELECTED,
-                                      hover_color=COLOR_APP_BG if self.loop_mode == 0 else COLOR_SELECTED_HOVER
+                                      hover_color=COLOR_APP_BG if self.random_mode == 0 else COLOR_SELECTED_HOVER
                                     )
         self.random_button.grid_propagate(False)
         self.random_button.grid(row=0, column=1, padx=3)
-        create_tooltip(self.random_button, "Mode aléatoire\nLit les chansons dans un ordre aléatoire")
+        tooltip.create_tooltip(self.random_button, "Mode aléatoire\nLit les chansons dans un ordre aléatoire")
         
         # Bouton Loop (plus petit)
         # self.loop_button = tk.Button(
@@ -720,16 +854,16 @@ def setup_controls(self):
                                       height=42,
                                       anchor='s',
                                       fg_color=COLOR_APP_BG if self.loop_mode == 0 else COLOR_SELECTED,
-                                      hover_color=COLOR_APP_BG if self.loop_mode == 0 else COLOR_SELECTED_HOVER
+                                      hover_color=COLOR_APP_BG_HOVER if self.loop_mode == 0 else COLOR_SELECTED_HOVER,
                                     )
         self.loop_button.grid_propagate(False)
         self.loop_button.grid(row=0, column=2, padx=3)
-        create_tooltip(self.loop_button, "Mode répétition\nClic 1: Répète la playlist\nClic 2: Répète la chanson\nClic 3: Désactivé")
+        tooltip.create_tooltip(self.loop_button, "Mode répétition\nClic 1: Répète la playlist\nClic 2: Répète la chanson\nClic 3: Désactivé")
         
         # Boutons principaux (taille normale)
         self.prev_button = ttk.Button(button_frame, image=self.icons["prev"], command=self.prev_track_manual, takefocus=0, cursor='hand2')
         self.prev_button.grid(row=0, column=3, padx=5)
-        create_tooltip(self.prev_button, "Chanson précédente\nRevient à la chanson précédente de la playlist")
+        tooltip.create_tooltip(self.prev_button, "Chanson précédente\nRevient à la chanson précédente de la playlist")
 
         self.play_button = ttk.Button(button_frame, image=self.icons["play"], command=self.play_pause, takefocus=0, cursor='hand2')
         # self.play_button = ctk.CTkButton(button_frame,
@@ -746,11 +880,11 @@ def setup_controls(self):
         #                             )
         self.play_button.grid_propagate(False)
         self.play_button.grid(row=0, column=4, padx=5)
-        create_tooltip(self.play_button, "Lecture/Pause\nDémarre ou met en pause la lecture\n(Raccourci: Barre d'espace)")
+        tooltip.create_tooltip(self.play_button, "Lecture/Pause\nDémarre ou met en pause la lecture\n(Raccourci: Barre d'espace)")
         
         self.next_button = ttk.Button(button_frame, image=self.icons["next"], command=self.next_track_manual, takefocus=0, cursor='hand2')
         self.next_button.grid(row=0, column=5, padx=5)
-        create_tooltip(self.next_button, "Chanson suivante\nPasse à la chanson suivante de la playlist")
+        tooltip.create_tooltip(self.next_button, "Chanson suivante\nPasse à la chanson suivante de la playlist")
         
         # Bouton Add (plus petit)
         # self.add_button = tk.Button(
@@ -779,7 +913,7 @@ def setup_controls(self):
                                     )
         self.add_button.grid_propagate(False)
         self.add_button.grid(row=0, column=6, padx=3)
-        create_tooltip(self.add_button, "Ajouter des fichiers\nAjoute des fichiers audio à la playlist")
+        tooltip.create_tooltip(self.add_button, "Ajouter des fichiers\nAjoute des fichiers audio à la playlist")
         
         # Bouton Like
         # self.like_button = tk.Button(
@@ -809,7 +943,7 @@ def setup_controls(self):
                                     )
         self.like_button.grid_propagate(False)
         self.like_button.grid(row=0, column=7, padx=3)
-        create_tooltip(self.like_button, "J'aime\nAjoute/retire la chanson actuelle des titres aimés")
+        tooltip.create_tooltip(self.like_button, "J'aime\nAjoute/retire la chanson actuelle des titres aimés")
         
         # Bouton Favorite (plus petit)
         # self.favorite_button = tk.Button(
@@ -839,7 +973,7 @@ def setup_controls(self):
                                     )
         self.favorite_button.grid_propagate(False)
         self.favorite_button.grid(row=0, column=8, padx=3)
-        create_tooltip(self.favorite_button, "Favoris\nAjoute/retire la chanson actuelle des favoris")
+        tooltip.create_tooltip(self.favorite_button, "Favoris\nAjoute/retire la chanson actuelle des favoris")
 
         # Frame volume à droite (largeur fixe identique)
         volume_frame = ttk.Frame(buttons_volume_frame, width=180)
@@ -861,7 +995,7 @@ def setup_controls(self):
             length=160
         )
         self.volume_slider.pack(padx=15, pady=(0, 25))
-        create_tooltip(self.volume_slider, "Volume principal\nAjuste le volume global de l'application")
+        tooltip.create_tooltip(self.volume_slider, "Volume principal\nAjuste le volume global de l'application")
 
         # Configuration des colonnes pour centrage parfait
         buttons_volume_frame.grid_columnconfigure(0, weight=1)  # volume offset - prend l'espace
@@ -902,7 +1036,7 @@ def setup_controls(self):
         )
         # Positionner le bouton en bas à gauche, juste sous la status bar
         self.copy_status_button.place(in_=status_frame, relx=0.0, rely=1.0, anchor="sw", x=5, y=25)
-        create_tooltip(self.copy_status_button, "Copier dans le presse-papier\nCopie le texte de la barre de statut dans le presse-papier")
+        tooltip.create_tooltip(self.copy_status_button, "Copier dans le presse-papier\nCopie le texte de la barre de statut dans le presse-papier")
         
         ## Bouton Show Waveform
         self.show_waveform_btn = tk.Button(
@@ -919,7 +1053,7 @@ def setup_controls(self):
             takefocus=0
         )
         self.show_waveform_btn.pack(pady=(0, 5))
-        create_tooltip(self.show_waveform_btn, "Afficher la forme d'onde\nAffiche/masque la visualisation de la forme d'onde audio")
+        tooltip.create_tooltip(self.show_waveform_btn, "Afficher la forme d'onde\nAffiche/masque la visualisation de la forme d'onde audio")
         
         # Waveform Canvas
         self.waveform_canvas = tk.Canvas(waveform_frame, height=0, bg='#2d2d2d', highlightthickness=0, takefocus=0)
@@ -1050,7 +1184,7 @@ def setup_search_tab(self):
     )
     clear_youtube_btn.bind("<Button-1>", lambda event: self._clear_youtube_search())
     clear_youtube_btn.pack(side=tk.LEFT, padx=(5, 0))
-    create_tooltip(clear_youtube_btn, "Effacer la recherche\nClic pour vider le champ de recherche")
+    tooltip.create_tooltip(clear_youtube_btn, "Effacer la recherche\nClic pour vider le champ de recherche")
 
     search_btn = tk.Button(
         search_input_frame,
@@ -1068,7 +1202,7 @@ def setup_search_tab(self):
         takefocus=0
     )
     search_btn.pack(side=tk.LEFT, padx=(5, 5))
-    create_tooltip(search_btn, "Rechercher sur YouTube\nLance une recherche de vidéos sur YouTube\n(Raccourci: Entrée dans le champ de recherche)")
+    tooltip.create_tooltip(search_btn, "Rechercher sur YouTube\nLance une recherche de vidéos sur YouTube\n(Raccourci: Entrée dans le champ de recherche)")
 
     # Middle Frame (Main playlist and results)
     middle_frame = ttk.Frame(self.search_tab)
@@ -1121,7 +1255,7 @@ def setup_search_tab(self):
     )
     self.auto_scroll_btn.pack(side=tk.LEFT, padx=(0, 5))
     self.auto_scroll_btn.bind("<Button-1>", self._toggle_auto_scroll)
-    create_tooltip(self.auto_scroll_btn, "Auto-scroll activé/désactivé\nFait défiler automatiquement vers la chanson suivante")
+    tooltip.create_tooltip(self.auto_scroll_btn, "Auto-scroll activé/désactivé\nFait défiler automatiquement vers la chanson suivante")
     
     # Bouton IA pour la configuration IA
     self.ai_button = tk.Button(
@@ -1137,7 +1271,7 @@ def setup_search_tab(self):
         takefocus=0
     )
     self.ai_button.pack(side=tk.LEFT, padx=(0, 5))
-    create_tooltip(self.ai_button, "Configuration IA\nActive l'apprentissage et les recommandations personnalisées")
+    tooltip.create_tooltip(self.ai_button, "Configuration IA\nActive l'apprentissage et les recommandations personnalisées")
     
     # Bouton find pour aller à la musique en cours
     find_current_btn = tk.Button(
@@ -1156,7 +1290,7 @@ def setup_search_tab(self):
     # find_current_btn.bind("<Button-1>", lambda event: self._scroll_to_current_song(event, is_manual=True))
     find_current_btn.bind("<Button-1>", lambda event: self.select_current_song_smart(auto_scroll=True, is_manual=True))
     
-    create_tooltip(find_current_btn, "Aller à la musique en cours\nFait défiler la liste vers la chanson actuellement jouée")
+    tooltip.create_tooltip(find_current_btn, "Aller à la musique en cours\nFait défiler la liste vers la chanson actuellement jouée")
     
     # Bouton clear pour vider la liste de lecture
     clear_playlist_btn = tk.Button(
@@ -1176,7 +1310,7 @@ def setup_search_tab(self):
     clear_playlist_btn.pack(side=tk.LEFT)
     # Binding pour double-clic au lieu de simple clic
     clear_playlist_btn.bind("<Double-1>", self._clear_main_playlist)
-    create_tooltip(clear_playlist_btn, "Double-cliquer pour vider la liste de lecture\nSupprime toutes les musiques de la liste")
+    tooltip.create_tooltip(clear_playlist_btn, "Double-cliquer pour vider la liste de lecture\nSupprime toutes les musiques de la liste")
 
     # Canvas et Scrollbar pour la main playlist
     self.main_playlist_canvas = tk.Canvas(
@@ -1318,7 +1452,7 @@ def setup_library_tab(self):
     )
     self.downloads_btn.pack(fill=tk.X, pady=2)
     self.library_tab_buttons["téléchargées"] = self.downloads_btn
-    create_tooltip(self.downloads_btn, "Fichiers téléchargés\nAffiche tous les fichiers audio téléchargés depuis YouTube")
+    tooltip.create_tooltip(self.downloads_btn, "Fichiers téléchargés\nAffiche tous les fichiers audio téléchargés depuis YouTube")
     
     # Onglet "Playlists"
     playlists_btn = tk.Button(
@@ -1337,7 +1471,7 @@ def setup_library_tab(self):
     )
     playlists_btn.pack(fill=tk.X, pady=2)
     self.library_tab_buttons["playlists"] = playlists_btn
-    create_tooltip(playlists_btn, "Playlists personnalisées\nGère et affiche vos playlists personnalisées")
+    tooltip.create_tooltip(playlists_btn, "Playlists personnalisées\nGère et affiche vos playlists personnalisées")
     
     # Initialiser avec l'onglet "téléchargées"
     self.switch_library_tab("téléchargées")

@@ -44,6 +44,8 @@ except ImportError:
 class MusicPlayer:
     def __init__(self, root):
         self.root = root
+    
+    def init(self):
         self.root.title("Pipi Player")
         self.root.geometry(GEOMETRY)
         # Fixer la taille mais permettre le déplacement
@@ -52,8 +54,26 @@ class MusicPlayer:
         root.option_add("*Button.takeFocus", 0)
         root.option_add("*TNotebook.Tab.takeFocus", 0)
         root.option_add("*TNotebook.takeFocus", 0)
+        
+        self.root_path = os.path.dirname(__file__) # /music_player
+        
+        
+        self.FileServices = file_services.FileServices(self)
+        self.Loader = loader.Loader(self)
+        self.Setup = setup.Setup(self)
+        self.Playlist = library_tab.playlists.Playlists(self)
+        
+        # self.Player = player.Player(self)
+        # self.SearchTab = search_tab.SearchTab(self)
+        # self.LibraryTab = library_tab.LibraryTab(self)
+        # self.ArtistTabManager = artist_tab.core.ArtistTabManager(self)
+        
+        
+        # self.RecommendationSystem = recommendation.RecommendationSystem(self)
+        # self.SimpleLogger = simple_logger.get_logger(os.getcwd())
+        # self.LoggerWindow = simple_logs_viewer.SimpleLogsViewer(None, self.SimpleLogger, music_player=self)
+        # self.CacheCleaner = cache_cleaner.CacheCleaner(self)
 
-        setup.setup_window_icon(self)
         
         ctk.set_appearance_mode('dark')
 
@@ -124,12 +144,6 @@ class MusicPlayer:
         self.selection_frames = {}  # Dictionnaire {filepath: frame} pour retrouver les frames
         self.shift_selection_active = False  # True quand on est en mode sélection Shift
         
-        # Variables pour la surveillance du dossier downloads
-        # self.downloads_watcher_active = False
-        # self.downloads_watcher_thread = None
-        # self.last_downloads_count = 0
-        # self.downloads_check_interval = 2  # Vérifier toutes les 2 secondes
-
         self.song_length = 0
         self.current_time = 0
 
@@ -153,16 +167,12 @@ class MusicPlayer:
 
         # Chargement des icônes
         self.icons = {}
-        setup.load_icons(self)
 
         # Initialiser le gestionnaire de drag-and-drop
         self.drag_drop_handler = DragDropHandler(self)
 
         # Initialiser le gestionnaire d'onglets artiste
         init_artist_tab_manager(self)
-
-        # UI Modern
-        setup.create_ui(self)
 
         # Initialiser le système IA après la création de l'interface
         self.setup_ai_system()
@@ -178,8 +188,8 @@ class MusicPlayer:
         recommendation.init_recommendation_system(self)
 
         # Thread de mise à jour
-        self.update_thread = threading.Thread(target=self.update_time, daemon=True)
-        self.update_thread.start()
+        # self.update_thread = threading.Thread(target=self.update_time, daemon=True)
+        # self.update_thread.start()
 
         self.current_downloads = set()  # Pour suivre les URLs en cours de téléchargement
         self.current_download_title = ""  # Pour stocker le titre en cours de téléchargement
@@ -300,6 +310,8 @@ class MusicPlayer:
         self.liked_songs = set()  # Set des chansons likées
         self.favorite_songs = set()  # Set des chansons favorites
 
+        self.Setup.setup()
+        
         # Charger les playlists sauvegardées
         self.load_playlists()
 
@@ -316,7 +328,7 @@ class MusicPlayer:
             self._detect_current_audio_device()
 
         # Compter les fichiers téléchargés au démarrage
-        self._count_downloaded_files()
+        self.FileServices._count_downloaded_files()
 
         # Initialiser la surveillance du dossier downloads
         # self.init_downloads_watcher()
@@ -325,25 +337,21 @@ class MusicPlayer:
         self.setup_keyboard_bindings()
 
         # Gérer la fermeture propre de l'application
-        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        # self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         
         # Optimisations pour le déplacement de fenêtre
         self.setup_window_move_optimization()
 
-        if OPTIMIZATIONS_AVAILABLE:
-            self.optimizers = apply_all_optimizations(self)
+        # if OPTIMIZATIONS_AVAILABLE:
+        #     self.optimizers = apply_all_optimizations(self)
         
         # self.colorize_ttk_frames(root)
 
     def load_playlists(self):
-
         setup.load_playlists(self)
 
     def load_config(self):
         setup.load_config(self)
-
-    def _count_downloaded_files(self):
-        file_services._count_downloaded_files(self)
 
     def setup_keyboard_bindings(self):
         setup.setup_keyboard_bindings(self)
@@ -594,9 +602,6 @@ class MusicPlayer:
         """Met à jour le texte du bouton téléchargées avec le nombre actuel"""
         return library_tab.downloads._update_downloads_button(self)
 
-    def setup_focus_bindings(self):
-        return setup.setup_focus_bindings(self)
-
     def on_space_pressed(self, event):
         return inputs.on_space_pressed(self, event)
 
@@ -673,10 +678,6 @@ class MusicPlayer:
         logs_viewer = SimpleLogsViewer(self.root, logger, self)
         logs_viewer.show_window()
     
-    # Fonctions pour l'onglet téléchargements
-    def setup_downloads_tab(self):
-        """Configure l'onglet de téléchargement"""
-        return downloads_tab.setup_downloads_tab(self)
     
     def update_downloads_display(self):
         """Met à jour l'affichage des téléchargements"""
@@ -960,7 +961,7 @@ class MusicPlayer:
         if tab_name == "téléchargées":
             self.show_downloads_content()
         elif tab_name == "playlists":
-            self.show_playlists_content()
+            self.Playlist.show_playlists_content()
 
     def _check_and_update_downloads_queue(self):
         """Vérifie si la queue des musiques a changé et met à jour l'affichage si nécessaire"""
@@ -999,9 +1000,6 @@ class MusicPlayer:
         """Affiche le contenu de l'onglet téléchargées"""
         return library_tab.downloads.show_downloads_content(self)
 
-    def show_playlists_content(self):
-        """Affiche le contenu de l'onglet Playlists"""
-        return library_tab.playlists.show_playlists_content(self)
 
     def _display_playlists(self):
         """Affiche toutes les playlists en grille 3x3"""
@@ -1889,6 +1887,9 @@ class MusicPlayer:
                     custom_path = f.read().strip()
                 if custom_path and os.path.exists(custom_path):
                     return custom_path
+            else:
+                custom_path = os.path.dirname(__file__)
+                return custom_path
         except Exception as e:
             print(f"Erreur lors du chargement du chemin personnalisé: {e}")
         
@@ -2574,78 +2575,85 @@ class MusicPlayer:
 
 
     def update_time(self):
-        while True:
-            try:
-                # print('OOOOOO')
-                # Vérifier si l'application est fermée
-                if hasattr(self, '_app_destroyed') and self._app_destroyed:
-                    # print('BREAK1')
-                    break
-                
-                
-                
-                # Vérifier si pygame mixer est initialisé
-                if not pygame.mixer.get_init():
-                    # print('BREAK2')
-                    break
-                # print('AAA', flush=True)
-                
-                # Ajuster la fréquence de mise à jour selon l'état de déplacement
-                if hasattr(self, 'update_suspended') and self.update_suspended:
-                    sleep_time = 0.5
-                else:
-                    sleep_time = 0.1
+        # while True:
+        stop = False
+        try:
+            # print('OOOOOO')
+            # Vérifier si l'application est fermée
+            if hasattr(self, '_app_destroyed') and self._app_destroyed:
+                # print('BREAK1')
+                # break
+                stop = True
+            
+            
+            
+            # Vérifier si pygame mixer est initialisé
+            if not pygame.mixer.get_init():
+                # print('BREAK2')
+                # break
+                stop = True
+            # print('AAA', flush=True)
+            
+            # Ajuster la fréquence de mise à jour selon l'état de déplacement
+            if hasattr(self, 'update_suspended') and self.update_suspended:
+                sleep_time = 1200
+            else:
+                sleep_time =  700
 
-                # print('UWUWWW ', pygame.mixer.music.get_busy(), self.paused, self.user_dragging, self.current_time, self.song_length, flush=True)
-                # print(f"Current time: {self.current_time}, Base position: {self.base_position}", flush=True)
-                if pygame.mixer.music.get_busy() and not self.paused and not self.user_dragging:
-                    pygame_pos = pygame.mixer.music.get_pos() / 1000
+            # print('UWUWWW ', pygame.mixer.music.get_busy(), self.paused, self.user_dragging, self.current_time, self.song_length, flush=True)
+            # print(f"Current time: {self.current_time}, Base position: {self.base_position}", flush=True)
+            if not self.paused and not self.user_dragging:
+                pygame_pos = pygame.mixer.music.get_pos() / 1000
 
-                    # pygame retourne -1 si la musique n'est pas encore prête
-                    if pygame_pos >= 0:
-                        self.current_time = self.base_position + pygame_pos
-                    # Sinon garder current_time tel quel
-                    
-                    if round(self.current_time, 2) >= round(self.song_length, 2):
-                        self.current_time = self.song_length
-                        self.next_track()
-                    # Filtrer les valeurs négatives
-                    if self.current_time < 0:
-                        self.current_time = 0
-                    
-                    # Suspendre les mises à jour visuelles pendant le déplacement de fenêtre
-                    if not self.update_suspended:
-                        try:
-                            self.progress.config(value=self.current_time)
-                            self.current_time_label.config(
-                                text=time.strftime('%M:%S', time.gmtime(self.current_time))
-                            )
-
-                            if self.show_waveform_current:
-                                self.draw_waveform_around(self.current_time)
-                            else:
-                                self.waveform_canvas.delete("all")
-                        except (tk.TclError, AttributeError):
-                            # Interface détruite, arrêter le thread
-                            break
-                        
-                # Réduire les appels à update_idletasks pendant le déplacement
+                # pygame retourne -1 si la musique n'est pas encore prête
+                if pygame_pos >= 0:
+                    self.current_time = self.base_position + pygame_pos
+                # Sinon garder current_time tel quel
+                
+                if round(self.current_time, 2) >= round(self.song_length - sleep_time/1000, 2):
+                    self.current_time = self.song_length
+                    self.next_track()
+                # Filtrer les valeurs négatives
+                if self.current_time < 0:
+                    self.current_time = 0
+                
+                # Suspendre les mises à jour visuelles pendant le déplacement de fenêtre
                 if not self.update_suspended:
                     try:
-                        self.root.update_idletasks()
+                        self.progress.config(value=self.current_time)
+                        self.current_time_label.config(
+                            text=time.strftime('%M:%S', time.gmtime(self.current_time))
+                        )
+
+                        if self.show_waveform_current:
+                            self.draw_waveform_around(self.current_time)
+                        else:
+                            self.waveform_canvas.delete("all")
                     except (tk.TclError, AttributeError):
                         # Interface détruite, arrêter le thread
-                        break
+                        # break
+                        stop = True
                     
-            except (pygame.error, AttributeError) as e:
-                print(f"Erreur dans update_time, pygame.error, AttributeError: {e}")
-                # Pygame fermé ou erreur, arrêter le thread
-                break
-            except Exception as e:
-                # Autres erreurs, continuer mais afficher l'erreur
-                print(f"Erreur dans update_time: {e}")
+            # Réduire les appels à update_idletasks pendant le déplacement
+            if not self.update_suspended:
+                try:
+                    self.root.update_idletasks()
+                except (tk.TclError, AttributeError):
+                    # Interface détruite, arrêter le thread
+                    # break
+                    stop = True
                 
-            time.sleep(sleep_time)
+        except (pygame.error, AttributeError) as e:
+            print(f"Erreur dans update_time, pygame.error, AttributeError: {e}")
+            # Pygame fermé ou erreur, arrêter le thread
+            # break
+        except Exception as e:
+            # Autres erreurs, continuer mais afficher l'erreur
+            print(f"Erreur dans update_time: {e}")
+            
+        # time.sleep(sleep_time)
+        if not stop:
+            self.root.after(sleep_time, self.update_time)
 
 
     def _show_artist_content(self, artist_name, video_data):
@@ -2770,11 +2778,11 @@ class MusicPlayer:
         if hasattr(self, 'recommendation_system'):
             if self.recommendation_system.enable_auto_recommendations:
                 self.recommendation_system.disable_recommendations()
-                self.recommendation_button.config(bg="#666666")  # Gris pour désactivé
+                self.recommendation_button.configure(bg_color="#666666")  # Gris pour désactivé
                 self.status_bar.config(text="Recommandations automatiques désactivées")
             else:
                 self.recommendation_system.enable_recommendations()
-                self.recommendation_button.config(bg="#3d3d3d")  # Couleur normale pour activé
+                self.recommendation_button.configure(bg_color="#3d3d3d")  # Couleur normale pour activé
                 self.status_bar.config(text="Recommandations automatiques activées")
                 # Lancer les recommandations pour la chanson en cours si elle existe
                 # self.recommendation_system.manual_recommendations()
@@ -2784,7 +2792,7 @@ class MusicPlayer:
         if self.recommendation_enabled:
             # Désactiver les recommandations
             self.recommendation_enabled = False
-            self.recommendation_button.config(image=self.icons["recommendation"])
+            self.recommendation_button.configure(image=self.icons["recommendation"])
             if hasattr(self, 'recommendation_system'):
                 self.recommendation_system.disable_recommendations()
             self._update_recommendation_button_icon()
@@ -2856,37 +2864,40 @@ class MusicPlayer:
 
     def _update_recommendation_button_icon(self):
         """Met à jour l'icône du bouton de recommandations selon le mode"""
-        if self.recommendation_enabled:
-            if self.recommendation_mode == "sparse":
-                self.recommendation_button.config(
-                    image=self.icons["sparse_recommendation"],
-                    bg="#4a8fe7"  # Couleur activée (bleu)
-                )
+        try:
+            if self.recommendation_enabled:
+                if self.recommendation_mode == "sparse":
+                    self.recommendation_button.configure(
+                        image=self.icons["sparse_recommendation"],
+                        bg_color="#4a8fe7"  # Couleur activée (bleu)
+                    )
+                else:
+                    self.recommendation_button.configure(
+                        image=self.icons["add_recommendation"],
+                        bg_color="#4a8fe7"  # Couleur activée (bleu)
+                    )
             else:
-                self.recommendation_button.config(
-                    image=self.icons["add_recommendation"],
-                    bg="#4a8fe7"  # Couleur activée (bleu)
+                self.recommendation_button.configure(
+                    image=self.icons["recommendation"],
+                    bg_color="#3d3d3d"  # Couleur normale
                 )
-        else:
-            self.recommendation_button.config(
-                image=self.icons["recommendation"],
-                bg="#3d3d3d"  # Couleur normale
-            )
+        except Exception as e:
+            print("Erreur lors de la mise à jour de l'icône du bouton de recommandations: {e}")
 
     def on_recommendation_hover_enter(self, event):
         """Gère l'entrée de la souris sur le bouton de recommandations"""
         if not self.recommendation_enabled:
             # Afficher un aperçu du dernier mode utilisé
             if self.last_recommendation_mode == "sparse":
-                self.recommendation_button.config(image=self.icons["sparse_recommendation"])
+                self.recommendation_button.configure(image=self.icons["sparse_recommendation"])
             else:
-                self.recommendation_button.config(image=self.icons["add_recommendation"])
+                self.recommendation_button.configure(image=self.icons["add_recommendation"])
 
     def on_recommendation_hover_leave(self, event):
         """Gère la sortie de la souris du bouton de recommandations"""
         if not self.recommendation_enabled:
             # Revenir à l'icône normale
-            self.recommendation_button.config(image=self.icons["recommendation"])
+            self.recommendation_button.configure(image=self.icons["recommendation"])
 
     def _shuffle_remaining_playlist(self):
         """Mélange aléatoirement la suite de la playlist à partir de la chanson suivante"""
@@ -2946,7 +2957,7 @@ class MusicPlayer:
         if current_song in self.liked_songs:
             # Retirer des likes
             self.liked_songs.remove(current_song)
-            self.like_button.config(image=self.icons["like_empty"])
+            self.like_button.configure(image=self.icons["like_empty"])
             # Retirer de la playlist Liked
             if current_song in self.playlists["Liked"]:
                 self.playlists["Liked"].remove(current_song)
@@ -2955,14 +2966,14 @@ class MusicPlayer:
             # Si la chanson est dans les favoris, la retirer d'abord
             if current_song in self.favorite_songs:
                 self.favorite_songs.remove(current_song)
-                self.favorite_button.config(image=self.icons["favorite_empty"])
+                self.favorite_button.configure(image=self.icons["favorite_empty"])
                 # Retirer de la playlist Favorites
                 if current_song in self.playlists["Favorites"]:
                     self.playlists["Favorites"].remove(current_song)
             
             # Ajouter aux likes
             self.liked_songs.add(current_song)
-            self.like_button.config(image=self.icons["like_full"])
+            self.like_button.configure(image=self.icons["like_full"])
             # Ajouter à la playlist Liked
             if current_song not in self.playlists["Liked"]:
                 self.playlists["Liked"].append(current_song)
@@ -2987,7 +2998,7 @@ class MusicPlayer:
         if current_song in self.favorite_songs:
             # Retirer des favoris
             self.favorite_songs.remove(current_song)
-            self.favorite_button.config(image=self.icons["favorite_empty"])
+            self.favorite_button.configure(image=self.icons["favorite_empty"])
             # Retirer de la playlist Favorites
             if current_song in self.playlists["Favorites"]:
                 self.playlists["Favorites"].remove(current_song)
@@ -2996,14 +3007,14 @@ class MusicPlayer:
             # Si la chanson est dans les likes, la retirer d'abord
             if current_song in self.liked_songs:
                 self.liked_songs.remove(current_song)
-                self.like_button.config(image=self.icons["like_empty"])
+                self.like_button.configure(image=self.icons["like_empty"])
                 # Retirer de la playlist Liked
                 if current_song in self.playlists["Liked"]:
                     self.playlists["Liked"].remove(current_song)
             
             # Ajouter aux favoris
             self.favorite_songs.add(current_song)
-            self.favorite_button.config(image=self.icons["favorite_full"])
+            self.favorite_button.configure(image=self.icons["favorite_full"])
             # Ajouter à la playlist Favorites
             if current_song not in self.playlists["Favorites"]:
                 self.playlists["Favorites"].append(current_song)
@@ -3023,9 +3034,9 @@ class MusicPlayer:
         if not self.main_playlist or self.current_index >= len(self.main_playlist):
             # Aucune chanson en cours, boutons vides
             if hasattr(self, 'like_button'):
-                self.like_button.config(image=self.icons["like_empty"])
+                self.like_button.configure(image=self.icons["like_empty"])
             if hasattr(self, 'favorite_button'):
-                self.favorite_button.config(image=self.icons["favorite_empty"])
+                self.favorite_button.configure(image=self.icons["favorite_empty"])
             return
         
         current_song = self.main_playlist[self.current_index]
@@ -3033,16 +3044,16 @@ class MusicPlayer:
         # Mettre à jour le bouton like
         if hasattr(self, 'like_button'):
             if current_song in self.liked_songs:
-                self.like_button.config(image=self.icons["like_full"])
+                self.like_button.configure(image=self.icons["like_full"])
             else:
-                self.like_button.config(image=self.icons["like_empty"])
+                self.like_button.configure(image=self.icons["like_empty"])
         
         # Mettre à jour le bouton favorite
         if hasattr(self, 'favorite_button'):
             if current_song in self.favorite_songs:
-                self.favorite_button.config(image=self.icons["favorite_full"])
+                self.favorite_button.configure(image=self.icons["favorite_full"])
             else:
-                self.favorite_button.config(image=self.icons["favorite_empty"])
+                self.favorite_button.configure(image=self.icons["favorite_empty"])
     
     def change_url_dialog(self, filepath):
         """change l'URL d'un fichier"""
@@ -3052,4 +3063,7 @@ if __name__ == "__main__":
     root = ctk.CTk()
     player = MusicPlayer(root)
     root.protocol("WM_DELETE_WINDOW", player.on_closing)
+    player.init()
+    root.after(0, player.update_time)
     root.mainloop()
+    
