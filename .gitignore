@@ -1,6 +1,13 @@
-/pycache/*
+# /pycache/*
 /.history/*
 .dist/
 .zencoder/
 .cache/
 *.tmp
+pycache/
+history/*
+*.pyc
+dist/
+build/
+*.spec
+*.exe
