@@ -112,7 +112,7 @@ def _shuffle_remaining_playlist(self):
     self.main_playlist = before_current + after_current
     
     # Rafraîchir l'affichage de la playlist
-    self._refresh_main_playlist_display()
+    self.MainPlaylist._refresh_main_playlist_display()
     
     self.status_bar.config(text=f"Suite de la playlist mélangée ({len(after_current)} titres)")
 
@@ -295,7 +295,7 @@ def _add_downloaded_file(self, filepath, thumbnail_path, title, url=None, add_to
     # Vérifier si on doit ajouter à la playlist
     print("_add_downloaded_file APPELÉE")
     if add_to_playlist:
-        added = self.add_to_main_playlist(filepath, thumbnail_path, show_status=False)
+        added = self.MainPlaylist.add_to_main_playlist(filepath, thumbnail_path, show_status=False)
         if added:
             self.status_bar.config(text=f"{title} ajouté à la main playlist")
             # Marquer que la main playlist ne provient pas d'une playlist (ajout individuel)
@@ -350,7 +350,7 @@ def _add_downloaded_file(self, filepath, thumbnail_path, title, url=None, add_to
         del self.pending_playlist_additions[url]
     
     # Mettre à jour le compteur de fichiers téléchargés
-    self.FileServices._count_downloaded_files(self)
+    self.FileServices._count_downloaded_files()
     self._update_downloads_button()
     
     # Mettre à jour la liste des téléchargements dans l'onglet bibliothèque
@@ -715,7 +715,7 @@ def get_youtube_metadata(self, filepath):
         
         filename = os.path.basename(filepath)
         file_metadata = metadata.get(filename)
-        
+        # print("babababab ", file_metadata)
         # Convertir l'ancien format au nouveau format si nécessaire
         if isinstance(file_metadata, str):
             return {'url': file_metadata, 'upload_date': None}
@@ -753,7 +753,7 @@ def get_youtube_url_from_metadata(self, filepath):
         print(f"Erreur lecture métadonnées YouTube: {e}")
         return None
 
-def save_youtube_url_metadata(self, filepath, youtube_url, upload_date=None):
+def save_youtube_url_metadata(self, filepath, youtube_url=None, upload_date=None):
     """Sauvegarde les métadonnées YouTube étendues pour un fichier téléchargé"""
     try:
         import json
@@ -770,17 +770,21 @@ def save_youtube_url_metadata(self, filepath, youtube_url, upload_date=None):
         
         # Ajouter les nouvelles métadonnées (maintien compatibilité avec ancien format)
         filename = os.path.basename(filepath)
+        downloads_truncated_title = self._truncate_text_for_display(filename, max_width_pixels=DOWNLOADS_TITLE_MAX_WIDTH, font_family='TkDefaultFont', font_size=9)
         
         # Si c'est déjà au nouveau format (dictionnaire), mettre à jour
         if isinstance(metadata.get(filename), dict):
-            metadata[filename]['url'] = youtube_url
+            if youtube_url:
+                metadata[filename]['url'] = youtube_url
             if upload_date:
                 metadata[filename]['upload_date'] = upload_date
+            metadata[filename]['downloads_truncated_title'] = downloads_truncated_title
         else:
             # Créer une nouvelle entrée au format étendu
             metadata[filename] = {
                 'url': youtube_url,
-                'upload_date': upload_date
+                'upload_date': upload_date,
+                'downloads_truncated_title': downloads_truncated_title
             }
         
         # Sauvegarder
@@ -790,11 +794,39 @@ def save_youtube_url_metadata(self, filepath, youtube_url, upload_date=None):
     except Exception as e:
         print(f"Erreur sauvegarde métadonnées YouTube: {e}")
 
+def update_stored_truncated_titles(self):
+    try:
+        import json
+        metadata_file = os.path.join(self.downloads_folder, "youtube_urls.json")
+        
+        # Charger les métadonnées existantes
+        metadata = {}
+        if os.path.exists(metadata_file):
+            try:
+                with open(metadata_file, 'r', encoding='utf-8') as f:
+                    metadata = json.load(f)
+            except:
+                metadata = {}
+        # Ajouter les nouvelles métadonnées (maintien compatibilité avec ancien format)
+        print('BONJOUR')
+        for filename in metadata.keys():
+            downloads_truncated_title = self._truncate_text_for_display(filename, max_width_pixels=DOWNLOADS_TITLE_MAX_WIDTH, font_family='TkDefaultFont', font_size=9)
+            metadata[filename]['downloads_truncated_title'] = downloads_truncated_title
+        
+        # Sauvegarder
+        with open(metadata_file, 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, ensure_ascii=False, indent=2)
+            
+        print("Metadonnées titres tronqués YouTube mis à jour")
+            
+    except Exception as e:
+        print(f"Erreur réécriture métadonnées titres tronqués YouTube: {e}")
+
 def _add_downloaded_to_playlist(self, filepath, thumbnail_path, title, playlist_name, url=None):
     """Ajoute un fichier téléchargé à une playlist spécifique (à appeler dans le thread principal)"""
     if playlist_name == "Main Playlist":
         # Pour la main playlist, utiliser la nouvelle fonction centralisée
-        added = self.add_to_main_playlist(filepath, thumbnail_path, show_status=False)
+        added = self.MainPlaylist.add_to_main_playlist(filepath, thumbnail_path, show_status=False)
         if added:
             self.status_bar.config(text=f"{title} ajouté à la liste principale")
             # Marquer que la main playlist ne provient pas d'une playlist (ajout individuel)
@@ -817,7 +849,7 @@ def _add_downloaded_to_playlist(self, filepath, thumbnail_path, title, playlist_
             if pending_playlist_name != playlist_name:
                 if pending_playlist_name == "Main Playlist":
                     # Gérer spécialement la Main Playlist
-                    added = self.add_to_main_playlist(filepath, thumbnail_path, show_status=False)
+                    added = self.MainPlaylist.add_to_main_playlist(filepath, thumbnail_path, show_status=False)
                     if added:
                         self.status_bar.config(text=f"{title} aussi ajouté à la liste principale (en attente)")
                         self.main_playlist_from_playlist = False
@@ -835,7 +867,7 @@ def _add_downloaded_to_playlist(self, filepath, thumbnail_path, title, playlist_
         del self.pending_playlist_additions[url]
     
     # Mettre à jour le compteur de fichiers téléchargés
-    self.FileServices._count_downloaded_files(self)
+    self.FileServices._count_downloaded_files()
     self._update_downloads_button()
     
     # Mettre à jour la liste des téléchargements dans l'onglet bibliothèque
@@ -851,7 +883,7 @@ def _add_youtube_to_playlist(self, video, frame, playlist_name, add_to_queue=Fal
         # Le fichier existe déjà, l'ajouter directement à la playlist
         if playlist_name == "Main Playlist":
             if not add_to_queue:
-                self.add_to_main_playlist(filepath)
+                self.MainPlaylist.add_to_main_playlist(filepath)
             else:
                 self.main_app.root.after(0, lambda path=filepath: self._safe_add_to_queue(path))
         else:
@@ -928,36 +960,95 @@ def _create_new_playlist_dialog_youtube(self, video, frame):
         else:
             self.status_bar.config(text=f"La playlist '{playlist_name}' existe déjà")
 
-def _set_item_colors(self, item_frame, bg_color, exclude_queue_indicator=True):
-    """Change uniquement la couleur de fond des éléments d'un item de playlist"""
-    def set_colors_recursive(widget, color):
-        # Changer seulement la couleur de fond, pas le texte ni les boutons
-        if hasattr(widget, 'config'):
-            try:
-                if exclude_queue_indicator:
-                    # Ne changer que le fond, pas les autres propriétés
-                    if not isinstance(widget, tk.Button):  # Exclure les boutons
-                        # Vérifier si le widget est un queue_indicator
-                        # On vérifie si c'est le queue_indicator de l'item_frame
-                        is_queue_indicator = False
-                        if hasattr(item_frame, 'queue_indicator') and widget is item_frame.queue_indicator:
-                            is_queue_indicator = True
+# def _set_item_colors(self, item_frame, bg_color, exclude_queue_indicator=True):
+#     """Change uniquement la couleur de fond des éléments d'un item de playlist"""
+#     def set_colors_recursive(widget, color):
+#         # Changer seulement la couleur de fond, pas le texte ni les boutons
+#         if hasattr(widget, 'config'):
+#             try:
+#                 if exclude_queue_indicator:
+#                     # Ne changer que le fond, pas les autres propriétés
+#                     if not isinstance(widget, tk.Button):  # Exclure les boutons
+#                         # Vérifier si le widget est un queue_indicator
+#                         # On vérifie si c'est le queue_indicator de l'item_frame
+#                         is_queue_indicator = False
+#                         if hasattr(item_frame, 'queue_indicator') and widget is item_frame.queue_indicator:
+#                             is_queue_indicator = True
                         
-                        if not is_queue_indicator:
-                            widget.config(bg=color)
-                else:
-                    widget.config(bg=color)
-            except:
-                pass  # Certains widgets ne supportent pas bg
+#                         if not is_queue_indicator:
+#                             widget.config(bg=color)
+#                 else:
+#                     widget.config(bg=color)
+#             except:
+#                 pass  # Certains widgets ne supportent pas bg
         
-        # Appliquer récursivement aux enfants
-        try:
-            for child in widget.winfo_children():
-                set_colors_recursive(child, color)
-        except:
-            pass
+#         # Appliquer récursivement aux enfants
+#         try:
+#             for child in widget.winfo_children():
+#                 set_colors_recursive(child, color)
+#         except:
+#             pass
     
-    set_colors_recursive(item_frame, bg_color)
+#     set_colors_recursive(item_frame, bg_color)
+
+def _set_item_colors(self, item_frame, bg_color, exclude_queue_indicator=True):
+    """Change la couleur de fond en utilisant une itération au lieu de la récursion"""
+    try:
+        if not (item_frame and item_frame.winfo_exists()):
+            return
+    except tk.TclError:
+        return
+    
+    # Pré-calcul des références
+    queue_indicator = getattr(item_frame, 'queue_indicator', None) if exclude_queue_indicator else None
+    
+    # Utilisation d'une pile pour l'itération (plus rapide que la récursion)
+    stack = [item_frame]
+    
+    while stack:
+        widget = stack.pop()
+        
+        # Vérifier que le widget existe toujours
+        try:
+            if not (widget and widget.winfo_exists()):
+                continue
+        except tk.TclError:
+            continue
+        
+        # Skip buttons and queue indicator
+        if isinstance(widget, tk.Button):
+            continue
+        if exclude_queue_indicator and widget is queue_indicator:
+            continue
+        
+        # Try to set background color
+        try:
+            if hasattr(widget, 'config'):
+                widget.config(bg=bg_color)
+        except (tk.TclError, AttributeError):
+            pass
+        
+        # Add children to stack
+        try:
+            if widget and widget.winfo_exists():
+                stack.extend(widget.winfo_children())
+        except (tk.TclError, RuntimeError):
+            # Double vérification avant d'accéder aux enfants
+            if widget.winfo_exists():
+                children = widget.winfo_children()
+                # Vérifier que la liste des enfants n'est pas vide de manière inattendue
+                if children is not None:
+                    # Filtrer les enfants qui existent vraiment
+                    valid_children = []
+                    for child in children:
+                        try:
+                            if child and child.winfo_exists():
+                                valid_children.append(child)
+                        except tk.TclError:
+                            continue
+                    stack.extend(valid_children)
+        except (tk.TclError, RuntimeError, AttributeError):
+            pass
 
 def _lighten_color(self, hex_color, factor=0.2):
     """
@@ -1139,7 +1230,7 @@ def _delete_from_downloads(self, filepath, frame):
             frame.destroy()
             
             # Mettre à jour le compteur
-            self.FileServices._count_downloaded_files(self)
+            self.FileServices._count_downloaded_files()
             self._update_downloads_button()
             
             self.status_bar.config(text=f"Fichier supprimé définitivement: {os.path.basename(filepath)}")
@@ -1223,16 +1314,16 @@ def play_track(self):
         self.play_button.config(text="Pause")
         
         # Déclencher le système de chargement/déchargement intelligent
-        if hasattr(self, '_trigger_smart_reload_on_song_change'):
+        if hasattr(self.MainPlaylist, '_trigger_smart_reload_on_song_change'):
             try:
-                self.safe_after(50, self._trigger_smart_reload_on_song_change)
+                self.safe_after(50, self.MainPlaylist._trigger_smart_reload_on_song_change)
             except:
                 pass
         
         # Mettre en surbrillance la piste courante dans la playlist (sans scrolling automatique)
         try:
             # Utiliser la fonction intelligente compatible avec le système de chargement
-            self.select_current_song_smart(auto_scroll=False)
+            self.MainPlaylist.select_current_song_smart(auto_scroll=False)
         except tk.TclError:
             # Playlist container non accessible, ignorer
             pass
@@ -1438,7 +1529,7 @@ def add_selection_to_queue_last(self):
                 self.queue_items.add(existing_index)
     
     # Rafraîchir l'affichage
-    self._refresh_main_playlist_display()
+    self.MainPlaylist._refresh_main_playlist_display()
     
     # Afficher le statut
     if added_count > 0:
@@ -1464,7 +1555,7 @@ def add_selection_to_queue_first(self):
         # Pas de playlist, ajouter normalement
         for filepath in self.selected_items_order:
             if not filepath.startswith("https://"):
-                if self.add_to_main_playlist(filepath, show_status=False):
+                if self.MainPlaylist.add_to_main_playlist(filepath, show_status=False):
                     added_count += 1
     else:
         insert_position = self.current_index + 1
@@ -1504,7 +1595,7 @@ def add_selection_to_queue_first(self):
                     self.queue_items.add(existing_index)
     
     # Rafraîchir l'affichage
-    self._refresh_main_playlist_display()
+    self.MainPlaylist._refresh_main_playlist_display()
     
     # Afficher le statut
     if added_count > 0:
@@ -1518,7 +1609,7 @@ def add_selection_to_queue_first(self):
     # Marquer que la main playlist ne provient pas d'une playlist
     self.main_playlist_from_playlist = False
 
-def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_index=None, item_type="downloads", video_index=None):
+def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_index=None, item_type="downloads", placement:int=None):
     """
     Ajoute une musique/vidéo avec un affichage unifié
     
@@ -1573,6 +1664,12 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
             highlightthickness=1,
         )
         item_frame.selected = is_current_song
+        
+        if container == self.downloads_container:
+            item_frame.config(height=DOWNLOADS_MAX_ITEM_HEIGHT)
+            item_frame.propagate(False)
+        
+        
 
         # Déterminer le padding selon le type et le container
         if item_type == "search_result":
@@ -1588,7 +1685,11 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
         else:
             padx, pady = 5, 5
 
-        item_frame.pack(fill="x", padx=padx, pady=pady)
+        
+        if placement is not None:
+            item_frame.place(y=placement * (DOWNLOADS_MAX_ITEM_HEIGHT + 2*CARD_FRAME_PADY), x=0)
+        else:
+            item_frame.pack(fill="x", padx=padx, pady=pady)
 
         # Stocker les informations pour pouvoir les retrouver plus tard
         item_frame.filepath = filepath
@@ -1671,7 +1772,8 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
         text_frame.columnconfigure(0, weight=1)
         
         # Titre principal
-        truncated_title = self._truncate_text_for_display(filename, max_width_pixels=DOWNLOADS_TITLE_MAX_WIDTH, font_family='TkDefaultFont', font_size=9)
+        # truncated_title = self._truncate_text_for_display(filename, max_width_pixels=DOWNLOADS_TITLE_MAX_WIDTH, font_family='TkDefaultFont', font_size=9)
+        truncated_title = filename
         title_label = tk.Label(
             text_frame,
             text=truncated_title,
@@ -1688,6 +1790,625 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
         title_label.max_width = DOWNLOADS_TITLE_MAX_WIDTH  # Largeur maximale du titre
         title_label.animation_active = False  # Animation en cours
         title_label.full_text = title_label.cget('text')  # Texte complet du titre
+        title_label.pause_cycles = DOWNLOADS_TITLE_ANIMATION_PAUSE
+
+        # Métadonnées (artiste • album • date)        
+        # Frame pour les métadonnées avec artiste cliquable
+        metadata_frame = tk.Frame(text_frame, bg=bg_color)
+        metadata_frame.grid(row=1, column=0, sticky='ew', pady=(0, 2))
+        metadata_frame.columnconfigure(0, weight=0)  # Artiste
+        metadata_frame.columnconfigure(1, weight=0)  # Séparateur
+        metadata_frame.columnconfigure(2, weight=0)  # Album
+        metadata_frame.columnconfigure(3, weight=0)  # Séparateur
+        metadata_frame.columnconfigure(4, weight=1)  # Date
+        
+
+        # Label pour l'artiste (cliquable)
+        artist_label = tk.Label(
+            metadata_frame,
+            text="",  # Sera rempli lors du chargement différé
+            bg=bg_color,
+            fg=COLOR_ARTIST_NAME,
+            font=('TkDefaultFont', 8),
+            anchor='nw',
+            justify='left',
+            cursor='hand2'
+        )
+        artist_label.grid(row=0, column=0, sticky='w')
+        artist_label.animation_id = None  # ID de l'animation pour le titre
+        artist_label.scroll_position = 0  # Position de défilement actuelle
+        artist_label.pause_counter = DOWNLOADS_LABEL_ANIMATION_STARTUP  # Compteur pour la pause entre les cycles
+        artist_label.max_width = DOWNLOADS_ARTIST_MAX_WIDTH  # Largeur maximale du titre
+        artist_label.animation_active = False  # Animation en cours
+        artist_label.full_text = artist_label.cget('text')  # Texte complet du titre
+        artist_label.pause_cycles = DOWNLOADS_LABEL_ANIMATION_PAUSE
+        
+        # Label pour les autres métadonnées (album • date)
+        artist_album_separator_label = tk.Label(
+            metadata_frame,
+            text=" • ",
+            bg=bg_color,
+            fg=COLOR_TEXT,
+            font=('TkDefaultFont', 8),
+            anchor='nw',
+            justify='left',
+        )
+        artist_album_separator_label.grid(row=0, column=1, sticky='w')
+        
+        album_label = tk.Label(
+            metadata_frame,
+            text="",  # Sera rempli lors du chargement différé
+            bg=bg_color,
+            fg=COLOR_ALBUM,
+            font=('TkDefaultFont', 8),
+            anchor='nw',
+            justify='left'
+        )
+        album_label.grid(row=0, column=2, sticky='w', padx=0)
+        
+        album_label.animation_id = None  # ID de l'animation pour le titre
+        album_label.scroll_position = 0  # Position de défilement actuelle
+        album_label.pause_counter = DOWNLOADS_LABEL_ANIMATION_STARTUP  # Compteur pour la pause entre les cycles
+        album_label.max_width = DOWNLOADS_ALBUM_MAX_WIDTH  # Largeur maximale du titre
+        album_label.animation_active = False  # Animation en cours
+        album_label.full_text = album_label.cget('text')  # Texte complet du titre
+        album_label.pause_cycles = DOWNLOADS_LABEL_ANIMATION_PAUSE
+        
+        album_date_separator_label = tk.Label(
+            metadata_frame,
+            text=" • ",
+            bg=bg_color,
+            fg=COLOR_TEXT,
+            font=('TkDefaultFont', 8),
+            anchor='nw',
+            justify='left',
+        )
+        album_date_separator_label.grid(row=0, column=3, sticky='w')
+        
+        date_label = tk.Label(
+            metadata_frame,
+            text="",  # Sera rempli lors du chargement différé
+            bg=bg_color,
+            fg=COLOR_DATE,
+            font=('TkDefaultFont', 8),
+            anchor='nw',
+            justify='left'
+        )
+        
+        date_label.grid(row=0, column=4, sticky='w', padx=0)
+
+        # Stocker les références pour le chargement différé des métadonnées
+        artist_label.filepath = filepath
+        album_label.filepath = filepath
+        date_label.filepath = filepath
+        # other_metadata_label.filepath = filepath
+        
+        # Fonction pour gérer le clic sur l'artiste
+        def on_artist_click(event):
+            # Récupérer les métadonnées pour obtenir l'artiste
+            artist, _ = self._get_audio_metadata(filepath)
+            if artist:
+                # Essayer d'obtenir les métadonnées YouTube pour récupérer l'URL de la chaîne
+                video_data = {}
+                try:
+                    youtube_metadata = self.get_youtube_metadata(filepath)
+                    if youtube_metadata:
+                        # Essayer d'obtenir l'URL de la chaîne depuis les métadonnées
+                        channel_url = (youtube_metadata.get('channel_url') or 
+                                     youtube_metadata.get('uploader_url') or 
+                                     youtube_metadata.get('channel'))
+                        if channel_url:
+                            video_data['channel_url'] = channel_url
+                except Exception:
+                    pass
+                
+                # Si pas d'URL trouvée, utiliser le fallback
+                if 'channel_url' not in video_data:
+                    import urllib.parse
+                    # Nettoyer le nom de l'artiste pour l'URL
+                    clean_artist = artist.replace(' ', '').replace('　', '').replace('/', '')
+                    encoded_artist = urllib.parse.quote(clean_artist, safe='')
+                    video_data['channel_url'] = f"https://www.youtube.com/@{encoded_artist}"
+                
+                self._show_artist_content(artist, video_data)
+        
+        # Fonction pour gérer l'effet de survol (hover)
+        def on_enter(event):
+            """Rend l'item plus clair au survol"""
+            # print('ENTERED, ', np.random.uniform(0.8, 1.2))
+            
+            if not item_frame.selected:  # Ne pas changer la couleur si l'item est sélectionné
+                if item_frame.is_dragging:
+                    return  # Ne pas changer la couleur si on est en train de drag
+                
+                if filepath in self.selected_items:
+                    hover_color = get_color("COLOR_MULTISELECTION_HOVERED")
+                elif is_current_song:
+                    hover_color = get_color("COLOR_SELECTED_HOVERED")
+                else:
+                    hover_color = get_color("COLOR_BACKGROUND_HOVERED")
+                
+                # Calculer une couleur plus claire
+                if item_frame.cget('bg')!= hover_color:
+                    if item_frame.is_in_queue:
+                        self._set_item_colors(item_frame, hover_color, exclude_queue_indicator=True)
+                    else:
+                        self._set_item_colors(item_frame, hover_color, exclude_queue_indicator=False)
+                
+                
+                self._start_text_animation(artist_label.full_text, artist_label)
+                self._start_text_animation(album_label.full_text, album_label)
+                self._start_text_animation(title_label.full_text, title_label)
+
+        def on_leave(event):
+            """Restaure la couleur originale quand la souris quitte l'item"""
+            # print('LEFT, ', np.random.uniform(0.8, 1.2))
+            if not item_frame.selected:  # Ne pas changer la couleur si l'item est sélectionné
+                if item_frame.is_dragging:
+                    return  # Ne pas changer la couleur si on est en train de drag
+                
+                
+                if filepath in self.selected_items:
+                    bg_color = COLOR_MULTISELECTION
+                elif is_current_song:
+                    bg_color = COLOR_SELECTED
+                else:
+                    bg_color = COLOR_BACKGROUND
+                    
+                if item_frame.cget('bg')!= bg_color:
+                    if item_frame.is_in_queue:
+                        self._set_item_colors(item_frame, bg_color, exclude_queue_indicator=True)
+                    else:
+                        self._set_item_colors(item_frame, bg_color, exclude_queue_indicator=False)
+                
+                self._reset_text_animation(artist_label)
+                self._reset_text_animation(album_label)
+                self._reset_text_animation(title_label)
+        
+        # item_frame.on_enter = on_enter
+        # item_frame.on_leave = on_leave
+        
+        # Bind du clic sur l'artiste
+        artist_label.bind("<Button-1>", on_artist_click)
+        
+        # 5. Durée (colonne 4)
+        duration_label = tk.Label(
+            item_frame,
+            text=self._get_audio_duration(filepath),
+            bg=bg_color,
+            fg=COLOR_METADATAS,
+            font=('TkDefaultFont', 8),
+            anchor='center'
+        )
+        duration_label.grid(row=0, column=4, sticky='ns', padx=(0, 10), pady=8)
+        
+        # 6. Bouton "Supprimer de la playlist" (colonne 5) avec icône delete
+        # delete_btn = tk.Button(
+        #     item_frame,
+        #     image=self.icons['delete'],
+        #     bg=bg_color,
+        #     fg='white',
+        #     activebackground='#ff6666',
+        #     relief='flat',
+        #     bd=0,
+        #     width=self.icons['delete'].width(),
+        #     height=self.icons['delete'].height(),
+        #     font=('TkDefaultFont', 8),
+        #     takefocus=0
+        # )
+        
+        # delete_btn.grid(row=0, column=5, sticky='ns', padx=(0, 10), pady=8)
+        # tooltip.create_tooltip(delete_btn, "Supprimer de la playlist\nDouble-clic: Retirer de cette playlist\nCtrl + Double-clic: Supprimer définitivement du disque")
+        
+        # Gestion des clics pour la sélection multiple
+        def on_item_left_click(event):
+            # Initialiser le drag pour le clic gauche
+            self.drag_drop_handler.setup_drag_start(event, item_frame)
+            
+            # Vérifier si Ctrl est enfoncé pour ouvrir sur YouTube
+            if event.state & 0x4:  # Ctrl est enfoncé
+                self.open_music_on_youtube(filepath)
+                return
+            
+            # Initialiser le drag
+            # self.drag_drop_handler.setup_drag_start(event, item_frame)
+            
+            # Vérifier si Shift est enfoncé pour la sélection multiple
+            if event.state & 0x1:  # Shift est enfoncé
+                self.shift_selection_active = True
+                self.toggle_item_selection(filepath, item_frame)
+            else:
+                # Clic normal sans Shift - ne pas effacer la sélection si elle existe
+                pass
+        
+        def on_item_left_double_click(event):
+            # Vérifier si Shift est enfoncé ou si on est en mode sélection - ne rien faire
+            if event.state & 0x1 or self.selected_items:  # Shift est enfoncé ou mode sélection
+                pass
+            else:
+                if hasattr(self, 'playlist_content_container') and container == self.playlist_content_container:
+                    # Comportement normal : lancer la playlist depuis cette musique
+                    self._play_playlist_from_song(playlist_name, song_index)
+                elif container == self.downloads_container:
+                    self._add_download_to_playlist(filepath)
+                    if filepath in self.main_playlist:
+                        self.current_index = self.main_playlist.index(filepath)
+                        self.play_track()
+        
+        def on_item_right_click(event):
+            try:
+                
+                # Si on a des éléments sélectionnés, ouvrir le menu de sélection
+                if self.selected_items:
+                    self.show_selection_menu(event)
+                else:
+
+                    # Ouvrir le menu contextuel pour choisir où ajouter la musique
+                    self._show_single_file_menu(event, filepath)
+                    
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+
+        # Bindings pour tous les éléments cliquables (sauf l'artiste qui a son propre binding)
+        widgets_to_bind = [number_label, thumbnail_label, text_frame, 
+                           title_label, duration_label, metadata_frame, album_label, 
+                           date_label, artist_album_separator_label, album_date_separator_label]
+
+        # for widget in widgets_to_bind:
+        #     # Ajouter les événements de survol
+        #     widget.bind("<Enter>", on_enter)
+        #     widget.bind("<Leave>", on_leave)
+        
+        
+        # Variables pour gérer le hover de manière globale sur l'item
+        item_frame.is_hovered = False
+        item_frame.hover_check_id = None
+        
+        def check_mouse_in_item():
+            """Vérifie si la souris est toujours dans la zone de l'item"""
+            try:
+                if not item_frame.winfo_exists():
+                    return
+                
+                # Obtenir la position de la souris par rapport à l'écran
+                mouse_x = item_frame.winfo_pointerx()
+                mouse_y = item_frame.winfo_pointery()
+                
+                # Obtenir les coordonnées de l'item_frame
+                frame_x = item_frame.winfo_rootx()
+                frame_y = item_frame.winfo_rooty()
+                frame_width = item_frame.winfo_width()
+                frame_height = item_frame.winfo_height()
+                
+                # Vérifier si la souris est dans la zone de l'item
+                mouse_in_item = (frame_x <= mouse_x <= frame_x + frame_width and 
+                               frame_y <= mouse_y <= frame_y + frame_height)
+                
+                # Si l'état a changé
+                if mouse_in_item != item_frame.is_hovered:
+                    item_frame.is_hovered = mouse_in_item
+                    if mouse_in_item:
+                        on_enter(None)
+                    else:
+                        on_leave(None)
+                
+                # Programmer la prochaine vérification si la souris est dans l'item
+                if mouse_in_item:
+                    item_frame.hover_check_id = item_frame.after(10, check_mouse_in_item)
+                else:
+                    item_frame.hover_check_id = None
+                    
+            except tk.TclError:
+                # Widget détruit
+                pass
+        
+        def on_motion(event):
+            """Déclenché quand la souris bouge dans l'item ou ses enfants"""
+            if not item_frame.is_hovered:
+                item_frame.is_hovered = True
+                on_enter(event)
+            
+            # Annuler la vérification précédente et en programmer une nouvelle
+            if item_frame.hover_check_id:
+                item_frame.after_cancel(item_frame.hover_check_id)
+            item_frame.hover_check_id = item_frame.after(100, check_mouse_in_item)
+        
+        for widget in widgets_to_bind:
+            # Binder les clics sur tous les enfants pour qu'ils remontent à l'item_frame
+            widget.bind("<ButtonPress-1>", on_item_left_click, add='+')
+            widget.bind("<Double-1>", on_item_left_double_click, add='+')
+            # Binder le motion sur tous les enfants
+            widget.bind("<Motion>", on_motion, add='+')
+            
+            widget.bind("<B1-Motion>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_motion(e, f), add='+')
+            widget.bind("<ButtonRelease-1>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_release(e, f), add='+')
+            widget.bind("<B3-Motion>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_motion(e, f), add='+')
+            widget.bind("<ButtonRelease-3>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_release(e, f), add='+')
+        
+        
+        item_frame.bind("<ButtonPress-1>", on_item_left_click)
+        item_frame.bind("<Double-1>", on_item_left_double_click)
+        # Ajouter les événements de survol
+        # item_frame.bind("<Enter>", on_enter)
+        # item_frame.bind("<Leave>", on_leave)
+        # Binder le motion sur l'item_frame principal
+        item_frame.bind("<Motion>", on_motion)
+        
+        item_frame.bind("<B1-Motion>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_motion(e, f))
+        item_frame.bind("<ButtonRelease-1>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_release(e, f))
+        item_frame.bind("<B3-Motion>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_motion(e, f))
+        item_frame.bind("<ButtonRelease-3>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_release(e, f))
+        
+        
+        
+        
+        tooltip.create_tooltip(title_label, "Double click: start music\nRight click: open context menu\nShift + click: select multiple items\nCtrl + click: open on YouTube\nClick+drag right: Play next\nClick+drag left: Add to queue")
+        
+        # def on_delete_double_click_download(event):
+        #     if event.state & 0x4:
+        #         self._delete_from_downloads(filepath, item_frame)
+        #     else:
+        #         if filepath in self.main_playlist:
+        #             index = self.main_playlist.index(filepath)
+        #             self.main_playlist.remove(filepath)
+        #             if index < self.current_index:
+        #                 self.current_index -= 1
+        #             elif index == self.current_index:
+        #                 pygame.mixer.music.stop()
+        #                 self.current_index = min(index, len(self.main_playlist) - 1)
+        #                 if len(self.main_playlist) > 0:
+        #                     self.play_track()
+        #                 else:
+        #                     pygame.mixer.music.unload()
+        #                     self._show_current_song_thumbnail()
+        #             self.MainPlaylist._refresh_main_playlist_display()
+        #             self.status_bar.config(text=f"Retiré de la playlist: {os.path.basename(filepath)}")
+        
+        
+        # if hasattr(self, 'playlist_content_container') and container == self.playlist_content_container:
+        #     delete_btn.bind("<Double-1>", lambda event: self._remove_from_playlist(filepath, playlist_name, item_frame,event))
+        # elif container == self.downloads_container:
+        #     delete_btn.bind("<Double-1>", on_delete_double_click_download)
+        # else:
+        #     print("_add_song_item > delete_btn.bind, Container inconnu")
+
+        # Configuration du drag-and-drop
+        self.drag_drop_handler.setup_drag_drop(item_frame, file_path=filepath, item_type="playlist_item")
+        
+        if hasattr(self, 'playlist_content_container') and container == self.playlist_content_container:
+            self.drag_drop_handler.setup_drag_drop(item_frame, file_path=filepath, item_type="playlist_item")
+        elif container == self.downloads_container:
+            self.drag_drop_handler.setup_drag_drop(item_frame, file_path=filepath, item_type="file")
+        else:
+            print("_add_song_item > self.drag_drop_handler.setup_drag_drop, Container inconnu")
+        
+        # CORRECTION: Forcer les bindings de motion après tous les autres bindings
+        # pour éviter qu'ils soient écrasés
+        def force_motion_bindings():
+            widgets_to_fix = widgets_to_bind
+            
+            for widget in widgets_to_fix:
+                if widget and widget.winfo_exists():
+                    widget.bind("<B1-Motion>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_motion(e, f))
+                    widget.bind("<ButtonRelease-1>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_release(e, f))
+                    widget.bind("<B3-Motion>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_motion(e, f))
+                    widget.bind("<ButtonRelease-3>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_release(e, f))
+        
+        # Programmer l'exécution après que tous les bindings soient configurés
+        # Utiliser un délai pour s'assurer que c'est vraiment appliqué en dernier
+        # self.root.after(50, force_motion_bindings)
+        
+        return item_frame
+
+        
+
+    except Exception as e:
+        if hasattr(self, 'playlist_content_container') and container == self.playlist_content_container:
+            print(f"Erreur affichage musique playlist: {e}")
+        elif container == self.downloads_container:
+            print(f"Erreur affichage musique téléchargées: {e}")
+        else:
+            print(f"Erreur affichage musique quelque part inconnu: {e}")
+
+def _add_song_item_empty(self, filepath_or_video, container, playlist_name=None, song_index=None, item_type="downloads", video_index=None):
+    """
+    Ajoute une musique/vidéo avec un affichage unifié
+    
+    Args:
+        filepath_or_video: Chemin du fichier (str) ou données vidéo (dict) pour les recherches YouTube
+        container: Container où ajouter l'élément
+        playlist_name: Nom de la playlist (pour les playlists)
+        song_index: Index de la chanson (pour les playlists et main_playlist)
+        item_type: Type d'élément ('downloads', 'playlist', 'main_playlist', 'search_result')
+        video_index: Index de la vidéo (pour les résultats de recherche)
+    """
+    try:
+        
+        filepath = os.path.relpath(filepath_or_video, self.downloads_folder)
+        
+        filename = os.path.basename(filepath)
+        title = filename
+        url = None
+        duration = None
+        is_channel = False
+        
+        # Vérifier si c'est la chanson en cours de lecture (seulement pour les fichiers locaux)
+        is_current_song = False
+        if filepath and item_type != "search_result":
+            is_current_song = (len(self.main_playlist) > 0 and 
+                                self.current_index < len(self.main_playlist) and 
+                                self.main_playlist[self.current_index] == filepath)
+        
+        # Déterminer la couleur de fond
+        if item_type == "search_result":
+            bg_color = '#4a4a4a'  # Fond gris uniforme pour les recherches
+        else:
+            bg_color = COLOR_SELECTED if is_current_song else COLOR_BACKGROUND
+        
+        # Frame principal
+        item_frame = tk.Frame(
+            container,
+            bg=bg_color,
+            relief='flat',
+            bd=1,
+            highlightbackground=COLOR_BACKGROUND_HIGHLIGHT,
+            highlightthickness=1,
+            # width=600,
+            width=400,
+            height=DOWNLOADS_MAX_ITEM_HEIGHT
+        )
+        item_frame.selected = is_current_song
+
+        # Déterminer le padding selon le type et le container
+        if item_type == "search_result":
+            padx, pady = 5, 2
+        elif hasattr(self, 'playlist_content_container') and container == self.playlist_content_container:
+            padx = DISPLAY_PLAYLIST_PADX
+            pady = DISPLAY_PLAYLIST_PADY
+        elif container == self.downloads_container:
+            padx = CARD_FRAME_PADX
+            pady = CARD_FRAME_PADY
+        elif item_type == "main_playlist":
+            padx, pady = 5, 2
+        else:
+            padx, pady = 5, 5
+
+        item_frame.pack(fill="x", padx=padx, pady=pady)
+        item_frame.pack_propagate(False)
+
+        if hasattr(self, 'playlist_content_container') and container == self.playlist_content_container:
+            if playlist_name is not None and song_index is not None:
+                item_frame.playlist_name = playlist_name
+                item_frame.song_index = song_index
+            else:
+                print("_add_song_item pour playlist, playlist_name ou song_index manquant")
+
+        # Vérifier si cette musique fait partie de la queue dans la main playlist
+        is_in_queue = False
+        if hasattr(self, 'queue_items') and hasattr(self, 'main_playlist'):
+            # Chercher toutes les positions de ce fichier dans la main playlist
+            for i, main_filepath in enumerate(self.main_playlist):
+                if main_filepath == filepath and i in self.queue_items:
+                    is_in_queue = True
+                    break        
+        
+        # Stocker les informations pour pouvoir les retrouver plus tard
+        item_frame.filepath = filepath
+        item_frame.selected = is_current_song
+        item_frame.is_in_queue = is_in_queue
+        
+        
+        
+        
+        # Configuration de la grille en 6 colonnes : trait queue, numéro, miniature, texte, durée, bouton
+        item_frame.columnconfigure(0, minsize=4, weight=0)   # Trait queue (si applicable)
+        item_frame.columnconfigure(1, minsize=0, weight=0)  # Numéro
+        item_frame.columnconfigure(2, minsize=80, weight=0)  # Miniature
+        item_frame.columnconfigure(3, weight=1)              # Texte
+        item_frame.columnconfigure(4, minsize=60, weight=0)  # Durée
+        item_frame.columnconfigure(5, minsize=80, weight=0)  # Bouton
+        item_frame.rowconfigure(0, minsize=50, weight=0)     # Hauteur fixe
+        return item_frame
+        
+
+        
+
+    except Exception as e:
+        if hasattr(self, 'playlist_content_container') and container == self.playlist_content_container:
+            print(f"Erreur affichage frame musique playlist: {e}")
+        elif container == self.downloads_container:
+            print(f"Erreur affichage frame musique téléchargées: {e}")
+        else:
+            print(f"Erreur affichage frame musique quelque part inconnu: {e}")
+
+def _load_song_item(self, item_frame, container, playlist_name=None, song_index=None):
+    """Charge l'item d'une musique"""
+    try:
+        bg_color = COLOR_SELECTED if item_frame.selected else COLOR_BACKGROUND
+        is_in_queue = item_frame.is_in_queue
+        filepath = item_frame.filepath
+        filename = os.path.basename(filepath)
+        is_current_song = item_frame.selected
+        is_in_queue = item_frame.is_in_queue
+        
+        
+        # 1. Trait vertical queue (colonne 0) - seulement si la musique est dans la queue
+        queue_indicator = tk.Frame(
+            item_frame,
+            bg=bg_color,
+            width=QUEUE_LINE_WIDTH
+        )
+        queue_indicator.grid(row=0, column=0, sticky='ns', padx=QUEUE_LINE_PADX, pady=QUEUE_LINE_PADY)
+        queue_indicator.grid_propagate(False)
+        
+        
+            
+        item_frame.queue_indicator = queue_indicator
+        
+
+        if is_in_queue:
+            self.show_queue_indicator(item_frame)
+
+        # 2. Numéro de la chanson (colonne 1)
+        number_label = tk.Label(
+            item_frame,
+            text=str(song_index + 1) if song_index is not None else "",  # +1 pour commencer à 1 au lieu de 0
+            bg=bg_color,
+            fg='white',
+            font=('TkDefaultFont', 10, 'bold'),
+            anchor='center'
+        )
+        number_label.grid(row=0, column=1, sticky='nsew', padx=(10, 5), pady=2)
+        
+        # 3. Miniature (colonne 2)
+        thumbnail_label = tk.Label(
+            item_frame,
+            bg=bg_color,
+            width=10,
+            height=3,
+            anchor='center',
+            text="⏵"  # Icône temporaire
+        )
+        thumbnail_label.grid(row=0, column=2, sticky='nsew', padx=(5, 4), pady=2)
+        thumbnail_label.grid_propagate(False)
+        
+        
+        # Stocker la référence pour le chargement différé
+        thumbnail_label.filepath = filepath
+        
+        # # Charger la miniature
+        # self._load_download_thumbnail(filepath, thumbnail_label)
+        
+        # 4. Texte (colonne 3) - Frame contenant titre et métadonnées
+        text_frame = tk.Frame(item_frame, bg=bg_color)
+        text_frame.grid(row=0, column=3, sticky='nsew', padx=(0, 2), pady=4)
+        text_frame.columnconfigure(0, weight=1)
+        
+        # Titre principal
+        # truncated_title = self._truncate_text_for_display(filename, max_width_pixels=DOWNLOADS_TITLE_MAX_WIDTH, font_family='TkDefaultFont', font_size=9)
+        # print(self.get_youtube_metadata(item_frame.filepath))
+        # print('FILEPATH?? ', item_frame.filepath)
+        metadatas = self.get_youtube_metadata(item_frame.filepath)
+        if metadatas is None:
+            self.save_youtube_url_metadata(item_frame.filepath)
+        truncated_title = self.get_youtube_metadata(item_frame.filepath).get('downloads_truncated_title')
+        title_label = tk.Label(
+            text_frame,
+            text=truncated_title,
+            bg=bg_color,
+            fg='white',
+            font=('TkDefaultFont', 9),
+            anchor='nw',
+            justify='left'
+        )
+        title_label.grid(row=0, column=0, sticky='ew', pady=(2, 0))
+        title_label.animation_id = None  # ID de l'animation pour le titre
+        title_label.scroll_position = 0  # Position de défilement actuelle
+        title_label.pause_counter = DOWNLOADS_TITLE_ANIMATION_STARTUP  # Compteur pour la pause entre les cycles
+        title_label.max_width = DOWNLOADS_TITLE_MAX_WIDTH  # Largeur maximale du titre
+        title_label.animation_active = False  # Animation en cours
+        title_label.full_text = filename  # Texte complet du titre
         title_label.pause_cycles = DOWNLOADS_TITLE_ANIMATION_PAUSE
 
         # Métadonnées (artiste • album • date)        
@@ -1855,37 +2576,41 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
                 self._reset_text_animation(album_label)
                 self._reset_text_animation(title_label)
         
+        
+        
         # Bind du clic sur l'artiste
         artist_label.bind("<Button-1>", on_artist_click)
         
         # 5. Durée (colonne 4)
         duration_label = tk.Label(
             item_frame,
-            text=self._get_audio_duration(filepath),
+            text="--:--",
             bg=bg_color,
             fg=COLOR_METADATAS,
             font=('TkDefaultFont', 8),
             anchor='center'
         )
         duration_label.grid(row=0, column=4, sticky='ns', padx=(0, 10), pady=8)
+        duration_label.filepath = filepath
+        
         
         # 6. Bouton "Supprimer de la playlist" (colonne 5) avec icône delete
-        delete_btn = tk.Button(
-            item_frame,
-            image=self.icons['delete'],
-            bg=bg_color,
-            fg='white',
-            activebackground='#ff6666',
-            relief='flat',
-            bd=0,
-            width=self.icons['delete'].width(),
-            height=self.icons['delete'].height(),
-            font=('TkDefaultFont', 8),
-            takefocus=0
-        )
+        # delete_btn = tk.Button(
+        #     item_frame,
+        #     image=self.icons['delete'],
+        #     bg=bg_color,
+        #     fg='white',
+        #     activebackground='#ff6666',
+        #     relief='flat',
+        #     bd=0,
+        #     width=self.icons['delete'].width(),
+        #     height=self.icons['delete'].height(),
+        #     font=('TkDefaultFont', 8),
+        #     takefocus=0
+        # )
         
-        delete_btn.grid(row=0, column=5, sticky='ns', padx=(0, 10), pady=8)
-        tooltip.create_tooltip(delete_btn, "Supprimer de la playlist\nDouble-clic: Retirer de cette playlist\nCtrl + Double-clic: Supprimer définitivement du disque")
+        # delete_btn.grid(row=0, column=5, sticky='ns', padx=(0, 10), pady=8)
+        # tooltip.create_tooltip(delete_btn, "Supprimer de la playlist\nDouble-clic: Retirer de cette playlist\nCtrl + Double-clic: Supprimer définitivement du disque")
         
         # Gestion des clics pour la sélection multiple
         def on_item_left_click(event):
@@ -1938,48 +2663,60 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
                 traceback.print_exc()
 
         # Bindings pour tous les éléments cliquables (sauf l'artiste qui a son propre binding)
-        widgets_to_bind = [item_frame, number_label, thumbnail_label, text_frame, 
+        widgets_to_bind = [number_label, thumbnail_label, text_frame, item_frame,
                            title_label, duration_label, metadata_frame, album_label, 
                            date_label, artist_album_separator_label, album_date_separator_label]
 
         for widget in widgets_to_bind:
-            widget.bind("<ButtonPress-1>", on_item_left_click)
-            widget.bind("<Double-1>", on_item_left_double_click)
+            make_widget_transparent(widget)
+            widget.bind("<ButtonPress-1>", on_item_left_click, add='+')
+            widget.bind("<Double-1>", on_item_left_double_click, add='+')
             # Ajouter les événements de survol
-            widget.bind("<Enter>", on_enter)
-            widget.bind("<Leave>", on_leave)
-        tooltip.create_tooltip(title_label, "Double click: start music\nRight click: open context menu\nShift + click: select multiple items\nCtrl + click: open on YouTube\nClick+drag right: Play next\nClick+drag left: Add to queue")
+
+        # item_frame.bind("<ButtonPress-1>", on_item_left_click)
+        # item_frame.bind("<Double-1>", on_item_left_double_click)
+        # # Ajouter les événements de survol
+        item_frame.bind("<Enter>", on_enter)
+        item_frame.bind("<Leave>", on_leave)
         
-        def on_delete_double_click_download(event):
-            if event.state & 0x4:
-                self._delete_from_downloads(filepath, item_frame)
-            else:
-                if filepath in self.main_playlist:
-                    index = self.main_playlist.index(filepath)
-                    self.main_playlist.remove(filepath)
-                    if index < self.current_index:
-                        self.current_index -= 1
-                    elif index == self.current_index:
-                        pygame.mixer.music.stop()
-                        self.current_index = min(index, len(self.main_playlist) - 1)
-                        if len(self.main_playlist) > 0:
-                            self.play_track()
-                        else:
-                            pygame.mixer.music.unload()
-                            self._show_current_song_thumbnail()
-                    self._refresh_main_playlist_display()
-                    self.status_bar.config(text=f"Retiré de la playlist: {os.path.basename(filepath)}")
+        item_frame.bind("<B1-Motion>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_motion(e, f))
+        item_frame.bind("<ButtonRelease-1>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_release(e, f))
+        item_frame.bind("<B3-Motion>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_motion(e, f))
+        item_frame.bind("<ButtonRelease-3>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_release(e, f))
+        
+        # tooltip.create_tooltip(title_label, "Double click: start music\nRight click: open context menu\nShift + click: select multiple items\nCtrl + click: open on YouTube\nClick+drag right: Play next\nClick+drag left: Add to queue")
+        
+        # make_label_transparent(title_label)
+        # def on_delete_double_click_download(event):
+        #     if event.state & 0x4:
+        #         self._delete_from_downloads(filepath, item_frame)
+        #     else:
+        #         if filepath in self.main_playlist:
+        #             index = self.main_playlist.index(filepath)
+        #             self.main_playlist.remove(filepath)
+        #             if index < self.current_index:
+        #                 self.current_index -= 1
+        #             elif index == self.current_index:
+        #                 pygame.mixer.music.stop()
+        #                 self.current_index = min(index, len(self.main_playlist) - 1)
+        #                 if len(self.main_playlist) > 0:
+        #                     self.play_track()
+        #                 else:
+        #                     pygame.mixer.music.unload()
+        #                     self._show_current_song_thumbnail()
+        #             self.MainPlaylist._refresh_main_playlist_display()
+        #             self.status_bar.config(text=f"Retiré de la playlist: {os.path.basename(filepath)}")
         
         
-        if hasattr(self, 'playlist_content_container') and container == self.playlist_content_container:
-            delete_btn.bind("<Double-1>", lambda event: self._remove_from_playlist(filepath, playlist_name, item_frame,event))
-        elif container == self.downloads_container:
-            delete_btn.bind("<Double-1>", on_delete_double_click_download)
-        else:
-            print("_add_song_item > delete_btn.bind, Container inconnu")
+        # if hasattr(self, 'playlist_content_container') and container == self.playlist_content_container:
+        #     delete_btn.bind("<Double-1>", lambda event: self._remove_from_playlist(filepath, playlist_name, item_frame,event))
+        # elif container == self.downloads_container:
+        #     delete_btn.bind("<Double-1>", on_delete_double_click_download)
+        # else:
+        #     print("_add_song_item > delete_btn.bind, Container inconnu")
 
         # Configuration du drag-and-drop
-        self.drag_drop_handler.setup_drag_drop(item_frame, file_path=filepath, item_type="playlist_item")
+        # self.drag_drop_handler.setup_drag_drop(item_frame, file_path=filepath, item_type="playlist_item")
         
         if hasattr(self, 'playlist_content_container') and container == self.playlist_content_container:
             self.drag_drop_handler.setup_drag_drop(item_frame, file_path=filepath, item_type="playlist_item")
@@ -1990,30 +2727,68 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
         
         # CORRECTION: Forcer les bindings de motion après tous les autres bindings
         # pour éviter qu'ils soient écrasés
-        def force_motion_bindings():
-            widgets_to_fix = widgets_to_bind
+        # def force_motion_bindings():
+        #     widgets_to_fix = widgets_to_bind
             
-            for widget in widgets_to_fix:
-                if widget and widget.winfo_exists():
-                    widget.bind("<B1-Motion>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_motion(e, f))
-                    widget.bind("<ButtonRelease-1>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_release(e, f))
-                    widget.bind("<B3-Motion>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_motion(e, f))
-                    widget.bind("<ButtonRelease-3>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_release(e, f))
+        #     for widget in widgets_to_fix:
+        #         if widget and widget.winfo_exists():
+        #             widget.bind("<B1-Motion>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_motion(e, f))
+        #             widget.bind("<ButtonRelease-1>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_release(e, f))
+        #             widget.bind("<B3-Motion>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_motion(e, f))
+        #             widget.bind("<ButtonRelease-3>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_release(e, f))
         
         # Programmer l'exécution après que tous les bindings soient configurés
         # Utiliser un délai pour s'assurer que c'est vraiment appliqué en dernier
-        self.root.after(50, force_motion_bindings)
-
-        
-
+        # self.root.after(50, force_motion_bindings)
+    
     except Exception as e:
-        if hasattr(self, 'playlist_content_container') and container == self.playlist_content_container:
-            print(f"Erreur affichage musique playlist: {e}")
-        elif container == self.downloads_container:
-            print(f"Erreur affichage musique téléchargées: {e}")
-        else:
-            print(f"Erreur affichage musique quelque part inconnu: {e}")
+        print("_load_song_item exception: ", str(e))
 
+def _unload_song_item(self, item_frame, container, playlist_name=None, song_index=None):
+    # try:
+    #     children = item_frame.winfo_children()
+    # except tk.TclError:
+    #     children = []
+        
+    # for widget in children:
+    #     try:
+    #         if widget.winfo_exists():
+    #             widget.destroy()
+    #     except tk.TclError:
+    #         continue
+    
+    # item_frame.unbind("<B1-Motion>")
+    # item_frame.unbind("<ButtonRelease-1>")
+    # item_frame.unbind("<B3-Motion>")
+    # item_frame.unbind("<ButtonRelease-3>")
+    # item_frame.unbind("<ButtonPress-1>")
+    # item_frame.unbind("<Double-1>")
+    # item_frame.unbind("<Enter>")
+    # item_frame.unbind("<Leave>")
+    
+    try:
+        children = item_frame.winfo_children()
+    except tk.TclError:
+        children = []
+        
+    for widget in children:
+        try:
+            if widget.winfo_exists():
+                widget.destroy()
+        except tk.TclError as e:
+            print("_unload_song_item > widget.destroy error: ", str(e))
+            continue
+    
+    try:
+        item_frame.destroy()
+    except tk.TclError as e:
+        print("_unload_song_item > item_frame.destroy error: ", str(e))
+    except Exception as e:
+        print("_unload_song_item > Exception: ", str(e))
+    
+        
+    
+    
 def _start_thumbnail_loading(self, files_to_display, container):
     """Lance le chargement différé des miniatures et durées"""
     # Annuler le chargement précédent s'il existe
@@ -2158,19 +2933,54 @@ def _load_next_thumbnail(self, container):
         # Chargement terminé, réinitialiser l'ID du timer
         self.thumbnail_loading_timer_id = None
         # Mettre à jour la scrollbar une dernière fois après le chargement complet
-        if container == self.downloads_container and hasattr(self, '_update_scrollbar'):
-            self.safe_after(50, self._update_scrollbar)  # Petit délai pour s'assurer que tout est rendu
+        # if container == self.downloads_container and hasattr(self, '_update_scrollbar'):
+        #     self.safe_after(50, self._update_scrollbar)  # Petit délai pour s'assurer que tout est rendu
+
+# def make_widget_transparent(widget):
+#     """
+#     Rend un label complètement transparent aux événements souris
+#     en modifiant sa bindtags pour supprimer les bindings par défaut
+#     """
+#     # Récupère les bindtags actuels
+#     current_bindtags = list(widget.bindtags())
+#     # print("1",current_bindtags)
+#     # Supprime le bindtag du widget lui-même (le plus important)
+#     if str(widget) in current_bindtags:
+#         current_bindtags.remove(str(widget))
+    
+#     # Applique les nouveaux bindtags
+#     widget.bindtags(tuple(current_bindtags))
+#     # print("2",list(widget.bindtags()))
+
+
+def make_widget_transparent(widget):
+    """Supprime tous les événements souris du widget"""
+    events_to_remove = [
+        '<Enter>', '<Leave>', '<Button-1>', '<Button-2>', '<Button-3>',
+        '<B1-Motion>', '<B2-Motion>', '<B3-Motion>', '<ButtonRelease-1>',
+        '<ButtonRelease-2>', '<ButtonRelease-3>', '<MouseWheel>',
+        '<Motion>', '<FocusIn>', '<FocusOut>'
+    ]
+    
+    for event in events_to_remove:
+        widget.unbind(event)
 
 def hide_queue_indicator(self, song_item):
     """Cache l'indicateur de queue"""
-    if not(hasattr(song_item, 'queue_indicator') and hasattr(song_item, 'is_in_queue')):    # Lorsqu'on display toutes les musiques au début
+    if not(hasattr(song_item, 'queue_indicator')):    # Lorsqu'on display toutes les musiques au début
+        return
+    
+    if not hasattr(song_item, 'is_in_queue'):
         return
     
     # is_current_song = (len(self.main_playlist) > 0 and 
     #                         self.current_index < len(self.main_playlist) and 
     #                         self.main_playlist[self.current_index] == song_item.filepath)
 
-    self.root.after(10, lambda:song_item.queue_indicator.config(bg=COLOR_SELECTED if song_item.selected else COLOR_BACKGROUND))
+    def change_color(song_item):
+        if hasattr(song_item, 'queue_indicator'):
+            song_item.queue_indicator.config(bg=COLOR_SELECTED if song_item.selected else COLOR_BACKGROUND)
+    self.root.after(10, lambda: change_color(song_item))
 
 def show_queue_indicator(self, song_item):
     """Affiche l'indicateur de queue"""
@@ -2217,6 +3027,8 @@ def _get_audio_duration(self, filepath):
 def _get_audio_metadata(self, filepath):
     """Récupère les métadonnées d'un fichier audio (artiste et album)"""
     try:
+        if not os.path.isabs(filepath):
+            filepath = os.path.join(self.downloads_folder, filepath)
         if filepath.lower().endswith('.mp3'):
             from mutagen.id3 import ID3
             audio = MP3(filepath)
@@ -2308,7 +3120,7 @@ def _add_to_specific_playlist(self, filepath, playlist_name):
     """Ajoute un fichier à une playlist spécifique"""
     if playlist_name == "Main Playlist":
         # Pour la main playlist, utiliser la nouvelle fonction centralisée
-        self.add_to_main_playlist(filepath)
+        self.MainPlaylist.add_to_main_playlist(filepath)
     else:
         # Pour les autres playlists
         if filepath not in self.playlists[playlist_name]:
@@ -2409,7 +3221,7 @@ def add_to_playlist(self):
         filetypes=[("Fichiers Audio", "*.mp3 *.wav *.ogg *.flac"), ("Tous fichiers", "*.*")]
     )
     for file in files:
-        self.add_to_main_playlist(file, show_status=False)
+        self.MainPlaylist.add_to_main_playlist(file, show_status=False)
     
     # Marquer que la main playlist ne provient pas d'une playlist (ajout individuel)
     self.main_playlist_from_playlist = False
@@ -2591,7 +3403,7 @@ def _show_single_file_menu(self, event, filepath):
     if not is_youtube_video:
         context_menu.add_command(
             label="📄 Ajouter à la liste de lecture",
-            command=lambda f=filepath: self.add_to_main_playlist(f)
+            command=lambda f=filepath: self.MainPlaylist.add_to_main_playlist(f)
         )
         context_menu.add_command(
             label="⏭️ Lire ensuite",
@@ -2696,9 +3508,9 @@ def _safe_add_to_main_playlist(self, filepath):
     """Version sécurisée de add_to_main_playlist"""
     try:
         if hasattr(self, 'root') and self.root.winfo_exists():
-            self.add_to_main_playlist(filepath)
-            if hasattr(self, '_refresh_main_playlist_display'):
-                self._refresh_main_playlist_display()
+            self.MainPlaylist.add_to_main_playlist(filepath)
+            if hasattr(self.MainPlaylist, '_refresh_main_playlist_display'):
+                self.MainPlaylist._refresh_main_playlist_display()
     except tk.TclError:
         pass  # Widget détruit, ignorer silencieusement
     
@@ -2708,9 +3520,9 @@ def _safe_add_to_main_playlist_from_result(self, video):
         def callback(filepath):
             print(f"_safe_add_to_main_playlist_from_result {video['title']} {filepath}")
             if hasattr(self, 'root') and self.root.winfo_exists():
-                self.add_to_main_playlist(filepath)
-                if hasattr(self, '_refresh_main_playlist_display'):
-                    self._refresh_main_playlist_display()
+                self.MainPlaylist.add_to_main_playlist(filepath)
+                if hasattr(self.MainPlaylist, '_refresh_main_playlist_display'):
+                    self.MainPlaylist._refresh_main_playlist_display()
         
         self._download_youtube_video(video, callback=callback)
     except tk.TclError:
@@ -2902,14 +3714,15 @@ def add_selection_to_main_playlist(self):
     for filepath in self.selected_items_order:
         # Vérifier que c'est bien un fichier local (pas une URL YouTube)
         if not filepath.startswith("https://"):
+            full_filepath = os.path.join(self.downloads_folder,filepath)
             # Ajouter directement à la playlist sans déclencher les mises à jour visuelles
             if filepath not in self.main_playlist:
-                self.main_playlist.append(filepath)
-                self._add_main_playlist_item(filepath)
+                self.main_playlist.append(full_filepath)
+                self.MainPlaylist_add_main_playlist_item(full_filepath)
                 added_count += 1
     
     # Rafraîchir l'affichage seulement de la playlist, pas des téléchargements
-    self._refresh_main_playlist_display()
+    self.MainPlaylist._refresh_main_playlist_display()
     
     # Mettre à jour les indicateurs visuels de queue SEULEMENT si on est dans l'onglet téléchargements
     if (hasattr(self, 'current_library_tab') and 
@@ -3091,7 +3904,7 @@ def add_to_multiple_playlists(self, playlist_names):
         self.status_bar.config(text=f"{len(local_items)} fichier(s) ajouté(s) à {len(playlist_names)} playlists")
     
     # Rafraîchir l'affichage
-    self._refresh_main_playlist_display()
+    self.MainPlaylist._refresh_main_playlist_display()
 
 def download_and_add_to_multiple_playlists(self, playlist_names):
         """Télécharge les vidéos YouTube sélectionnées et les ajoute à plusieurs playlists"""
@@ -3148,7 +3961,7 @@ def _download_and_add_to_playlists(self, video_url, playlist_names):
                 self.safe_after(0, lambda: self.status_bar.config(text=f"Fichier existant ajouté aux playlists: {title}"))
                 
                 # Rafraîchir l'affichage
-                self.safe_after(0, self._refresh_main_playlist_display)
+                self.safe_after(0, self.MainPlaylist._refresh_main_playlist_display)
                 return
             
             # Le fichier n'existe pas, procéder au téléchargement
@@ -3186,7 +3999,7 @@ def _download_and_add_to_playlists(self, video_url, playlist_names):
                     
                     # Rafraîchir l'affichage si nécessaire
                     self.safe_after(0, self.load_downloaded_files)
-                    self.safe_after(0, self._refresh_main_playlist_display)
+                    self.safe_after(0, self.MainPlaylist._refresh_main_playlist_display)
                     
         except Exception as e:
             print(f"Erreur téléchargement pour playlists multiples: {e}")
@@ -3206,10 +4019,10 @@ def download_and_add_selection_to_main_playlist(self):
         
         # Ajouter immédiatement les fichiers locaux
         for filepath in local_files:
-            self.add_to_main_playlist(filepath, show_status=False)
+            self.MainPlaylist.add_to_main_playlist(filepath, show_status=False)
         
         if local_files:
-            self._refresh_main_playlist_display()
+            self.MainPlaylist._refresh_main_playlist_display()
         
         # Télécharger les vidéos YouTube
         if youtube_urls:
@@ -3314,7 +4127,7 @@ def _download_youtube_selection(self, youtube_urls, target_playlist):
         self.safe_after(0, self.FileServices._count_downloaded_files)
         self.safe_after(0, self._update_downloads_button)
         self.safe_after(0, self.load_downloaded_files)
-        self.safe_after(0, self._refresh_main_playlist_display)
+        self.safe_after(0, self.MainPlaylist._refresh_main_playlist_display)
         
         # Message de statut final
         if existing_count > 0 and downloaded_count > 0:
@@ -3468,7 +4281,7 @@ def _download_youtube_selection_to_queue(self, youtube_urls, queue_position):
     self.safe_after(0, self.FileServices._count_downloaded_files)
     self.safe_after(0, self._update_downloads_button)
     self.safe_after(0, self.load_downloaded_files)
-    self.safe_after(0, self._refresh_main_playlist_display)
+    self.safe_after(0, self.MainPlaylist._refresh_main_playlist_display)
     
     # Message de statut final
     queue_text = "début de la queue" if queue_position == "first" else "fin de la queue"
@@ -3639,3 +4452,22 @@ def update_upload_date(self, file):
             
     except Exception as e:
         print(f"Erreur mise à jour date de publication: {e}")
+
+def make_frame_transparent(frame_widget):
+    """
+    Rend un frame complètement transparent aux événements souris
+    en modifiant ses bindtags pour supprimer les bindings par défaut
+    """
+    # Récupère les bindtags actuels
+    current_bindtags = list(frame_widget.bindtags())
+    
+    # Supprime le bindtag du widget lui-même
+    widget_name = str(frame_widget)
+    if widget_name in current_bindtags:
+        current_bindtags.remove(widget_name)
+    
+    # Applique les nouveaux bindtags
+    frame_widget.bindtags(tuple(current_bindtags))
+    
+    # Désactive le focus
+    frame_widget.configure(takefocus=0)

@@ -195,7 +195,7 @@ def _on_mousewheel(self, event, canvas):
             self._last_scroll_time = time.time()
         
         if event.delta:
-            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            canvas.yview_scroll(int(-1*(np.sign(event.delta))), "units")
         else:
             # Pour Linux qui utilise event.num au lieu de event.delta
             if event.num == 4:
@@ -205,9 +205,14 @@ def _on_mousewheel(self, event, canvas):
 
         # Vérifier le scroll infini pour la playlist
         if hasattr(self, 'main_playlist_canvas') and canvas == self.main_playlist_canvas:
-            if hasattr(self, '_check_infinite_scroll'):
+            if hasattr(self.MainPlaylist, '_check_infinite_scroll'):
                 # Différer légèrement la vérification pour laisser le scroll se terminer
-                self.root.after(50, self._check_infinite_scroll)
+                # self.root.after(50, self.MainPlaylist._check_infinite_scroll)
+                self.root.after(0, self.MainPlaylist._check_infinite_scroll)
+        
+        if hasattr(self, 'downloads_canvas') and canvas == self.downloads_canvas:
+            from library_tab.downloads import on_canvas_scroll
+            on_canvas_scroll(self)
 
         ## pour detecter la fin du scroll
         # Si un timer existe déjà, on l'annule
@@ -218,7 +223,11 @@ def _on_mousewheel(self, event, canvas):
         self.scroll_timeout = self.root.after(200, lambda: self._on_mousewheel_end(canvas))
 
 def _on_mousewheel_end(self, canvas):
-    pass
+    
+    if hasattr(self, 'downloads_canvas') and canvas == self.downloads_canvas:
+            from library_tab.downloads import on_canvas_scroll_end
+            on_canvas_scroll_end(self)
+        
     # print("Fin du scroll détectée")
 
 # Raccourcis clavier globaux (fonctionnent même quand la fenêtre n'a pas le focus)

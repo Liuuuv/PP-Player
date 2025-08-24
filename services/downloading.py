@@ -63,8 +63,8 @@ def _download_youtube_selection(self, youtube_urls, target_playlist):
                 
                 # Ajouter à la playlist cible
                 if target_playlist == "Main Playlist":
-                    self.root.after(0, lambda: self.add_to_main_playlist(final_path, show_status=False))
-                    self.root.after(0, self._refresh_main_playlist_display)
+                    self.root.after(0, lambda: self.MainPlaylist.add_to_main_playlist(final_path, show_status=False))
+                    self.root.after(0, self.MainPlaylist._refresh_main_playlist_display)
                 else:
                     if target_playlist in self.playlists and final_path not in self.playlists[target_playlist]:
                         self.playlists[target_playlist].append(final_path)
@@ -86,7 +86,7 @@ def _download_youtube_selection(self, youtube_urls, target_playlist):
         ))
     
     # Mettre à jour le nombre de fichiers téléchargés
-    self.root.after(0, self.FileServices._count_downloaded_files(self))
+    self.root.after(0, self.FileServices._count_downloaded_files())
     self.root.after(0, self._update_downloads_button)
     
     # Rafraîchir la bibliothèque (peu importe l'onglet actuel)
@@ -140,7 +140,7 @@ def _download_and_add_after_current(self, video, frame):
                     self.main_playlist.insert(insert_position, audio_filename)
                     
                     # Mettre à jour l'affichage de la main playlist
-                    self.root.after(0, lambda: self._refresh_main_playlist_display())
+                    self.root.after(0, lambda: self.MainPlaylist._refresh_main_playlist_display())
                     
                     # Télécharger la thumbnail
                     self._download_youtube_thumbnail(info, audio_filename)

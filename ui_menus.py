@@ -118,6 +118,12 @@ def show_settings_menu(self):
             command=self.update_upload_date_from_links
         )
         
+        from utils import tools
+        stats_menu.add_command(
+            label=f"Update stored truncated titles (for \"downloaded\" and \"playlists\")",
+            command=lambda: tools.update_stored_truncated_titles(self)
+        )
+        
         
         # Afficher le menu à la position du bouton
         try:

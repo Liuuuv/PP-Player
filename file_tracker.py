@@ -167,13 +167,12 @@ class FileTracker:
             'total_playlists': len(self.playlist_to_files),
             'files_per_playlist': {name: len(files) for name, files in self.playlist_to_files.items()}
         }
+    
+    def init_file_tracker(self):
+        """Initialise le gestionnaire de fichiers"""
+        self.rebuild_index()
 
-def init_file_tracker(self):
-    """Initialise le gestionnaire de fichiers"""
-    if not hasattr(self, 'file_tracker'):
-        self.file_tracker = FileTracker(self)
-        # Construire l'index initial
-        self.file_tracker.rebuild_index()
+
 
 def rebuild_file_index(self):
     """Reconstruit l'index des fichiers"""

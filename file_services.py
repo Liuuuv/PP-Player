@@ -35,3 +35,4 @@ class FileServices:
                 count += 1
         
         self.music_player.num_downloaded_files = count
+        

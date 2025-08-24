@@ -19,12 +19,14 @@ TEST_COLOR = "#9000ff"
 
 ## MUSIC DISPLAY
 COLOR_SELECTED = '#5a9fd8'
-COLOR_SELECTED_HOVER = "#69b1ec"
+COLOR_SELECTED_HOVERED = None
 COLOR_BACKGROUND = '#4a4a4a'
+COLOR_BACKGROUND_HOVERED = None
 COLOR_BACKGROUND_HIGHLIGHT = '#5a5a5a'
 COLOR_ERROR = "#ffc72d"  # Couleur d'erreur orange-jaune utilisée partout
 COLOR_DOWNLOAD = '#ff6666'
 COLOR_MULTISELECTION = '#ff8c00'
+COLOR_MULTISELECTION_HOVERED = None
 
 # autour de la carte principale (réduit pour 4 playlists par ligne)
 CARD_FRAME_PADX = 5
@@ -62,7 +64,7 @@ COLOR_DATE = "#dbdbdb"
 COLOR_TEXT = '#cccccc'
 
 
-
+COLOR_WINDOW_BACKGROUND = '#2d2d2d'
 COLOR_APP_BG = '#3d3d3d'
 COLOR_APP_FG = '#666666'
 COLOR_APP_BG_HOVER = '#4a4a4a'
@@ -95,6 +97,11 @@ DOWNLOADS_ALBUM_MAX_WIDTH = 100
 DOWNLOADS_LABEL_ANIMATION_STARTUP = 5
 DOWNLOADS_LABEL_ANIMATION_PAUSE = 30
 
+DOWNLOADS_MAX_ITEM_HEIGHT = 57
+DOWNLOADS_TOP_ITEM_BUFFERING = 1
+DOWNLOADS_BOTTOM_ITEM_BUFFERING = 2
+
+
 MAIN_PLAYLIST_TITLE_MAX_WIDTH = 170
 MAIN_PLAYLIST_TITLE_ANIMATION_STARTUP = 5
 MAIN_PLAYLIST_TITLE_ANIMATION_PAUSE = 30
@@ -117,6 +124,12 @@ PLAYLIST_CARD_NAME_ANIMATION_PAUSE = 30
 MAIN_PLAYLIST_REST_TIMER_AFTER_LOADING = 500
 
 
+colors_mapping = {
+    "COLOR_SELECTED_HOVERED": None,
+    "COLOR_BACKGROUND_HOVERED": None,
+    "COLOR_MULTISELECTION_HOVERED": None,
+}
+
 USER_CONFIG = {
     'enable_dynamic_scroll': True,
     'debug_scroll': True,
@@ -128,3 +141,16 @@ USER_CONFIG = {
 def get_config(key):
     """Récupère une valeur de configuration"""
     return USER_CONFIG.get(key)
+
+def set_config(key, value):
+    """Définit une valeur de configuration"""
+    USER_CONFIG[key] = value
+    
+def set_color(key, color):
+    """Définit une couleur"""
+    colors_mapping[key] = color
+
+def get_color(key):
+    """Récupère une couleur"""
+    return colors_mapping.get(key)
+    

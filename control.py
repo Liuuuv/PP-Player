@@ -94,9 +94,9 @@ def play_selected(self, event):
         self.play_track()
         
         # Déclencher le système de chargement/déchargement intelligent
-        if hasattr(self, '_trigger_smart_reload_on_song_change'):
+        if hasattr(self.MainPlaylist, '_trigger_smart_reload_on_song_change'):
             try:
-                self.safe_after(50, self._trigger_smart_reload_on_song_change)
+                self.safe_after(50, self.MainPlaylist._trigger_smart_reload_on_song_change)
             except:
                 pass
 
@@ -114,9 +114,9 @@ def prev_track(self):
     self.play_track()
     
     # Déclencher le système de chargement/déchargement intelligent
-    if hasattr(self, '_trigger_smart_reload_on_song_change'):
+    if hasattr(self.MainPlaylist, '_trigger_smart_reload_on_song_change'):
         try:
-            self.safe_after(50, self._trigger_smart_reload_on_song_change)
+            self.safe_after(50, self.MainPlaylist._trigger_smart_reload_on_song_change)
         except:
             pass
     
@@ -124,7 +124,7 @@ def prev_track(self):
     if (hasattr(self, 'auto_scroll_enabled') and self.auto_scroll_enabled and 
         not getattr(self, 'manual_scroll_detected', False)):
         # Utiliser la fonction intelligente compatible avec le système de chargement
-        self.safe_after(100, lambda: self.select_current_song_smart(auto_scroll=True))
+        self.safe_after(100, lambda: self.MainPlaylist.select_current_song_smart(auto_scroll=True))
     
 
 
@@ -155,9 +155,9 @@ def next_track(self):
     self.play_track()
     
     # Déclencher le système de chargement/déchargement intelligent
-    if hasattr(self, '_trigger_smart_reload_on_song_change'):
+    if hasattr(self.MainPlaylist, '_trigger_smart_reload_on_song_change'):
         try:
-            self.safe_after(50, self._trigger_smart_reload_on_song_change)
+            self.safe_after(50, self.MainPlaylist._trigger_smart_reload_on_song_change)
         except:
             pass
     
@@ -165,7 +165,7 @@ def next_track(self):
     if (hasattr(self, 'auto_scroll_enabled') and self.auto_scroll_enabled and 
         not getattr(self, 'manual_scroll_detected', False)):
         # Utiliser la fonction intelligente compatible avec le système de chargement
-        self.safe_after(100, lambda: self.select_current_song_smart(auto_scroll=True))
+        self.safe_after(100, lambda: self.MainPlaylist.select_current_song_smart(auto_scroll=True))
 
 
 def show_waveform_on_clicked(self):

@@ -25,6 +25,9 @@ class Setup:
         self.setup_window_icon()
         self.load_icons()
         self.create_ui()
+        self.load_playlists()
+        self.load_config()
+        self.setup_keyboard_bindings()
 
     def setup_window_icon(self):
         """Set up the window icon and performance optimizations for the main application window."""
@@ -327,11 +330,14 @@ class Setup:
         # Contenu de l'onglet Recherche (identique à votre ancienne UI)
         self.music_player.setup_search_tab()
         
-        # Contenu de l'onglet Bibliothèque (pour l'instant vide)
-        self.music_player.setup_library_tab()
+        
         
         # Contenu de l'onglet Téléchargements
         self.setup_downloads_tab()
+        
+        # Contenu de l'onglet Bibliothèque (pour l'instant vide)
+        self.music_player.setup_library_tab()
+        self.music_player._update_visible_items()
         
         # Lier le changement d'onglet à une fonction
         self.music_player.notebook.bind("<<NotebookTabChanged>>", self.music_player.on_tab_changed)
@@ -503,8 +509,173 @@ class Setup:
         )
         self.music_player.no_downloads_label.pack(pady=50)
         
+        
         # Mettre à jour l'affichage
         self.music_player.update_downloads_display()
+    
+    def load_playlists(self):
+        """Charge les playlists depuis le fichier JSON"""
+        try:
+            import json
+            playlists_file = os.path.join(self.music_player.downloads_folder, "playlists.json")
+            
+            # Créer les playlists spéciales en premier (toujours présentes)
+            if "Liked" not in self.music_player.playlists:
+                self.music_player.playlists["Liked"] = []
+            if "Favorites" not in self.music_player.playlists:
+                self.music_player.playlists["Favorites"] = []
+            
+            if os.path.exists(playlists_file):
+                with open(playlists_file, 'r', encoding='utf-8') as f:
+                    loaded_playlists = json.load(f)
+
+                # Ajouter les playlists chargées (en gardant la main playlist et les playlists spéciales)
+                for name, songs in loaded_playlists.items():
+                    existing_songs = []
+                    
+                    # Reconstruire les chemins absolus à partir des chemins relatifs
+                    for song in songs:
+                        
+                        # Vérifier si le chemin a un format valide (nom.extension)
+                        if not self.music_player._is_valid_music_path(song):
+                            error_msg = f"Chemin invalide dans playlist '{name}': '{song}' (format attendu: nom.extension)"
+                            self.music_player.system_errors.append({
+                                'type': 'playlist_invalid_path',
+                                'message': error_msg,
+                                'playlist': name,
+                                'path': song,
+                                'timestamp': time.time()
+                            })
+                            print(f"ERREUR: {error_msg}")
+                            continue
+                        
+                        if os.path.isabs(song):
+                            # Si c'est déjà un chemin absolu (fichier externe), l'utiliser tel quel
+                            full_song_path = os.path.normpath(song)
+                        else:
+                            # Si c'est un chemin relatif, le reconstruire avec le dossier downloads actuel
+                            full_song_path = os.path.join(self.music_player.downloads_folder, song)
+                            full_song_path = os.path.normpath(full_song_path)
+                        
+                        if os.path.exists(full_song_path):
+                            existing_songs.append(full_song_path)  # Stocker le chemin absolu en mémoire
+
+                    if existing_songs:
+                        self.music_player.playlists[name] = existing_songs
+            else:
+                # Si le fichier n'existe pas, créer les playlists spéciales vides
+                print("Fichier playlists.json non trouvé")
+
+        except Exception as e:
+            print(f"Erreur chargement playlists: {e}")
+            # En cas d'erreur, s'assurer que les playlists spéciales existent
+            if "Liked" not in self.music_player.playlists:
+                self.music_player.playlists["Liked"] = []
+            if "Favorites" not in self.music_player.playlists:
+                self.music_player.playlists["Favorites"] = []
+    
+    def load_config(self):
+        """Charge la configuration (volume global et offsets de volume)"""
+        try:
+            import json
+            if os.path.exists(self.music_player.config_file):
+                with open(self.music_player.config_file, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                
+                # Charger le volume global
+                if "global_volume" in config:
+                    self.music_player.volume = config["global_volume"]
+                    # Mettre à jour le slider de volume
+                    if hasattr(self.music_player, 'volume_slider'):
+                        self.music_player.volume_slider.set(self.music_player.volume * 100)
+                
+                # Charger les offsets de volume
+                if "volume_offsets" in config:
+                    self.music_player.volume_offsets = config["volume_offsets"]
+                
+                # Charger le périphérique audio
+                if "audio_device" in config:
+                    self.music_player.current_audio_device = config["audio_device"]
+                    # Essayer d'initialiser pygame avec ce périphérique
+                    try:
+                        pygame.mixer.init(devicename=self.music_player.current_audio_device, 
+                                        frequency=44100, size=-16, channels=2, buffer=4096)
+                        self.music_player._pygame_initialized = True
+                        # print(f"Périphérique audio restauré: {self.music_player.current_audio_device}")
+                    except Exception as e:
+                        print(f"Erreur initialisation périphérique {self.music_player.current_audio_device}: {e}")
+                        # Si le périphérique n'est plus disponible, utiliser le défaut
+                        self.music_player.current_audio_device = None
+                        pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=4096)
+                        self.music_player._pygame_initialized = True
+                
+                # Charger les likes et favorites
+                if "liked_songs" in config:
+                    liked_songs_list = config["liked_songs"]
+                    self.music_player.liked_songs = set(liked_songs_list)
+                    # Synchroniser avec la playlist Liked
+                    self.music_player.playlists["Liked"] = [song for song in liked_songs_list if os.path.exists(song)]
+                
+                if "favorite_songs" in config:
+                    favorite_songs_list = config["favorite_songs"]
+                    self.music_player.favorite_songs = set(favorite_songs_list)
+                    # Synchroniser avec la playlist Favorites
+                    self.music_player.playlists["Favorites"] = [song for song in favorite_songs_list if os.path.exists(song)]
+                
+                # Charger les statistiques
+                if "stats" in config:
+                    stats_data = config["stats"]
+                    self.music_player.stats['songs_played'] = stats_data.get('songs_played', 0)
+                    self.music_player.stats['total_listening_time'] = stats_data.get('total_listening_time', 0.0)
+                    self.music_player.stats['searches_count'] = stats_data.get('searches_count', 0)
+                    # Convertir la liste en set
+                    played_songs_list = stats_data.get('played_songs', [])
+                    self.music_player.stats['played_songs'] = set(played_songs_list)
+                    
+        except Exception as e:
+            print(f"Erreur chargement config: {e}")
+    
+    def setup_keyboard_bindings(self):
+        """Configure les raccourcis clavier"""
+        # Binding pour la barre d'espace (pause/play)
+        self.music_player.root.bind('<KeyPress-space>', self.music_player.on_space_pressed)
+        
+        # Binding pour la touche Échap
+        self.music_player.root.bind('<KeyPress-Escape>', self.music_player.on_escape_pressed)
+        
+        # Raccourcis clavier globaux
+        self.music_player.root.bind('<Control-Alt-KP_0>', self.music_player.on_global_play_pause)
+        self.music_player.root.bind('<Control-Alt-Key-KP_0>', self.music_player.on_global_play_pause)
+        
+        # Test de debug pour Ctrl+Alt+0 (pavé numérique)
+        def test_binding(event):
+            return self.on_global_play_pause(event)
+        
+        self.music_player.root.bind('<Control-Alt-KP_Insert>', test_binding)  # Alternative pour le 0 du pavé
+        self.music_player.root.bind('<Control-Alt-n>', self.music_player.on_global_next_track)
+        self.music_player.root.bind('<Control-Alt-N>', self.music_player.on_global_next_track)
+        self.music_player.root.bind('<Control-Alt-b>', self.music_player.on_global_prev_track)
+        self.music_player.root.bind('<Control-Alt-B>', self.music_player.on_global_prev_track)
+        self.music_player.root.bind('<Control-Alt-Up>', self.music_player.on_global_volume_up)
+        self.music_player.root.bind('<Control-Alt-Down>', self.music_player.on_global_volume_down)
+        self.music_player.root.bind('<Control-Alt-Right>', self.music_player.on_global_seek_forward)
+        self.music_player.root.bind('<Control-Alt-Left>', self.music_player.on_global_seek_backward)
+        
+        # Bindings pour les touches relâchées (volume)
+        self.music_player.root.bind('<Control-Alt-KeyRelease-Up>', self.music_player.on_global_volume_key_release)
+        self.music_player.root.bind('<Control-Alt-KeyRelease-Down>', self.music_player.on_global_volume_key_release)
+        
+        # Binding pour retirer le focus des champs de saisie quand on clique ailleurs
+        self.music_player.root.bind('<Button-1>', self.music_player.on_root_click)
+        
+        # Raccourci pour tester les téléchargements (Ctrl+Alt+T)
+        self.music_player.root.bind('<Control-Alt-t>', self.music_player.on_test_downloads)
+        self.music_player.root.bind('<Control-Alt-T>', self.music_player.on_test_downloads)
+        
+        # S'assurer que la fenêtre peut recevoir le focus pour les événements clavier
+        self.music_player.root.focus_set()
+    
+    
 
 def _update_volume_sliders(self):
     """Met à jour les sliders de volume avec les valeurs chargées"""
@@ -520,127 +691,9 @@ def _update_volume_sliders(self):
     except Exception as e:
         print(f"Erreur mise à jour sliders: {e}")
 
-def load_playlists(self):
-    """Charge les playlists depuis le fichier JSON"""
-    try:
-        import json
-        playlists_file = os.path.join(self.downloads_folder, "playlists.json")
-        
-        # Créer les playlists spéciales en premier (toujours présentes)
-        if "Liked" not in self.playlists:
-            self.playlists["Liked"] = []
-        if "Favorites" not in self.playlists:
-            self.playlists["Favorites"] = []
-        
-        if os.path.exists(playlists_file):
-            with open(playlists_file, 'r', encoding='utf-8') as f:
-                loaded_playlists = json.load(f)
 
-            # Ajouter les playlists chargées (en gardant la main playlist et les playlists spéciales)
-            for name, songs in loaded_playlists.items():
-                existing_songs = []
-                
-                # Reconstruire les chemins absolus à partir des chemins relatifs
-                for song in songs:
-                    
-                    # Vérifier si le chemin a un format valide (nom.extension)
-                    if not self._is_valid_music_path(song):
-                        error_msg = f"Chemin invalide dans playlist '{name}': '{song}' (format attendu: nom.extension)"
-                        self.system_errors.append({
-                            'type': 'playlist_invalid_path',
-                            'message': error_msg,
-                            'playlist': name,
-                            'path': song,
-                            'timestamp': time.time()
-                        })
-                        print(f"ERREUR: {error_msg}")
-                        continue
-                    
-                    if os.path.isabs(song):
-                        # Si c'est déjà un chemin absolu (fichier externe), l'utiliser tel quel
-                        full_song_path = os.path.normpath(song)
-                    else:
-                        # Si c'est un chemin relatif, le reconstruire avec le dossier downloads actuel
-                        full_song_path = os.path.join(self.downloads_folder, song)
-                        full_song_path = os.path.normpath(full_song_path)
-                    
-                    if os.path.exists(full_song_path):
-                        existing_songs.append(full_song_path)  # Stocker le chemin absolu en mémoire
 
-                if existing_songs:
-                    self.playlists[name] = existing_songs
-        else:
-            # Si le fichier n'existe pas, créer les playlists spéciales vides
-            print("Fichier playlists.json non trouvé")
 
-    except Exception as e:
-        print(f"Erreur chargement playlists: {e}")
-        # En cas d'erreur, s'assurer que les playlists spéciales existent
-        if "Liked" not in self.playlists:
-            self.playlists["Liked"] = []
-        if "Favorites" not in self.playlists:
-            self.playlists["Favorites"] = []
-
-def load_config(self):
-    """Charge la configuration (volume global et offsets de volume)"""
-    try:
-        import json
-        if os.path.exists(self.config_file):
-            with open(self.config_file, 'r', encoding='utf-8') as f:
-                config = json.load(f)
-            
-            # Charger le volume global
-            if "global_volume" in config:
-                self.volume = config["global_volume"]
-                # Mettre à jour le slider de volume
-                if hasattr(self, 'volume_slider'):
-                    self.volume_slider.set(self.volume * 100)
-            
-            # Charger les offsets de volume
-            if "volume_offsets" in config:
-                self.volume_offsets = config["volume_offsets"]
-            
-            # Charger le périphérique audio
-            if "audio_device" in config:
-                self.current_audio_device = config["audio_device"]
-                # Essayer d'initialiser pygame avec ce périphérique
-                try:
-                    pygame.mixer.init(devicename=self.current_audio_device, 
-                                    frequency=44100, size=-16, channels=2, buffer=4096)
-                    self._pygame_initialized = True
-                    # print(f"Périphérique audio restauré: {self.current_audio_device}")
-                except Exception as e:
-                    print(f"Erreur initialisation périphérique {self.current_audio_device}: {e}")
-                    # Si le périphérique n'est plus disponible, utiliser le défaut
-                    self.current_audio_device = None
-                    pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=4096)
-                    self._pygame_initialized = True
-            
-            # Charger les likes et favorites
-            if "liked_songs" in config:
-                liked_songs_list = config["liked_songs"]
-                self.liked_songs = set(liked_songs_list)
-                # Synchroniser avec la playlist Liked
-                self.playlists["Liked"] = [song for song in liked_songs_list if os.path.exists(song)]
-            
-            if "favorite_songs" in config:
-                favorite_songs_list = config["favorite_songs"]
-                self.favorite_songs = set(favorite_songs_list)
-                # Synchroniser avec la playlist Favorites
-                self.playlists["Favorites"] = [song for song in favorite_songs_list if os.path.exists(song)]
-            
-            # Charger les statistiques
-            if "stats" in config:
-                stats_data = config["stats"]
-                self.stats['songs_played'] = stats_data.get('songs_played', 0)
-                self.stats['total_listening_time'] = stats_data.get('total_listening_time', 0.0)
-                self.stats['searches_count'] = stats_data.get('searches_count', 0)
-                # Convertir la liste en set
-                played_songs_list = stats_data.get('played_songs', [])
-                self.stats['played_songs'] = set(played_songs_list)
-                
-    except Exception as e:
-        print(f"Erreur chargement config: {e}")
 
 
 
@@ -788,7 +841,7 @@ def setup_controls(self):
                                       height=42,
                                       anchor='s',
                                       fg_color=COLOR_APP_BG if not self.random_mode else COLOR_SELECTED,
-                                      hover_color=COLOR_APP_BG if self.loop_mode == 0 else COLOR_SELECTED_HOVER
+                                      hover_color=COLOR_APP_BG if self.loop_mode == 0 else get_color("COLOR_SELECTED_HOVER")
                                     )
         self.recommendation_button.grid_propagate(False)
         self.recommendation_button.grid(row=0, column=0, padx=3)
@@ -824,7 +877,7 @@ def setup_controls(self):
                                       height=42,
                                       anchor='s',
                                       fg_color=COLOR_APP_BG if not self.random_mode else COLOR_SELECTED,
-                                      hover_color=COLOR_APP_BG if self.random_mode == 0 else COLOR_SELECTED_HOVER
+                                      hover_color=COLOR_APP_BG if self.random_mode == 0 else get_color("COLOR_SELECTED_HOVER")
                                     )
         self.random_button.grid_propagate(False)
         self.random_button.grid(row=0, column=1, padx=3)
@@ -854,7 +907,7 @@ def setup_controls(self):
                                       height=42,
                                       anchor='s',
                                       fg_color=COLOR_APP_BG if self.loop_mode == 0 else COLOR_SELECTED,
-                                      hover_color=COLOR_APP_BG_HOVER if self.loop_mode == 0 else COLOR_SELECTED_HOVER,
+                                      hover_color=COLOR_APP_BG_HOVER if self.loop_mode == 0 else get_color("COLOR_SELECTED_HOVER"),
                                     )
         self.loop_button.grid_propagate(False)
         self.loop_button.grid(row=0, column=2, padx=3)
@@ -1063,45 +1116,7 @@ def setup_controls(self):
         # Bind resize event to update waveform when window is resized
         self.waveform_canvas.bind('<Configure>', self.on_waveform_canvas_resize)
 
-def setup_keyboard_bindings(self):
-        """Configure les raccourcis clavier"""
-        # Binding pour la barre d'espace (pause/play)
-        self.root.bind('<KeyPress-space>', self.on_space_pressed)
-        
-        # Binding pour la touche Échap
-        self.root.bind('<KeyPress-Escape>', self.on_escape_pressed)
-        
-        # Raccourcis clavier globaux
-        self.root.bind('<Control-Alt-KP_0>', self.on_global_play_pause)
-        self.root.bind('<Control-Alt-Key-KP_0>', self.on_global_play_pause)
-        
-        # Test de debug pour Ctrl+Alt+0 (pavé numérique)
-        def test_binding(event):
-            return self.on_global_play_pause(event)
-        
-        self.root.bind('<Control-Alt-KP_Insert>', test_binding)  # Alternative pour le 0 du pavé
-        self.root.bind('<Control-Alt-n>', self.on_global_next_track)
-        self.root.bind('<Control-Alt-N>', self.on_global_next_track)
-        self.root.bind('<Control-Alt-b>', self.on_global_prev_track)
-        self.root.bind('<Control-Alt-B>', self.on_global_prev_track)
-        self.root.bind('<Control-Alt-Up>', self.on_global_volume_up)
-        self.root.bind('<Control-Alt-Down>', self.on_global_volume_down)
-        self.root.bind('<Control-Alt-Right>', self.on_global_seek_forward)
-        self.root.bind('<Control-Alt-Left>', self.on_global_seek_backward)
-        
-        # Bindings pour les touches relâchées (volume)
-        self.root.bind('<Control-Alt-KeyRelease-Up>', self.on_global_volume_key_release)
-        self.root.bind('<Control-Alt-KeyRelease-Down>', self.on_global_volume_key_release)
-        
-        # Binding pour retirer le focus des champs de saisie quand on clique ailleurs
-        self.root.bind('<Button-1>', self.on_root_click)
-        
-        # Raccourci pour tester les téléchargements (Ctrl+Alt+T)
-        self.root.bind('<Control-Alt-t>', self.on_test_downloads)
-        self.root.bind('<Control-Alt-T>', self.on_test_downloads)
-        
-        # S'assurer que la fenêtre peut recevoir le focus pour les événements clavier
-        self.root.focus_set()
+
 
 def setup_search_tab(self):
     # Top Frame (Youtube search)
@@ -1287,8 +1302,8 @@ def setup_search_tab(self):
         takefocus=0
     )
     find_current_btn.pack(side=tk.LEFT, padx=(0, 5))
-    # find_current_btn.bind("<Button-1>", lambda event: self._scroll_to_current_song(event, is_manual=True))
-    find_current_btn.bind("<Button-1>", lambda event: self.select_current_song_smart(auto_scroll=True, is_manual=True))
+    # find_current_btn.bind("<Button-1>", lambda event: self.MainPlaylist._scroll_to_current_song(event, is_manual=True))
+    find_current_btn.bind("<Button-1>", lambda event: self.MainPlaylist.select_current_song_smart(auto_scroll=True, is_manual=True))
     
     tooltip.create_tooltip(find_current_btn, "Aller à la musique en cours\nFait défiler la liste vers la chanson actuellement jouée")
     
@@ -1309,7 +1324,7 @@ def setup_search_tab(self):
 
     clear_playlist_btn.pack(side=tk.LEFT)
     # Binding pour double-clic au lieu de simple clic
-    clear_playlist_btn.bind("<Double-1>", self._clear_main_playlist)
+    clear_playlist_btn.bind("<Double-1>", self.MainPlaylist._clear_main_playlist)
     tooltip.create_tooltip(clear_playlist_btn, "Double-cliquer pour vider la liste de lecture\nSupprime toutes les musiques de la liste")
 
     # Canvas et Scrollbar pour la main playlist
@@ -1343,9 +1358,8 @@ def setup_search_tab(self):
     # self._bind_mousewheel(self.main_playlist_container, self.main_playlist_canvas)
     
     # import search_tab.main_playlist
-    from search_tab.main_playlist import forward_wheel
-    self._bind_mousewheel(self.main_playlist_canvas, self.main_playlist_canvas, func=forward_wheel)
-    self._bind_mousewheel(self.main_playlist_container, self.main_playlist_canvas, func=forward_wheel)
+    self._bind_mousewheel(self.main_playlist_canvas, self.main_playlist_canvas, func=self.MainPlaylist.forward_wheel)
+    self._bind_mousewheel(self.main_playlist_container, self.main_playlist_canvas, func=self.MainPlaylist.forward_wheel)
     
     # Youtube Results Frame (right side - expandable)
     self.youtube_results_frame = ttk.Frame(middle_frame)
@@ -1428,6 +1442,8 @@ def setup_library_tab(self):
     # Frame pour le contenu (à droite)
     self.library_content_frame = ttk.Frame(main_library_frame)
     self.library_content_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+    
+    
     
     # Variables pour les onglets
     self.current_library_tab = "téléchargées"

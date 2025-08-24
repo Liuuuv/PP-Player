@@ -953,7 +953,7 @@ def _remove_from_playlist_view(self, filepath, playlist_name, event=None):
                 self.save_playlists()
                 
                 # Mettre à jour le compteur
-                self.FileServices._count_downloaded_files(self)
+                self.FileServices._count_downloaded_files()
                 self._update_downloads_button()
                 
                 self.status_bar.config(text=f"Fichier supprimé définitivement: {os.path.basename(filepath)}")
@@ -1119,10 +1119,10 @@ def _play_playlist_from_song(self, playlist_name, song_index):
     
     # Rafraîchir l'affichage de la playlist principale (avec un délai pour éviter les conflits)
     try:
-        self.safe_after(100, self._refresh_main_playlist_display)
+        self.safe_after(100, self.MainPlaylist._refresh_main_playlist_display)
     except:
         # Si safe_after n'est pas disponible, utiliser after normal
-        self.root.after(100, self._refresh_main_playlist_display)
+        self.root.after(100, self.MainPlaylist._refresh_main_playlist_display)
 
 def create_playlist_from_selection(self):
     """Crée une nouvelle playlist avec les éléments sélectionnés"""

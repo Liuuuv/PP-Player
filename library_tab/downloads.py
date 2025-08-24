@@ -13,6 +13,7 @@ from library_tab import *
 
 def show_downloads_content(self):
     """Affiche le contenu de l'onglet téléchargées"""
+    print("show_downloads_content appelée")
     
     # S'assurer que les données sont à jour avant l'affichage
     self._refresh_downloads_library()
@@ -98,11 +99,10 @@ def show_downloads_content(self):
         highlightthickness=0,
         takefocus=0
     )
-    # self.downloads_scrollbar = ttk.Scrollbar(
-    #     self.library_content_frame,
-    #     orient="vertical",
-    #     command=self.downloads_canvas.yview
-    # )
+    # self.downloads_canvas.config(height=100, width=600, bg="#ff0000")
+    self.downloads_canvas.pack(side=tk.LEFT, fill=tk.BOTH)
+    self.downloads_canvas.propagate(False)  # Maintenir la largeur fixe
+
     self.downloads_scrollbar = ctk.CTkScrollbar(
         self.library_content_frame,
         orientation="vertical",
@@ -113,7 +113,15 @@ def show_downloads_content(self):
     self.downloads_scrollbar.pack(side="right", fill="y")
     self.downloads_canvas.pack(side="left", fill="both", expand=True)
     
-    self.downloads_container = ttk.Frame(self.downloads_canvas)
+    
+    # self.downloads_container = ttk.Frame(self.downloads_canvas)
+    self.downloads_container = tk.Frame(self.downloads_canvas, bg=COLOR_WINDOW_BACKGROUND)
+    height = (DOWNLOADS_MAX_ITEM_HEIGHT + 2 * CARD_FRAME_PADY) * (self.num_downloaded_files)
+    self.downloads_container.config(height=height, width=610)
+    self.downloads_container.propagate(False)
+    
+    
+    
     self.downloads_canvas.create_window((0, 0), window=self.downloads_container, anchor="nw")
     
     # Configurer le scroll
@@ -124,7 +132,7 @@ def show_downloads_content(self):
         )
     )
     
-    # Bind de la molette de souris
+    # Bind de la molette de souris    
     self._bind_mousewheel(self.downloads_canvas, self.downloads_canvas)
     self._bind_mousewheel(self.downloads_container, self.downloads_canvas)
     
@@ -133,6 +141,72 @@ def show_downloads_content(self):
     
     # Charger et afficher les fichiers téléchargés
     self.load_downloaded_files()
+
+def on_canvas_scroll(self):
+    _update_visible_items(self)
+    # for item in self.visible_widgets.values():
+    #     for child in item.winfo_children():
+
+    #         child.unbind("<Enter>")
+    #         child.unbind("<Leave>")
+        
+    #     item.unbind("<Enter>")
+    #     item.unbind("<Leave>")
+    
+
+def on_canvas_scroll_end(self):
+    files_to_display = [item.filepath for item in self.visible_widgets.values()]
+    self._start_thumbnail_loading(files_to_display, self.downloads_container)
+    
+    # for item in self.visible_widgets.values():
+    #     for child in item.winfo_children():
+
+    #         child.bind("<Enter>", item.on_enter)
+    #         child.bind("<Leave>", item.on_leave)
+    #     item.bind("<Enter>", item.on_enter)
+    #     item.bind("<Leave>", item.on_leave)
+        
+def _calculate_visible_range(self):
+    """Calcule la plage d'éléments visibles"""
+    # Obtenir les coordonnées visibles du canvas
+    canvas = self.downloads_canvas
+    bbox = canvas.bbox("all")
+    if not bbox:
+        return 0, 0
+        
+    canvas_height = canvas.winfo_height()
+    scroll_pos = canvas.canvasy(0)  # Position verticale en pixels
+    
+    # Calcul des indices
+    start_index = max(0, int(scroll_pos / (DOWNLOADS_MAX_ITEM_HEIGHT + 2 *CARD_FRAME_PADY)) - DOWNLOADS_TOP_ITEM_BUFFERING)  # -2 pour le buffering
+    end_index = min(len(self.all_widgets), int((scroll_pos + canvas_height) / (DOWNLOADS_MAX_ITEM_HEIGHT  + 2 *CARD_FRAME_PADY)) + DOWNLOADS_BOTTOM_ITEM_BUFFERING) # +3
+    
+    return start_index, end_index
+
+def _update_visible_items(self):
+    """Met à jour les widgets visibles"""
+    start_index, end_index = _calculate_visible_range(self)
+    # print('start end ', start_index, end_index)
+    
+    # Supprimer les widgets qui ne sont plus visibles
+    for idx in list(self.visible_widgets.keys()):
+        if idx < start_index or idx >= end_index:
+            self._unload_song_item(self.visible_widgets[idx], self.downloads_container)
+            self.visible_widgets.pop(idx)
+    
+    # Créer les widgets qui deviennent visibles
+    for idx in range(start_index, end_index):
+        # print('nyan ', idx, self.visible_widgets)
+        if idx not in self.visible_widgets:
+            # threading.Thread(target=lambda :self._load_song_item(self.all_widgets[idx], self.downloads_container), daemon=True).start()
+            # self.visible_widgets[idx] = self.all_widgets[idx]
+            
+            item = self._add_song_item(self.all_widgets[idx], self.downloads_container, placement=idx)
+            # item = self._add_song_item(self.all_widgets[idx], self.downloads_container, placement=50)
+            self.visible_widgets[idx] = item
+    
+    
+
 
 def load_downloaded_files(self):
     """Charge et affiche tous les fichiers du dossier downloads"""
@@ -186,6 +260,7 @@ def load_downloaded_files(self):
 def _display_filtered_downloads(self, files_to_display, preserve_scroll=False):
     """Affiche une liste filtrée de fichiers téléchargés"""
     # Marquer qu'on est en train de faire un refresh pour éviter la boucle infinie
+    print("_display_filtered_downloads appelée")
     self._refreshing_downloads = True
     
     # Vider le container actuel
@@ -225,11 +300,28 @@ def _display_filtered_downloads(self, files_to_display, preserve_scroll=False):
         return
     
     # Afficher avec chargement différé des miniatures
-    # limit = 30
+    # item_list = []
+    self.all_widgets = {}
+    self.visible_widgets = {}
+    limit = 30
     for i, filepath in enumerate(files_to_display):
         # if i >= limit:
         #     break
-        self._add_download_item_fast(filepath)
+        # self._add_download_item_fast(filepath)
+        
+        # item = self._add_song_item_empty(filepath, self.downloads_container)
+        
+        # self._load_song_item(item, self.downloads_container)
+        # if i >= limit:
+        #     item_list.append(item)
+        # self.visible_widgets[i] = item
+        
+        # self.all_widgets[i] = item
+        self.all_widgets[i] = filepath
+    
+    # for i in range(10,25):
+    #     self._unload_song_item(self.all_widgets[i], self.downloads_container)
+    #     self.visible_widgets.pop(i)
     
     # Forcer la mise à jour de la scrollbar après l'ajout des éléments
     self._update_scrollbar()
@@ -376,7 +468,7 @@ def _display_files_batch(self, files_to_display, start_index, batch_size=20):
     if end_index < len(files_to_display):
         self.safe_after(10, lambda: self._display_files_batch(files_to_display, end_index, batch_size))
 
-def _display_files_batch_optimized(self, files_to_display, start_index, total_files, batch_size=50):
+def _display_files_batch_optimized(self, files_to_display, start_index, total_files, batch_size=50): # pas utilisé
     """Version optimisée de l'affichage par batch"""
     print('BAAAAAAAAAAAAAAAAAAAAAAAAATCH')
     end_index = min(start_index + batch_size, len(files_to_display))
@@ -428,7 +520,7 @@ def _update_downloads_queue_visual(self):
         
         # Parcourir tous les frames d'éléments dans downloads_container
         if hasattr(self, 'downloads_container') and self.downloads_container.winfo_exists():
-            for widget in self.downloads_container.winfo_children():
+            for widget in self.visible_widgets.values():
                 try:
                     if widget.winfo_exists() and hasattr(widget, 'filepath'):  # C'est un frame d'élément de téléchargement
                         self.update_is_in_queue(widget)
@@ -443,6 +535,7 @@ def _update_downloads_queue_visual(self):
 
 def _refresh_downloads_library(self, preserve_scroll=False):
     """Met à jour la liste des téléchargements et le compteur"""
+    print("_refresh_downloads_library appelée")
     try:
         # Toujours mettre à jour la liste des fichiers et le compteur, peu importe l'onglet
         downloads_dir = self.downloads_folder
@@ -575,6 +668,8 @@ def _save_thumbnail_cache_metadata(self):
 def _get_cached_duration(self, filepath):
     """Récupère la durée depuis le cache ou la calcule si nécessaire"""
     try:
+        if not os.path.isabs(filepath):
+            filepath = os.path.join(self.downloads_folder, filepath)
         # Vérifier si la durée est en cache et si le fichier n'a pas été modifié
         file_mtime = os.path.getmtime(filepath)
         cache_key = os.path.abspath(filepath)
@@ -631,13 +726,13 @@ def _is_thumbnail_cache_valid(self, filepath, cache_path):
     try:
         if not os.path.exists(cache_path):
             return False
-        
+        full_filepath = os.path.join(self.downloads_folder, filepath)
         # Vérifier la date de modification du fichier source
-        source_mtime = os.path.getmtime(filepath)
+        source_mtime = os.path.getmtime(full_filepath)
         cache_mtime = os.path.getmtime(cache_path)
         
         # Vérifier aussi les fichiers d'image associés (thumbnails YouTube)
-        base_path = os.path.splitext(filepath)[0]
+        base_path = os.path.splitext(full_filepath)[0]
         for ext in ['.jpg', '.png', '.webp']:
             img_path = base_path + ext
             if os.path.exists(img_path):
@@ -656,10 +751,11 @@ def _create_cached_thumbnail(self, filepath, cache_path):
     try:
         # Chercher une image associée d'abord
         base_path = os.path.splitext(filepath)[0]
+        full_base_path = os.path.join(self.downloads_folder, base_path)
         source_image = None
         
         for ext in ['.jpg', '.png', '.webp']:
-            img_path = base_path + ext
+            img_path = full_base_path + ext
             if os.path.exists(img_path):
                 source_image = img_path
                 break
@@ -668,10 +764,62 @@ def _create_cached_thumbnail(self, filepath, cache_path):
             # Charger et redimensionner l'image
             img = Image.open(source_image)
             img.thumbnail((80, 45), Image.Resampling.LANCZOS)
-            
-            # Sauvegarder en cache
-            img.save(cache_path, "PNG")
+                
+            # if img.height < 45:
+            #     padding_needed = 45 - img.height
+            #     new_img = Image.new('RGB', (img.width, 45), color='black')
+                
+
+            #     y_position = padding_needed // 2
+                
+            #     new_img.paste(img, (0, y_position))
+            #     # Sauvegarder en cache
+            #     new_img.save(cache_path, "PNG")
+            # if img.width < 80:
+            #     padding_needed = 80 - img.width
+            #     new_img = Image.new('RGB', (img.width, 80), color='black')
+                
+
+            #     x_position = padding_needed // 2
+                
+            #     new_img.paste(img, (0, x_position))
+            #     # Sauvegarder en cache
+            #     new_img.save(cache_path, "PNG")
+            if img.height < 45 or img.width < 80:
+                original_width, original_height = img.size
+                
+                # Créer une nouvelle image noire de la taille cible
+                target_width, target_height = 80, 45
+                result = Image.new('RGB', (target_width, target_height), 'black')
+                
+                # Calculer les ratios
+                width_ratio = target_width / original_width
+                height_ratio = target_height / original_height
+                
+                # Déterminer le ratio à utiliser pour remplir l'espace
+                scale_ratio = max(width_ratio, height_ratio)
+                
+                # Redimensionner l'image pour qu'elle remplisse au moins la zone cible
+                new_width = int(original_width * scale_ratio)
+                new_height = int(original_height * scale_ratio)
+                resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                
+                # Calculer la position pour centrer l'image redimensionnée
+                x_offset = (new_width - target_width) // 2
+                y_offset = (new_height - target_height) // 2
+                
+                # Rogner l'excédent et coller dans le résultat
+                cropped_img = resized_img.crop((x_offset, y_offset, 
+                                            x_offset + target_width, 
+                                            y_offset + target_height))
+                
+                result.paste(cropped_img, (0, 0))
+                result.save(cache_path, "PNG")
+            else:     
+                # Sauvegarder en cache
+                img.save(cache_path, "PNG")
             return True
+        
         else:
             # Créer une miniature par défaut
             default_img = Image.new('RGB', (80, 45), color='#3d3d3d')
@@ -686,7 +834,6 @@ def _load_cached_thumbnail(self, filepath, label):
     """Charge une miniature depuis le cache ou la crée si nécessaire"""
     try:
         cache_path = self._get_cached_thumbnail_path(filepath)
-        
         # Vérifier si le cache est valide
         if not self._is_thumbnail_cache_valid(filepath, cache_path):
             # Créer la miniature en cache
@@ -700,6 +847,7 @@ def _load_cached_thumbnail(self, filepath, label):
         photo = ImageTk.PhotoImage(img)
         label.configure(image=photo)
         label.image = photo
+        
         
     except Exception as e:
         print(f"Erreur chargement miniature cache: {e}")
@@ -748,7 +896,7 @@ def play_all_downloads_ordered(self):
     
     # Copier la liste des fichiers téléchargés dans la playlist principale
     if len(self.main_playlist) > 0:
-        self._clear_main_playlist()
+        self.MainPlaylist._clear_main_playlist()
     self.main_playlist.clear()
     self.main_playlist.extend(self.all_downloaded_files.copy())
     
@@ -763,7 +911,7 @@ def play_all_downloads_ordered(self):
     self.play_track()
     
     # Rafraîchir l'affichage de la playlist de manière différée pour éviter le lag
-    self.root.after(50, lambda: self._refresh_main_playlist_display_async())
+    self.root.after(50, lambda: self.MainPlaylist._refresh_main_playlist_display_async())
     
     # Réactiver les boutons et mettre à jour le statut final
     self.root.after(150, lambda: self._enable_play_buttons())
@@ -782,7 +930,7 @@ def play_all_downloads_shuffle(self):
     
     # Copier la liste des fichiers téléchargés dans la playlist principale
     if len(self.main_playlist) > 0:
-        self._clear_main_playlist()
+        self.MainPlaylist._clear_main_playlist()
     self.main_playlist.clear()
     self.main_playlist.extend(self.all_downloaded_files.copy())
     
@@ -796,11 +944,11 @@ def play_all_downloads_shuffle(self):
     self.random_button.configure(fg_color="#4a8fe7")
     
     # Démarrer la lecture immédiatement
-    self._refresh_main_playlist_display_async()
+    self.MainPlaylist._refresh_main_playlist_display_async()
     self.play_track()
     
     # Rafraîchir l'affichage de la playlist de manière différée pour éviter le lag
-    # self.root.after(50, lambda: self._refresh_main_playlist_display_async())
+    # self.root.after(50, lambda: self.MainPlaylist._refresh_main_playlist_display_async())
     
     # Réactiver les boutons et mettre à jour le statut final
     self.root.after(150, lambda: self._enable_play_buttons())

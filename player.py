@@ -14,7 +14,7 @@ from yt_dlp import YoutubeDL
 def _play_from_playlist(self, filepath, playlist_name):
     """Joue une musique depuis une playlist spécifique"""
     # Ajouter à la main playlist si pas déjà présent
-    self.add_to_main_playlist(filepath, show_status=False)
+    self.MainPlaylist.add_to_main_playlist(filepath, show_status=False)
     
     # Jouer la musique
     self.current_index = self.main_playlist.index(filepath)
@@ -24,7 +24,7 @@ def _play_after_current(self, filepath):
     """Place une musique juste après celle qui joue actuellement et la lance"""
     try:
         # Ajouter à la main playlist si pas déjà présent
-        self.add_to_main_playlist(filepath, show_status=False)
+        self.MainPlaylist.add_to_main_playlist(filepath, show_status=False)
         
         # Si une musique joue actuellement
         if len(self.main_playlist) > 0 and self.current_index < len(self.main_playlist):
@@ -50,14 +50,14 @@ def _play_after_current(self, filepath):
             self.play_track()
             
             # Mettre à jour l'affichage de la playlist
-            self._refresh_main_playlist_display()
+            self.MainPlaylist._refresh_main_playlist_display()
             
             self.status_bar.config(text=f"Lecture de: {os.path.basename(filepath)}")
         else:
             # Aucune musique en cours, juste jouer cette musique
             self.current_index = self.main_playlist.index(filepath)
             self.play_track()
-            self._refresh_main_playlist_display()
+            self.MainPlaylist._refresh_main_playlist_display()
             self.status_bar.config(text=f"Lecture de: {os.path.basename(filepath)}")
 
     except Exception as e:
