@@ -667,7 +667,7 @@ class MainPlaylist:
         # Traiter l'événement seulement si pas bloqué
         if not should_block:
             if hasattr(event, 'delta') and event.delta:
-                canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+                canvas.yview_scroll(int(-1*(np.sign(event.delta))), "units")
             else:
                 if hasattr(event, 'num'):
                     if event.num == 4:

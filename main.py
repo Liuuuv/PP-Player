@@ -61,7 +61,7 @@ class MusicPlayer:
         self.FileServices = file_services.FileServices(self)
         self.Loader = loader.Loader(self)
         self.Setup = setup.Setup(self)
-        self.Playlist = library_tab.playlists.Playlists(self)
+        self.Playlists = library_tab.playlists.Playlists(self)
         self.FileTracker = file_tracker.FileTracker(self)
         self.MainPlaylist = search_tab.main_playlist.MainPlaylist(self)
         
@@ -317,6 +317,8 @@ class MusicPlayer:
         self.liked_songs = set()  # Set des chansons likées
         self.favorite_songs = set()  # Set des chansons favorites
 
+        self.all_widgets = {}
+        self.visible_widgets = {}
         self.Setup.setup()
         
         # Initialiser le gestionnaire de fichiers
@@ -940,7 +942,7 @@ class MusicPlayer:
         if tab_name == "téléchargées":
             self.show_downloads_content()
         elif tab_name == "playlists":
-            self.Playlist.show_playlists_content()
+            self.Playlists.show_playlists_content()
 
     def _check_and_update_downloads_queue(self):
         """Vérifie si la queue des musiques a changé et met à jour l'affichage si nécessaire"""
@@ -978,15 +980,6 @@ class MusicPlayer:
     def show_downloads_content(self):
         """Affiche le contenu de l'onglet téléchargées"""
         return library_tab.downloads.show_downloads_content(self)
-
-
-    def _display_playlists(self):
-        """Affiche toutes les playlists en grille 3x3"""
-        return library_tab.playlists._display_playlists(self)
-
-    def _add_playlist_card(self, parent_frame, playlist_name, songs, column):
-        """Ajoute une carte de playlist avec miniatures"""
-        return library_tab.playlists._add_playlist_card(self, parent_frame, playlist_name, songs, column)
 
     def _load_playlist_thumbnail_large(self, filepath, label):
         """Charge une miniature carrée plus grande pour une chanson dans une playlist"""
@@ -1156,14 +1149,6 @@ class MusicPlayer:
         """Ancienne méthode - gardée pour compatibilité"""
         self._show_playlist_content_window(playlist_name)
 
-    def _show_playlist_content_in_tab(self, playlist_name):
-        """Affiche le contenu d'une playlist dans l'onglet bibliothèque (même style que téléchargements)"""
-        return library_tab.playlists._show_playlist_content_in_tab(self, playlist_name)
-
-    def _back_to_playlists(self):
-        """Retourne à l'affichage des playlists"""
-        return library_tab.playlists._back_to_playlists(self)
-
     def _on_playlist_escape(self, event):
         """Gère l'appui sur Échap dans une playlist pour retourner aux playlists"""
         return library_tab.playlists._on_playlist_escape(self, event)
@@ -1190,7 +1175,7 @@ class MusicPlayer:
     def _add_playlist_song_item(self, filepath, playlist_name, song_index):
         """Ajoute un élément de musique de playlist avec le même visuel que les téléchargements"""
         # return library_tab.playlists._add_playlist_song_item(self, filepath, playlist_name, song_index)
-        return tools._add_song_item(self, filepath, self.playlist_content_container, playlist_name=playlist_name, song_index=song_index)
+        return tools._add_song_item(self, filepath, self.playlist_content_container, playlist_name=playlist_name, song_index=song_index, placement=song_index)
 
     def _remove_from_playlist_view(self, filepath, playlist_name, event=None):
         """Supprime une musique de la playlist et rafraîchit l'affichage"""

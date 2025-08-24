@@ -495,7 +495,7 @@ class Setup:
         
         # Bind mousewheel
         def _on_downloads_mousewheel(event):
-            self.music_player.downloads_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            self.music_player.downloads_canvas.yview_scroll(int(-1*(np.sign(event.delta))), "units")
         
         self.music_player.downloads_canvas.bind("<MouseWheel>", _on_downloads_mousewheel)
         
@@ -560,8 +560,8 @@ class Setup:
                         if os.path.exists(full_song_path):
                             existing_songs.append(full_song_path)  # Stocker le chemin absolu en mémoire
 
-                    if existing_songs:
-                        self.music_player.playlists[name] = existing_songs
+                    # if existing_songs:
+                    self.music_player.playlists[name] = existing_songs
             else:
                 # Si le fichier n'existe pas, créer les playlists spéciales vides
                 print("Fichier playlists.json non trouvé")

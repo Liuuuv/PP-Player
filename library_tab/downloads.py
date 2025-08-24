@@ -166,7 +166,7 @@ def on_canvas_scroll_end(self):
     #     item.bind("<Enter>", item.on_enter)
     #     item.bind("<Leave>", item.on_leave)
         
-def _calculate_visible_range(self):
+def  _calculate_visible_range(self):
     """Calcule la plage d'éléments visibles"""
     # Obtenir les coordonnées visibles du canvas
     canvas = self.downloads_canvas
@@ -177,6 +177,7 @@ def _calculate_visible_range(self):
     canvas_height = canvas.winfo_height()
     scroll_pos = canvas.canvasy(0)  # Position verticale en pixels
     
+    print(scroll_pos, canvas_height)
     # Calcul des indices
     start_index = max(0, int(scroll_pos / (DOWNLOADS_MAX_ITEM_HEIGHT + 2 *CARD_FRAME_PADY)) - DOWNLOADS_TOP_ITEM_BUFFERING)  # -2 pour le buffering
     end_index = min(len(self.all_widgets), int((scroll_pos + canvas_height) / (DOWNLOADS_MAX_ITEM_HEIGHT  + 2 *CARD_FRAME_PADY)) + DOWNLOADS_BOTTOM_ITEM_BUFFERING) # +3
@@ -197,14 +198,14 @@ def _update_visible_items(self):
     # Créer les widgets qui deviennent visibles
     for idx in range(start_index, end_index):
         # print('nyan ', idx, self.visible_widgets)
-        if idx not in self.visible_widgets:
+        if idx not in self.visible_widgets.keys():
             # threading.Thread(target=lambda :self._load_song_item(self.all_widgets[idx], self.downloads_container), daemon=True).start()
             # self.visible_widgets[idx] = self.all_widgets[idx]
             
             item = self._add_song_item(self.all_widgets[idx], self.downloads_container, placement=idx)
             # item = self._add_song_item(self.all_widgets[idx], self.downloads_container, placement=50)
             self.visible_widgets[idx] = item
-    
+        
     
 
 
@@ -245,17 +246,19 @@ def load_downloaded_files(self):
     self.num_downloaded_files = len(self.all_downloaded_files)
     
     # Afficher tous les fichiers (sans filtre)
-    self._display_filtered_downloads(self.all_downloaded_files)
+    # self._display_filtered_downloads(self.all_downloaded_files)
+    self.root.after(0, lambda: self._display_filtered_downloads(self.all_downloaded_files))
+    
     
     # Mettre à jour le texte du bouton
     self._update_downloads_button()
     
     # Forcer une mise à jour supplémentaire de la scrollbar après un délai
     # pour s'assurer qu'elle est correctement initialisée
-    if hasattr(self, 'safe_after'):
-        self.safe_after(100, self._update_scrollbar)
-    else:
-        self.root.after(100, self._update_scrollbar)
+    # if hasattr(self, 'safe_after'):
+    #     self.safe_after(100, self._update_scrollbar)
+    # else:
+    #     self.root.after(100, self._update_scrollbar)
 
 def _display_filtered_downloads(self, files_to_display, preserve_scroll=False):
     """Affiche une liste filtrée de fichiers téléchargés"""
@@ -325,6 +328,9 @@ def _display_filtered_downloads(self, files_to_display, preserve_scroll=False):
     
     # Forcer la mise à jour de la scrollbar après l'ajout des éléments
     self._update_scrollbar()
+    
+    from library_tab.downloads import _update_visible_items
+    self.root.after(0, lambda a=self: _update_visible_items(self))
     
     # Lancer le chargement différé des miniatures et durées
     self._start_thumbnail_loading(files_to_display, self.downloads_container)
@@ -961,18 +967,20 @@ def _get_adaptive_search_delay(self, query):
     if not query:
         return 0  # Pas de délai pour une recherche vide (affichage immédiat)
     
-    query_length = len(query.strip())
     
-    # Debounce différentiel selon la longueur
-    if query_length <= 2:
-        return 150  # Court pour éviter les recherches sur 1-2 lettres
-    elif query_length <= 4:
-        return 200  # Moyen pour les mots courts
-    elif query_length <= 8:
-        return 250  # Normal pour les mots moyens
-    else:
-        # return 300  # Plus long pour les recherches complexes
-        return 1000  # Plus long pour les recherches complexes
+    return 150
+    # query_length = len(query.strip())
+    
+    # # Debounce différentiel selon la longueur
+    # if query_length <= 2:
+    #     return 150  # Court pour éviter les recherches sur 1-2 lettres
+    # elif query_length <= 4:
+    #     return 200  # Moyen pour les mots courts
+    # elif query_length <= 8:
+    #     return 250  # Normal pour les mots moyens
+    # else:
+    #     # return 300  # Plus long pour les recherches complexes
+    #     return 1000  # Plus long pour les recherches complexes
     
 def _on_library_search_change(self, event):
     """Appelée à chaque changement dans la barre de recherche (avec debounce différentiel)"""

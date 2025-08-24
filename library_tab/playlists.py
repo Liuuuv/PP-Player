@@ -42,7 +42,7 @@ class Playlists:
         reload_btn = tk.Button(
             management_frame,
             image=self.music_player.icons["reload"],
-            command=lambda: self.music_player._reload_playlists(),
+            command=lambda: self._reload_playlists(),
             bg='#4d4d4d',
             fg="white",
             activebackground="#5a9fd8",
@@ -87,7 +87,7 @@ class Playlists:
         self.music_player._bind_mousewheel(self.music_player.playlists_container, self.music_player.playlists_canvas)
         
         # Charger et afficher les playlists
-        self.music_player._display_playlists()
+        self._display_playlists()
     
     def _reload_playlists(self):
         """Recharge les playlists depuis le fichier JSON"""
@@ -101,7 +101,7 @@ class Playlists:
             self.music_player.playlists.update(playlists_to_keep)
             
             # Recharger les playlists depuis le fichier
-            self.music_player.load_playlists()
+            self.music_player.Setup.load_playlists()
             
             # Vider le contenu actuel
             try:
@@ -141,7 +141,7 @@ class Playlists:
         # Supprimer le binding Échap spécifique aux playlists
         self.music_player.root.unbind('<Escape>')
         # Remettre le binding Échap général
-        self.music_player.setup_keyboard_bindings()
+        self.music_player.Setup.setup_keyboard_bindings()
         
         # Nettoyer complètement le contenu actuel
         for widget in self.music_player.library_content_frame.winfo_children():
@@ -149,201 +149,283 @@ class Playlists:
         
         # Réafficher le contenu des playlists
         self.show_playlists_content()
-
-def _display_playlists(self):
-    """Affiche toutes les playlists en grille 4x4"""
-    # Vider le container actuel
-    for widget in self.playlists_container.winfo_children():
-        widget.destroy()
     
-    # Organiser les playlists en lignes de 4 (exclure la main playlist)
-    # Mettre "Liked" et "Favorites" en premier
-    special_playlists = []
-    other_playlists = []
-    
-    for name, songs in self.playlists.items():
-        if name == "Main Playlist":
-            continue
-        elif name in ["Liked", "Favorites"]:
-            special_playlists.append((name, songs))
-        else:
-            other_playlists.append((name, songs))
-    
-    # Trier les playlists spéciales pour avoir "Liked" puis "Favorites"
-    special_playlists.sort(key=lambda x: 0 if x[0] == "Liked" else 1 if x[0] == "Favorites" else 2)
-    
-    # Combiner les listes
-    playlist_items = special_playlists + other_playlists
-
-    for row in range(0, len(playlist_items), 4):
-        # Créer un frame pour cette ligne
-        row_frame = tk.Frame(self.playlists_container, bg='#3d3d3d')
-        row_frame.pack(fill=tk.X, pady=10, padx=10)
+    def _show_playlist_content_in_tab(self, playlist_name):
+        """Affiche le contenu d'une playlist dans l'onglet bibliothèque (même style que téléchargements)"""
+        # Vider le contenu actuel
+        for widget in self.music_player.library_content_frame.winfo_children():
+            widget.destroy()
         
-        # Configurer les colonnes pour qu'elles soient égales (4 colonnes maintenant)
-        for col in range(4):
-            row_frame.columnconfigure(col, weight=1, uniform="playlist_col")
+        # Stocker le nom de la playlist en cours de visualisation
+        self.music_player.current_viewing_playlist = playlist_name
         
-        # Ajouter jusqu'à 4 playlists dans cette ligne
-        for col in range(4):
-            playlist_index = row + col
-            if playlist_index < len(playlist_items):
-                playlist_name, songs = playlist_items[playlist_index]
-                self._add_playlist_card(row_frame, playlist_name, songs, col)
-
-
-def _add_playlist_card(self, parent_frame, playlist_name, songs, column):
-    """Ajoute une carte de playlist avec miniatures"""
-    try:
-        # Frame principal pour la carte de playlist
-        card_frame = tk.Frame(
-            parent_frame,
-            bg=COLOR_BACKGROUND,
-            relief='flat',
-            bd=1,
-            highlightbackground=COLOR_BACKGROUND_HIGHLIGHT,
-            highlightthickness=1
+        # Frame pour le bouton retour et titre
+        header_frame = ttk.Frame(self.music_player.library_content_frame)
+        header_frame.pack(fill=tk.X, padx=10, pady=(0, 20))
+        
+        # Bouton retour avec icône
+        back_btn = tk.Button(
+            header_frame,
+            image=self.music_player.icons["back"],
+            command=self._back_to_playlists,
+            bg="#4a8fe7",
+            fg="white",
+            activebackground="#5a9fd8",
+            relief="flat",
+            bd=0,
+            padx=8,
+            pady=8,
+            takefocus=0
         )
-        card_frame.grid(row=0, column=column, sticky='nsew', padx=CARD_FRAME_PADX, pady=CARD_FRAME_PADY)
+        back_btn.pack(side=tk.LEFT)
         
-        
-        # Configuration de la grille de la carte
-        card_frame.columnconfigure(0, weight=1)
-        card_frame.rowconfigure(0, weight=1)  # Zone des miniatures
-        card_frame.rowconfigure(1, weight=0)  # Titre
-        card_frame.rowconfigure(2, weight=0)  # Nombre de chansons
-        card_frame.rowconfigure(3, weight=0)  # Boutons
-        
-        # 1. Zone des miniatures (2x2 grid) - taille fixe pour uniformité (4 par ligne)
-        thumbnails_frame = tk.Frame(card_frame, bg='#4a4a4a', width=125, height=125)
-        thumbnails_frame.grid(row=0, column=0, sticky='nsew', padx=5, pady=(5, 0))
-        thumbnails_frame.grid_propagate(False)  # Maintenir la taille fixe
-        
-        # Configurer la grille 2x2 pour les miniatures
-        for i in range(2):
-            thumbnails_frame.columnconfigure(i, weight=1)
-            thumbnails_frame.rowconfigure(i, weight=1)
-               
-        # Ajouter les 4 premières miniatures (ou moins si pas assez de chansons)
-        for i in range(4):
-            row = i // 2
-            col = i % 2
-            
-            thumbnail_label = tk.Label(
-                thumbnails_frame,
-                bg='#3d3d3d',
-                relief='flat'
-            )
-            thumbnail_label.grid(row=row, column=col, sticky='nsew', padx=2, pady=2)
-            thumbnail_label.grid_propagate(False)  # Maintenir la taille fixe
-            
-            # Ajouter l'événement de clic simple sur chaque miniature
-            thumbnail_label.bind("<Button-1>", lambda e: on_playlist_click())
-            
-            # Charger la miniature si la chanson existe
-            if i < len(songs):
-                self._load_playlist_thumbnail_large(songs[i], thumbnail_label)
-            else:
-                # Miniature vide
-                thumbnail_label.config(text="♪", fg='#666666', font=('TkDefaultFont', 20))
-        
-        # 2. Titre de la playlist
+        # Titre de la playlist avec nombre de chansons
+        songs_count = len(self.music_player.playlists.get(playlist_name, []))
         title_label = tk.Label(
-            card_frame,
-            text=self._truncate_text_for_display(playlist_name, max_width_pixels=PLAYLIST_CARD_NAME_MAX_WIDTH, max_lines=1, font_family=PLAYLIST_CARD_NAME_FONT[0], font_size=PLAYLIST_CARD_NAME_FONT[1]),
-            bg='#4a4a4a',
+            header_frame,
+            text=f"{playlist_name} ({songs_count} titres)",
+            bg='#2d2d2d',
             fg='white',
-            font=PLAYLIST_CARD_NAME_FONT,
-            anchor='center'
+            font=('TkDefaultFont', 14, 'bold')
         )
-        title_label.grid(row=1, column=0, sticky='ew', padx=10, pady=(0, 1))
-        title_label.animation_id = None  # ID de l'animation pour le titre
-        title_label.scroll_position = 0  # Position de défilement actuelle
-        title_label.pause_counter = PLAYLIST_CARD_NAME_ANIMATION_STARTUP  # Compteur pour la pause entre les cycles
-        title_label.max_width = PLAYLIST_CARD_NAME_MAX_WIDTH  # Largeur maximale du titre
-        title_label.animation_active = False  # Animation en cours
-        title_label.full_text = playlist_name  # Texte complet du titre
-        title_label.pause_cycles = PLAYLIST_CARD_NAME_ANIMATION_PAUSE
+        title_label.pack(side=tk.LEFT, padx=(20, 0))
         
-        # 3. Nombre de chansons
-        count_label = tk.Label(
-            card_frame,
-            text=f"{len(songs)} titres",
-            bg='#4a4a4a',
-            fg='#cccccc',
-            font=PLAYLIST_CARD_NB_TITLES_FONT,
-            anchor='center'
-        )
-        count_label.grid(row=2, column=0, sticky='ew', padx=10, pady=(0, 3))
+        # Binding pour la touche Échap pour retourner aux playlists
+        self.music_player.root.bind('<Escape>', self.music_player._on_playlist_escape)
+        self.music_player.root.focus_set()  # S'assurer que la fenêtre a le focus pour recevoir les événements clavier
         
-        # 4. Boutons
-        buttons_frame = tk.Frame(card_frame, bg='#4a4a4a')
-        buttons_frame.grid(row=3, column=0, sticky='ew', padx=5, pady=(0, 5))
-        
-        # Bouton renommer - icône complète
-        rename_btn = tk.Button(
-            buttons_frame,
-            image=self.icons["rename_small"],
-            command=lambda name=playlist_name: self._rename_playlist_dialog(name),
-            bg=COLOR_BACKGROUND,
-            fg="white",
-            activebackground=COLOR_BACKGROUND,
-            relief="flat",
-            bd=0,
-            width=16,
-            height=16,
+        # Canvas avec scrollbar pour les musiques (même style que téléchargements)
+        self.music_player.playlist_content_canvas = tk.Canvas(
+            self.music_player.library_content_frame,
+            bg='#3d3d3d',
+            highlightthickness=0,
             takefocus=0
         )
-        rename_btn.pack(side=tk.LEFT, padx=2)
-        
-        # Bouton supprimer - icône complète
-        delete_btn = tk.Button(
-            buttons_frame,
-            image=self.icons["delete_small"],
-            bg=COLOR_BACKGROUND,
-            fg="white",
-            activebackground=COLOR_BACKGROUND,
-            relief="flat",
-            bd=0,
-            width=16,
-            height=16,
-            takefocus=0
+        self.music_player.playlist_content_scrollbar = ttk.Scrollbar(
+            self.music_player.library_content_frame,
+            orient="vertical",
+            command=self.music_player.playlist_content_canvas.yview
         )
-        delete_btn.pack(side=tk.RIGHT, padx=2)
+        self.music_player.playlist_content_canvas.configure(yscrollcommand=self.music_player.playlist_content_scrollbar.set)
         
-        # Fonction pour gérer l'effet de survol (hover)
-        def on_enter(event):
-            """Rend l'item plus clair au survol"""
-            # Calculer une couleur plus claire
-            hover_color = self._lighten_color(COLOR_BACKGROUND, HOVER_LIGHT_PERCENTAGE)
-            self._set_item_colors(card_frame, hover_color, exclude_queue_indicator=False)
+        self.music_player.playlist_content_scrollbar.pack(side="right", fill="y")
+        self.music_player.playlist_content_canvas.pack(side="left", fill="both", expand=True)
+        
+        self.music_player.playlist_content_container = tk.Frame(self.music_player.playlist_content_canvas, bg=COLOR_WINDOW_BACKGROUND)
+        height = (DOWNLOADS_MAX_ITEM_HEIGHT + 2 * DISPLAY_PLAYLIST_PADY) * len(self.music_player.playlists[playlist_name])
+        self.music_player.playlist_content_container.config(height=height, width=610)
+        self.music_player.playlist_content_canvas.create_window((0, 0), window=self.music_player.playlist_content_container, anchor="nw")
+        
+        self.music_player.playlist_content_container.bind(
+            "<Configure>",
+            lambda e: self.music_player.playlist_content_canvas.configure(
+                scrollregion=self.music_player.playlist_content_canvas.bbox("all")
+            )
+        )
+        
+        self.music_player._bind_mousewheel(self.music_player.playlist_content_canvas, self.music_player.playlist_content_canvas)
+        self.music_player._bind_mousewheel(self.music_player.playlist_content_container, self.music_player.playlist_content_canvas)
+        
+        # Afficher les musiques de la playlist
+        self.music_player._display_playlist_songs(playlist_name)
+    
+    
+    def _add_playlist_card(self, parent_frame, playlist_name, songs, column):
+        """Ajoute une carte de playlist avec miniatures"""
+        try:
+            # Frame principal pour la carte de playlist
+            card_frame = tk.Frame(
+                parent_frame,
+                bg=COLOR_BACKGROUND,
+                relief='flat',
+                bd=1,
+                highlightbackground=COLOR_BACKGROUND_HIGHLIGHT,
+                highlightthickness=1
+            )
+            card_frame.grid(row=0, column=column, sticky='nsew', padx=CARD_FRAME_PADX, pady=CARD_FRAME_PADY)
             
-            self._start_text_animation(title_label.full_text, title_label)
+            
+            # Configuration de la grille de la carte
+            card_frame.columnconfigure(0, weight=1)
+            card_frame.rowconfigure(0, weight=1)  # Zone des miniatures
+            card_frame.rowconfigure(1, weight=0)  # Titre
+            card_frame.rowconfigure(2, weight=0)  # Nombre de chansons
+            card_frame.rowconfigure(3, weight=0)  # Boutons
+            
+            # 1. Zone des miniatures (2x2 grid) - taille fixe pour uniformité (4 par ligne)
+            thumbnails_frame = tk.Frame(card_frame, bg='#4a4a4a', width=125, height=125)
+            thumbnails_frame.grid(row=0, column=0, sticky='nsew', padx=5, pady=(5, 0))
+            thumbnails_frame.grid_propagate(False)  # Maintenir la taille fixe
+            
+            # Configurer la grille 2x2 pour les miniatures
+            for i in range(2):
+                thumbnails_frame.columnconfigure(i, weight=1)
+                thumbnails_frame.rowconfigure(i, weight=1)
+                
+            # Ajouter les 4 premières miniatures (ou moins si pas assez de chansons)
+            for i in range(4):
+                row = i // 2
+                col = i % 2
+                
+                thumbnail_label = tk.Label(
+                    thumbnails_frame,
+                    bg='#3d3d3d',
+                    relief='flat'
+                )
+                thumbnail_label.grid(row=row, column=col, sticky='nsew', padx=2, pady=2)
+                thumbnail_label.grid_propagate(False)  # Maintenir la taille fixe
+                
+                # Ajouter l'événement de clic simple sur chaque miniature
+                thumbnail_label.bind("<Button-1>", lambda e: on_playlist_click())
+                
+                # Charger la miniature si la chanson existe
+                if i < len(songs):
+                    self.music_player._load_playlist_thumbnail_large(songs[i], thumbnail_label)
+                else:
+                    # Miniature vide
+                    thumbnail_label.config(text="♪", fg='#666666', font=('TkDefaultFont', 20))
+            
+            # 2. Titre de la playlist
+            title_label = tk.Label(
+                card_frame,
+                text=self.music_player._truncate_text_for_display(playlist_name, max_width_pixels=PLAYLIST_CARD_NAME_MAX_WIDTH, max_lines=1, font_family=PLAYLIST_CARD_NAME_FONT[0], font_size=PLAYLIST_CARD_NAME_FONT[1]),
+                bg='#4a4a4a',
+                fg='white',
+                font=PLAYLIST_CARD_NAME_FONT,
+                anchor='center'
+            )
+            title_label.grid(row=1, column=0, sticky='ew', padx=10, pady=(0, 1))
+            title_label.animation_id = None  # ID de l'animation pour le titre
+            title_label.scroll_position = 0  # Position de défilement actuelle
+            title_label.pause_counter = PLAYLIST_CARD_NAME_ANIMATION_STARTUP  # Compteur pour la pause entre les cycles
+            title_label.max_width = PLAYLIST_CARD_NAME_MAX_WIDTH  # Largeur maximale du titre
+            title_label.animation_active = False  # Animation en cours
+            title_label.full_text = playlist_name  # Texte complet du titre
+            title_label.pause_cycles = PLAYLIST_CARD_NAME_ANIMATION_PAUSE
+            
+            # 3. Nombre de chansons
+            count_label = tk.Label(
+                card_frame,
+                text=f"{len(songs)} titres",
+                bg='#4a4a4a',
+                fg='#cccccc',
+                font=PLAYLIST_CARD_NB_TITLES_FONT,
+                anchor='center'
+            )
+            count_label.grid(row=2, column=0, sticky='ew', padx=10, pady=(0, 3))
+            
+            # 4. Boutons
+            buttons_frame = tk.Frame(card_frame, bg='#4a4a4a')
+            buttons_frame.grid(row=3, column=0, sticky='ew', padx=5, pady=(0, 5))
+            
+            # Bouton renommer - icône complète
+            rename_btn = tk.Button(
+                buttons_frame,
+                image=self.music_player.icons["rename_small"],
+                command=lambda name=playlist_name: self.music_player._rename_playlist_dialog(name),
+                bg=COLOR_BACKGROUND,
+                fg="white",
+                activebackground=COLOR_BACKGROUND,
+                relief="flat",
+                bd=0,
+                width=16,
+                height=16,
+                takefocus=0
+            )
+            rename_btn.pack(side=tk.LEFT, padx=2)
+            
+            # Bouton supprimer - icône complète
+            delete_btn = tk.Button(
+                buttons_frame,
+                image=self.music_player.icons["delete_small"],
+                bg=COLOR_BACKGROUND,
+                fg="white",
+                activebackground=COLOR_BACKGROUND,
+                relief="flat",
+                bd=0,
+                width=16,
+                height=16,
+                takefocus=0
+            )
+            delete_btn.pack(side=tk.RIGHT, padx=2)
+            
+            # Fonction pour gérer l'effet de survol (hover)
+            def on_enter(event):
+                """Rend l'item plus clair au survol"""
+                # Calculer une couleur plus claire
+                hover_color = self.music_player._lighten_color(COLOR_BACKGROUND, HOVER_LIGHT_PERCENTAGE)
+                self.music_player._set_item_colors(card_frame, hover_color, exclude_queue_indicator=False)
+                
+                self.music_player._start_text_animation(title_label.full_text, title_label)
 
-        def on_leave(event):
-            """Restaure la couleur originale quand la souris quitte l'item"""
-            self._set_item_colors(card_frame, COLOR_BACKGROUND, exclude_queue_indicator=False)
-            self._reset_text_animation(title_label)
-        
-        # Fonction pour ouvrir la playlist (simple clic)
-        def on_playlist_click():
-            self._show_playlist_content_in_tab(playlist_name)
-        
-        # Double-clic pour supprimer
-        delete_btn.bind("<Double-1>", lambda e, name=playlist_name: self._delete_playlist_dialog(name))
-        
-        # Bindings pour tous les éléments cliquables (sauf l'artiste qui a son propre binding)
-        widgets_to_bind = [buttons_frame, count_label, title_label, thumbnail_label, thumbnails_frame, card_frame]
+            def on_leave(event):
+                """Restaure la couleur originale quand la souris quitte l'item"""
+                self.music_player._set_item_colors(card_frame, COLOR_BACKGROUND, exclude_queue_indicator=False)
+                self.music_player._reset_text_animation(title_label)
+            
+            # Fonction pour ouvrir la playlist (simple clic)
+            def on_playlist_click():
+                self._show_playlist_content_in_tab(playlist_name)
+            
+            # Double-clic pour supprimer
+            delete_btn.bind("<Double-1>", lambda e, name=playlist_name: self.music_player._delete_playlist_dialog(name))
+            
+            # Bindings pour tous les éléments cliquables (sauf l'artiste qui a son propre binding)
+            widgets_to_bind = [buttons_frame, count_label, title_label, thumbnail_label, thumbnails_frame, card_frame]
 
-        for widget in widgets_to_bind:
-            title_label.bind("<Button-1>", lambda e: on_playlist_click())
-            # Ajouter les événements de survol
-            widget.bind("<Enter>", on_enter)
-            widget.bind("<Leave>", on_leave)
+            for widget in widgets_to_bind:
+                title_label.bind("<Button-1>", lambda e: on_playlist_click())
+                # Ajouter les événements de survol
+                widget.bind("<Enter>", on_enter)
+                widget.bind("<Leave>", on_leave)
+            
+            
+        except Exception as e:
+            print(f"Erreur affichage playlist card: {e}")
+
+    def _display_playlists(self):
+        """Affiche toutes les playlists en grille 4x4"""
+        # Vider le container actuel
+        for widget in self.music_player.playlists_container.winfo_children():
+            widget.destroy()
         
+        # Organiser les playlists en lignes de 4 (exclure la main playlist)
+        # Mettre "Liked" et "Favorites" en premier
+        special_playlists = []
+        other_playlists = []
         
-    except Exception as e:
-        print(f"Erreur affichage playlist card: {e}")
+        for name, songs in self.music_player.playlists.items():
+            if name == "Main Playlist":
+                continue
+            elif name in ["Liked", "Favorites"]:
+                special_playlists.append((name, songs))
+            else:
+                other_playlists.append((name, songs))
+        
+        # Trier les playlists spéciales pour avoir "Liked" puis "Favorites"
+        special_playlists.sort(key=lambda x: 0 if x[0] == "Liked" else 1 if x[0] == "Favorites" else 2)
+        
+        # Combiner les listes
+        playlist_items = special_playlists + other_playlists
+
+        for row in range(0, len(playlist_items), 4):
+            # Créer un frame pour cette ligne
+            row_frame = tk.Frame(self.music_player.playlists_container, bg='#3d3d3d')
+            row_frame.pack(fill=tk.X, pady=10, padx=10)
+            
+            # Configurer les colonnes pour qu'elles soient égales (4 colonnes maintenant)
+            for col in range(4):
+                row_frame.columnconfigure(col, weight=1, uniform="playlist_col")
+            
+            # Ajouter jusqu'à 4 playlists dans cette ligne
+            for col in range(4):
+                playlist_index = row + col
+                if playlist_index < len(playlist_items):
+                    playlist_name, songs = playlist_items[playlist_index]
+                    self._add_playlist_card(row_frame, playlist_name, songs, col)
+
+
+
 
 def _load_playlist_thumbnail_large(self, filepath, label):
     """Charge une miniature carrée plus grande pour une chanson dans une playlist"""
@@ -449,8 +531,8 @@ def save_playlists(self):
                         # Si le fichier est externe, stocker le chemin absolu
                         relative_songs.append(song_path_normalized)
                 
-                if relative_songs:  # Seulement ajouter si il y a des chansons
-                    playlists_to_save[name] = relative_songs
+                # if relative_songs:  # Seulement ajouter si il y a des chansons
+                playlists_to_save[name] = relative_songs
         
         with open(playlists_file, 'w', encoding='utf-8') as f:
             json.dump(playlists_to_save, f, ensure_ascii=False, indent=2)
@@ -1000,82 +1082,7 @@ def _remove_from_playlist(self, filepath, playlist_name, item_frame, event=None)
             # Sauvegarder les playlists
             self.save_playlists()
 
-def _show_playlist_content_in_tab(self, playlist_name):
-    """Affiche le contenu d'une playlist dans l'onglet bibliothèque (même style que téléchargements)"""
-    # Vider le contenu actuel
-    for widget in self.library_content_frame.winfo_children():
-        widget.destroy()
-    
-    # Stocker le nom de la playlist en cours de visualisation
-    self.current_viewing_playlist = playlist_name
-    
-    # Frame pour le bouton retour et titre
-    header_frame = ttk.Frame(self.library_content_frame)
-    header_frame.pack(fill=tk.X, padx=10, pady=(0, 20))
-    
-    # Bouton retour avec icône
-    back_btn = tk.Button(
-        header_frame,
-        image=self.icons["back"],
-        command=self._back_to_playlists,
-        bg="#4a8fe7",
-        fg="white",
-        activebackground="#5a9fd8",
-        relief="flat",
-        bd=0,
-        padx=8,
-        pady=8,
-        takefocus=0
-    )
-    back_btn.pack(side=tk.LEFT)
-    
-    # Titre de la playlist avec nombre de chansons
-    songs_count = len(self.playlists.get(playlist_name, []))
-    title_label = tk.Label(
-        header_frame,
-        text=f"{playlist_name} ({songs_count} titres)",
-        bg='#2d2d2d',
-        fg='white',
-        font=('TkDefaultFont', 14, 'bold')
-    )
-    title_label.pack(side=tk.LEFT, padx=(20, 0))
-    
-    # Binding pour la touche Échap pour retourner aux playlists
-    self.root.bind('<Escape>', self._on_playlist_escape)
-    self.root.focus_set()  # S'assurer que la fenêtre a le focus pour recevoir les événements clavier
-    
-    # Canvas avec scrollbar pour les musiques (même style que téléchargements)
-    self.playlist_content_canvas = tk.Canvas(
-        self.library_content_frame,
-        bg='#3d3d3d',
-        highlightthickness=0,
-        takefocus=0
-    )
-    self.playlist_content_scrollbar = ttk.Scrollbar(
-        self.library_content_frame,
-        orient="vertical",
-        command=self.playlist_content_canvas.yview
-    )
-    self.playlist_content_canvas.configure(yscrollcommand=self.playlist_content_scrollbar.set)
-    
-    self.playlist_content_scrollbar.pack(side="right", fill="y")
-    self.playlist_content_canvas.pack(side="left", fill="both", expand=True)
-    
-    self.playlist_content_container = ttk.Frame(self.playlist_content_canvas)
-    self.playlist_content_canvas.create_window((0, 0), window=self.playlist_content_container, anchor="nw")
-    
-    self.playlist_content_container.bind(
-        "<Configure>",
-        lambda e: self.playlist_content_canvas.configure(
-            scrollregion=self.playlist_content_canvas.bbox("all")
-        )
-    )
-    
-    self._bind_mousewheel(self.playlist_content_canvas, self.playlist_content_canvas)
-    self._bind_mousewheel(self.playlist_content_container, self.playlist_content_canvas)
-    
-    # Afficher les musiques de la playlist
-    self._display_playlist_songs(playlist_name)
+
 
 def _on_playlist_escape(self, event):
     """Gère l'appui sur Échap dans une playlist pour retourner aux playlists"""

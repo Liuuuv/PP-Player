@@ -127,21 +127,30 @@ class DragDropHandler:
     
     def _update_drag_visual(self, frame, dx, dy):
         """Met à jour l'effet visuel pendant le drag"""
-        # Changer la couleur selon la distance et la direction
+        # Déterminer la nouvelle couleur selon la distance et la direction
         is_in_queue = frame.is_in_queue if hasattr(frame, 'is_in_queue') else False
+        new_color = None
+        
         if 100 > dx > 50:
-            self._set_frame_colors(frame, COLORDRAG_RIGHT_HALF, is_in_queue)  # Vert clair pour indiquer l'activation partielle
+            new_color = COLORDRAG_RIGHT_HALF  # Vert clair pour indiquer l'activation partielle
         elif dx >= 100:  # Drag vers la droite - ajouter à la playlist
-            self._set_frame_colors(frame, COLORDRAG_RIGHT, is_in_queue)  # Vert pour indiquer l'activation
+            new_color = COLORDRAG_RIGHT  # Vert pour indiquer l'activation
         elif -100 < dx < -50:
-            self._set_frame_colors(frame, COLORDRAG_LEFT_HALF, is_in_queue)  # Orange clair pour indiquer l'activation partielle
+            new_color = COLORDRAG_LEFT_HALF  # Orange clair pour indiquer l'activation partielle
         elif dx <= -100:  # Drag vers la gauche - placer en premier dans la queue
-            self._set_frame_colors(frame, COLORDRAG_LEFT, is_in_queue)  # Jaune-orange pour indiquer "premier dans la queue"
-        # else:
-        #     self._set_frame_colors(frame, COLOR_BACKGROUND)  # Gris pour le drag
+            new_color = COLORDRAG_LEFT  # Jaune-orange pour indiquer "premier dans la queue"
+        
+        # Ne mettre à jour que si la couleur a changé (évite les mises à jour inutiles)
+        if new_color and (not hasattr(frame, '_last_drag_color') or frame._last_drag_color != new_color):
+            self._set_frame_colors(frame, new_color, is_in_queue)
+            frame._last_drag_color = new_color
     
     def _end_visual_drag(self, frame):
         """Termine l'effet visuel de drag"""
+        # Nettoyer la variable de couleur temporaire
+        if hasattr(frame, '_last_drag_color'):
+            delattr(frame, '_last_drag_color')
+        
         # Déterminer la couleur appropriée
         target_color = frame.original_bg
         

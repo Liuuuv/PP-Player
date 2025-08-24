@@ -1281,7 +1281,7 @@ def download_and_create_playlist_from_selection(self):
         
         # Rafraîchir l'affichage des playlists si on est dans l'onglet playlists
         if hasattr(self, 'current_library_tab') and self.current_library_tab == "playlists":
-            self._display_playlists()
+            self.Playlists._display_playlists()
 
 
 
@@ -1661,13 +1661,16 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
             relief='flat',
             bd=1,
             highlightbackground=COLOR_BACKGROUND_HIGHLIGHT,
-            highlightthickness=1,
+            highlightthickness=1,            
         )
         item_frame.selected = is_current_song
         
         if container == self.downloads_container:
             item_frame.config(height=DOWNLOADS_MAX_ITEM_HEIGHT)
-            item_frame.propagate(False)
+            item_frame.pack_propagate(False)
+        elif container == self.playlist_content_container:
+            item_frame.config(height=DOWNLOADS_MAX_ITEM_HEIGHT)
+            item_frame.pack_propagate(False)
         
         
 
@@ -1687,7 +1690,10 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
 
         
         if placement is not None:
-            item_frame.place(y=placement * (DOWNLOADS_MAX_ITEM_HEIGHT + 2*CARD_FRAME_PADY), x=0)
+            if hasattr(self, 'downloads_container') and container == self.downloads_container:
+                item_frame.place(y=placement * (DOWNLOADS_MAX_ITEM_HEIGHT + 2*CARD_FRAME_PADY), x=0)
+            elif hasattr(self, 'playlist_content_container') and container == self.playlist_content_container:
+                item_frame.place(y=placement * (DOWNLOADS_MAX_ITEM_HEIGHT + 2*DISPLAY_PLAYLIST_PADY), x=0)
         else:
             item_frame.pack(fill="x", padx=padx, pady=pady)
 
@@ -1713,9 +1719,9 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
         
         # Configuration de la grille en 6 colonnes : trait queue, numéro, miniature, texte, durée, bouton
         item_frame.columnconfigure(0, minsize=4, weight=0)   # Trait queue (si applicable)
-        item_frame.columnconfigure(1, minsize=0, weight=0)  # Numéro
+        item_frame.columnconfigure(1, minsize=10, weight=0)  # Numéro
         item_frame.columnconfigure(2, minsize=80, weight=0)  # Miniature
-        item_frame.columnconfigure(3, weight=1)              # Texte
+        item_frame.columnconfigure(3, minsize=346, weight=1) # Texte
         item_frame.columnconfigure(4, minsize=60, weight=0)  # Durée
         item_frame.columnconfigure(5, minsize=80, weight=0)  # Bouton
         item_frame.rowconfigure(0, minsize=50, weight=0)     # Hauteur fixe
@@ -1751,10 +1757,11 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
         thumbnail_label = tk.Label(
             item_frame,
             bg=bg_color,
-            width=10,
-            height=3,
+            width=2,
+            height=2,
             anchor='center',
-            text="⏵"  # Icône temporaire
+            text="⏵",  # Icône temporaire
+            font=('TkDefaultFont', 13, 'bold')
         )
         thumbnail_label.grid(row=0, column=2, sticky='nsew', padx=(5, 4), pady=2)
         thumbnail_label.grid_propagate(False)
@@ -1773,7 +1780,11 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
         
         # Titre principal
         # truncated_title = self._truncate_text_for_display(filename, max_width_pixels=DOWNLOADS_TITLE_MAX_WIDTH, font_family='TkDefaultFont', font_size=9)
-        truncated_title = filename
+        # truncated_title = filename
+        metadatas = self.get_youtube_metadata(item_frame.filepath)
+        if metadatas is None:
+            self.save_youtube_url_metadata(item_frame.filepath)
+        truncated_title = self.get_youtube_metadata(item_frame.filepath).get('downloads_truncated_title')
         title_label = tk.Label(
             text_frame,
             text=truncated_title,
@@ -2071,6 +2082,12 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
                 if not item_frame.winfo_exists():
                     return
                 
+                # Ne pas vérifier le hover si un drag est en cours
+                if hasattr(item_frame, 'is_dragging') and item_frame.is_dragging:
+                    # Programmer la prochaine vérification
+                    item_frame.hover_check_id = item_frame.after(10, check_mouse_in_item)
+                    return
+                
                 # Obtenir la position de la souris par rapport à l'écran
                 mouse_x = item_frame.winfo_pointerx()
                 mouse_y = item_frame.winfo_pointery()
@@ -2105,6 +2122,11 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
         
         def on_motion(event):
             """Déclenché quand la souris bouge dans l'item ou ses enfants"""
+             # Ne pas déclencher on_enter si un drag est en cours
+            if hasattr(item_frame, 'is_dragging') and item_frame.is_dragging:
+                return
+            
+            
             if not item_frame.is_hovered:
                 item_frame.is_hovered = True
                 on_enter(event)
@@ -2176,12 +2198,12 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
         # Configuration du drag-and-drop
         self.drag_drop_handler.setup_drag_drop(item_frame, file_path=filepath, item_type="playlist_item")
         
-        if hasattr(self, 'playlist_content_container') and container == self.playlist_content_container:
-            self.drag_drop_handler.setup_drag_drop(item_frame, file_path=filepath, item_type="playlist_item")
-        elif container == self.downloads_container:
-            self.drag_drop_handler.setup_drag_drop(item_frame, file_path=filepath, item_type="file")
-        else:
-            print("_add_song_item > self.drag_drop_handler.setup_drag_drop, Container inconnu")
+        # if hasattr(self, 'playlist_content_container') and container == self.playlist_content_container:
+        #     self.drag_drop_handler.setup_drag_drop(item_frame, file_path=filepath, item_type="playlist_item")
+        # elif container == self.downloads_container:
+        #     self.drag_drop_handler.setup_drag_drop(item_frame, file_path=filepath, item_type="file")
+        # else:
+        #     print("_add_song_item > self.drag_drop_handler.setup_drag_drop, Container inconnu")
         
         # CORRECTION: Forcer les bindings de motion après tous les autres bindings
         # pour éviter qu'ils soient écrasés
@@ -2197,7 +2219,7 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
         
         # Programmer l'exécution après que tous les bindings soient configurés
         # Utiliser un délai pour s'assurer que c'est vraiment appliqué en dernier
-        # self.root.after(50, force_motion_bindings)
+        self.root.after(50, force_motion_bindings)
         
         return item_frame
 
@@ -3170,33 +3192,36 @@ def _create_new_playlist_dialog(self, filepath=None, is_youtube_video=False):
     button_frame.pack(pady=20)
     
     def create_playlist():
-        name = entry.get().strip()
-        if name and name not in self.playlists:
-            self.playlists[name] = []
-            if filepath:
-                if is_youtube_video:
-                    # Pour les vidéos YouTube, télécharger et ajouter à la playlist
-                    self._download_and_add_to_playlists(filepath, [name])
-                    self.status_bar.config(text=f"Playlist '{name}' créée, téléchargement en cours...")
+        try:
+            name = entry.get().strip()
+            if name and name not in self.playlists:
+                self.playlists[name] = []
+                if filepath:
+                    if is_youtube_video:
+                        # Pour les vidéos YouTube, télécharger et ajouter à la playlist
+                        self._download_and_add_to_playlists(filepath, [name])
+                        self.status_bar.config(text=f"Playlist '{name}' créée, téléchargement en cours...")
+                    else:
+                        # Pour les fichiers locaux, ajouter directement
+                        self.playlists[name].append(filepath)
+                        self.status_bar.config(text=f"Playlist '{name}' créée et fichier ajouté")
                 else:
-                    # Pour les fichiers locaux, ajouter directement
-                    self.playlists[name].append(filepath)
-                    self.status_bar.config(text=f"Playlist '{name}' créée et fichier ajouté")
+                    self.status_bar.config(text=f"Playlist '{name}' créée")
+                
+                # Rafraîchir l'affichage des playlists si on est dans l'onglet playlists
+                if hasattr(self, 'current_library_tab') and self.current_library_tab == "playlists":
+                    self.Playlists._display_playlists()
+                
+                # Sauvegarder les playlists
+                self.save_playlists()
+                
+                dialog.destroy()
+            elif name in self.playlists:
+                self.status_bar.config(text=f"Playlist '{name}' existe déjà")
             else:
-                self.status_bar.config(text=f"Playlist '{name}' créée")
-            
-            # Rafraîchir l'affichage des playlists si on est dans l'onglet playlists
-            if hasattr(self, 'current_library_tab') and self.current_library_tab == "playlists":
-                self._display_playlists()
-            
-            # Sauvegarder les playlists
-            self.save_playlists()
-            
-            dialog.destroy()
-        elif name in self.playlists:
-            self.status_bar.config(text=f"Playlist '{name}' existe déjà")
-        else:
-            self.status_bar.config(text="Nom de playlist invalide")
+                self.status_bar.config(text="Nom de playlist invalide")
+        except Exception as e:
+            print(f"Erreur lors de la création de la playlist: {e}")
     
     def cancel():
         dialog.destroy()

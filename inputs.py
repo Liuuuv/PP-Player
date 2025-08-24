@@ -176,24 +176,26 @@ def on_closing(self):
     self.root.destroy()
 
 def _on_mousewheel(self, event, canvas):
-        """Gère le défilement avec la molette de souris"""
-        # Détecter le scroll manuel sur la playlist pour désactiver l'auto-scroll
-        if hasattr(self, 'main_playlist_canvas') and canvas == self.main_playlist_canvas:
-            if hasattr(self, 'auto_scroll_enabled') and self.auto_scroll_enabled:
-                self.manual_scroll_detected = True
-                self.auto_scroll_enabled = False
-                self.auto_scroll_btn.config(bg="#4a4a4a", activebackground="#5a5a5a")
-                self.status_bar.config(text="Auto-scroll désactivé (scroll manuel détecté)")
-        
-        # Optimisation: Limiter la fréquence des événements de scroll
-        if hasattr(self, '_last_scroll_time'):
-            current_time = time.time()
-            if current_time - self._last_scroll_time < 0.01:  # 10ms entre les scrolls
-                return
-            self._last_scroll_time = current_time
-        else:
-            self._last_scroll_time = time.time()
-        
+    print("_on_mousewheel appelée")
+    """Gère le défilement avec la molette de souris"""
+    # Détecter le scroll manuel sur la playlist pour désactiver l'auto-scroll
+    if hasattr(self, 'main_playlist_canvas') and canvas == self.main_playlist_canvas:
+        if hasattr(self, 'auto_scroll_enabled') and self.auto_scroll_enabled:
+            self.manual_scroll_detected = True
+            self.auto_scroll_enabled = False
+            self.auto_scroll_btn.config(bg="#4a4a4a", activebackground="#5a5a5a")
+            self.status_bar.config(text="Auto-scroll désactivé (scroll manuel détecté)")
+    
+    # Optimisation: Limiter la fréquence des événements de scroll
+    if hasattr(self, '_last_scroll_time'):
+        current_time = time.time()
+        if current_time - self._last_scroll_time < 0.01:  # 10ms entre les scrolls
+            return
+        self._last_scroll_time = current_time
+    else:
+        self._last_scroll_time = time.time()
+    
+    try:
         if event.delta:
             canvas.yview_scroll(int(-1*(np.sign(event.delta))), "units")
         else:
@@ -202,27 +204,37 @@ def _on_mousewheel(self, event, canvas):
                 canvas.yview_scroll(-1, "units")
             elif event.num == 5:
                 canvas.yview_scroll(1, "units")
+    except tk.TclError:
+        # Le canvas a été détruit pendant l'opération, ne rien faire
+        return
 
-        # Vérifier le scroll infini pour la playlist
-        if hasattr(self, 'main_playlist_canvas') and canvas == self.main_playlist_canvas:
-            if hasattr(self.MainPlaylist, '_check_infinite_scroll'):
-                # Différer légèrement la vérification pour laisser le scroll se terminer
-                # self.root.after(50, self.MainPlaylist._check_infinite_scroll)
-                self.root.after(0, self.MainPlaylist._check_infinite_scroll)
-        
-        if hasattr(self, 'downloads_canvas') and canvas == self.downloads_canvas:
-            from library_tab.downloads import on_canvas_scroll
-            on_canvas_scroll(self)
+    # Vérifier le scroll infini pour la playlist
+    if hasattr(self, 'main_playlist_canvas') and canvas == self.main_playlist_canvas:
+        if hasattr(self.MainPlaylist, '_check_infinite_scroll'):
+            # Différer légèrement la vérification pour laisser le scroll se terminer
+            # self.root.after(50, self.MainPlaylist._check_infinite_scroll)
+            self.root.after(0, self.MainPlaylist._check_infinite_scroll)
+    
+    if hasattr(self, 'downloads_canvas') and canvas == self.downloads_canvas:
+        from library_tab.downloads import on_canvas_scroll
+        on_canvas_scroll(self)
 
-        ## pour detecter la fin du scroll
-        # Si un timer existe déjà, on l'annule
-        if self.scroll_timeout:
-            self.root.after_cancel(self.scroll_timeout)
+    ## pour detecter la fin du scroll
+    # Si un timer existe déjà, on l'annule
+    if self.scroll_timeout:
+        self.root.after_cancel(self.scroll_timeout)
 
-        # On redéfinit un timer (200 ms par ex.)
-        self.scroll_timeout = self.root.after(200, lambda: self._on_mousewheel_end(canvas))
+    # On redéfinit un timer (200 ms par ex.)
+    self.scroll_timeout = self.root.after(200, lambda: self._on_mousewheel_end(canvas))
 
 def _on_mousewheel_end(self, canvas):
+    # Vérifier que le canvas existe encore avant de l'utiliser
+    try:
+        # Test si le canvas est encore valide
+        canvas.winfo_exists()
+    except tk.TclError:
+        # Le canvas a été détruit, ne rien faire
+        return
     
     if hasattr(self, 'downloads_canvas') and canvas == self.downloads_canvas:
             from library_tab.downloads import on_canvas_scroll_end
