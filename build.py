@@ -13,6 +13,7 @@ def build_with_venv():
     clean_build_folders()
     
     # Chemin de l'environnement virtuel
+    base_path = os.path.dirname(__file__)
     venv_path = "build_venv"
     
     # Vérifier si l'environnement existe déjà
@@ -44,8 +45,8 @@ def copy_additional_resources():
     # Liste des dossiers et fichiers à copier
     resources_to_copy = [
         ("assets", os.path.isdir),
-        ("player_config.json", os.path.isfile),
-        ("ai_music_data.json", os.path.isfile),
+        # ("player_config.json", os.path.isfile),
+        # ("ai_music_data.json", os.path.isfile),
     ]
     
     for resource, check_func in resources_to_copy:
@@ -157,10 +158,10 @@ def build_with_pyinstaller(venv_path):
         "--windowed",
         "--clean",
         "--noconfirm",
-        "--paths=.",
-        "--hidden-import=src.config",
-        "--hidden-import=src.player",
-        "--hidden-import=src.utils",
+        "--paths=src",
+        "--hidden-import=config",
+        "--hidden-import=player",
+        "--hidden-import=utils",
         # Hidden imports nécessaires
         "--hidden-import=PIL",
         "--hidden-import=PIL._tkinter_finder",

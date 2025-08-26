@@ -117,7 +117,13 @@ class MusicPlayer:
             self.root_path = os.path.dirname(__file__)
         
         
-        self.AutoUpdater = auto_updater.AutoUpdater(self.current_version, self.root)
+        self.AutoUpdater = auto_updater.AutoUpdater(
+            current_version=self.current_version,
+            parent=self.root,
+            config_files_to_preserve=[],
+            folders_to_preserve=["logs", "downloads"],
+            exclude_from_update=["logs", "downloads"]
+        )
         
         self.FileServices = file_services.FileServices(self)
         self.Loader = loader.Loader(self)

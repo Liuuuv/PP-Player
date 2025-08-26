@@ -48,8 +48,8 @@ def copy_additional_resources():
     # Liste des dossiers et fichiers à copier
     resources_to_copy = [
         ("assets", os.path.isdir),
-        ("player_config.json", os.path.isfile),
-        ("ai_music_data.json", os.path.isfile),
+        # ("player_config.json", os.path.isfile),
+        # ("ai_music_data.json", os.path.isfile),
     ]
     
     for resource, check_func in resources_to_copy:

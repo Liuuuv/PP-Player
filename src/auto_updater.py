@@ -15,20 +15,19 @@ import subprocess
 import time
 
 class AutoUpdater:
-    def __init__(self, current_version, parent=None):
+    def __init__(self, current_version, parent=None, 
+                 config_files_to_preserve=None,
+                 folders_to_preserve=None,
+                 exclude_from_update=None):
         self.current_version = current_version
         self.repo_owner = "Liuuuv"
         self.repo_name = "PP-Player"
         self.github_api = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/releases/latest"
         
-        # Fichiers à préserver lors de la mise à jour
-        self.config_files_to_preserve = ["player_config.json", "ai_music_data.json"]
-        
-        # Dossiers à préserver
-        self.folders_to_preserve = ["assets", "logs", "ffmpeg"]
-        
-        # Fichiers/dossiers à exclure complètement (ne seront pas touchés)
-        self.exclude_from_update = ["logs", "player_config.json", "ai_music_data.json"]
+        # Paramètres configurables avec valeurs par défaut
+        self.config_files_to_preserve = config_files_to_preserve or ["player_config.json", "ai_music_data.json"]
+        self.folders_to_preserve = folders_to_preserve or ["logs", "downloads", "assets", "ffmpeg"]
+        self.exclude_from_update = exclude_from_update or ["logs", "downloads", "assets", "ffmpeg"]
         
         # Référence à la fenêtre parente
         self.parent = parent
@@ -271,6 +270,27 @@ class AutoUpdater:
     
     def generate_update_script_content(self, zip_path, current_exe):
         """Génère le contenu du script batch de mise à jour"""
+        
+        # Générer les commandes de sauvegarde dynamiquement
+        backup_commands = []
+        restore_commands = []
+        
+        # Sauvegarde des fichiers de configuration
+        for config_file in self.config_files_to_preserve:
+            if os.path.exists(config_file):
+                backup_commands.append(f'xcopy "{config_file}" "%TEMP%\\ppplayer_backup\\" /Y /I 2>nul')
+                restore_commands.append(f'xcopy "%TEMP%\\ppplayer_backup\\{config_file}" ".\\" /Y 2>nul')
+        
+        # Sauvegarde des dossiers à préserver
+        for folder in self.folders_to_preserve:
+            if os.path.exists(folder):
+                backup_commands.append(f'xcopy "{folder}\\*" "%TEMP%\\ppplayer_backup\\{folder}\\" /Y /E /I 2>nul')
+                restore_commands.append(f'xcopy "%TEMP%\\ppplayer_backup\\{folder}\\*" ".\\{folder}\\" /Y /E /I 2>nul')
+        
+        # Générer la liste des exclusions pour la suppression
+        exclude_files = " ".join([f'if not "%%i"=="{f}"' for f in self.config_files_to_preserve])
+        exclude_dirs = " ".join([f'if not "%%i"=="{d}"' for d in self.exclude_from_update])
+        
         script_lines = [
             "@echo off",
             "chcp 65001 >nul",
@@ -288,19 +308,17 @@ class AutoUpdater:
             "",
             "# Sauvegarder les fichiers importants",
             "echo Sauvegarde des configurations...",
-            f"xcopy \"player_config.json\" \"%TEMP%\\ppplayer_backup\\\" /Y /I 2>nul",
-            f"xcopy \"ai_music_data.json\" \"%TEMP%\\ppplayer_backup\\\" /Y /I 2>nul",
-            f"xcopy \"logs\\*\" \"%TEMP%\\ppplayer_backup\\logs\\\" /Y /E /I 2>nul",
-            f"xcopy \"assets\\*\" \"%TEMP%\\ppplayer_backup\\assets\\\" /Y /E /I 2>nul",
-            f"xcopy \"ffmpeg\\*\" \"%TEMP%\\ppplayer_backup\\ffmpeg\\\" /Y /E /I 2>nul",
+            *backup_commands,
             "",
             "# Supprimer les anciens fichiers (sauf ceux à exclure)",
             "echo Nettoyage des anciens fichiers...",
+            "# Fichiers",
             "for /f \"delims=\" %%i in ('dir /b /a-d') do (",
-            "    if not \"%%i\"==\"player_config.json\" if not \"%%i\"==\"ai_music_data.json\" del /f /q \"%%i\" 2>nul",
+            f"    {exclude_files} del /f /q \"%%i\" 2>nul",
             ")",
+            "# Dossiers",
             "for /f \"delims=\" %%i in ('dir /b /ad') do (",
-            "    if not \"%%i\"==\"logs\" if not \"%%i\"==\"assets\" if not \"%%i\"==\"ffmpeg\" rd /s /q \"%%i\" 2>nul",
+            f"    {exclude_dirs} rd /s /q \"%%i\" 2>nul",
             ")",
             "",
             "# Extraire la nouvelle version",
@@ -313,11 +331,7 @@ class AutoUpdater:
             "",
             "# Restaurer les fichiers sauvegardés",
             "echo Restauration des configurations...",
-            f"xcopy \"%TEMP%\\ppplayer_backup\\player_config.json\" \".\\\" /Y 2>nul",
-            f"xcopy \"%TEMP%\\ppplayer_backup\\ai_music_data.json\" \".\\\" /Y 2>nul",
-            f"xcopy \"%TEMP%\\ppplayer_backup\\logs\\*\" \".\\logs\\\" /Y /E /I 2>nul",
-            f"xcopy \"%TEMP%\\ppplayer_backup\\assets\\*\" \".\\assets\\\" /Y /E /I 2>nul",
-            f"xcopy \"%TEMP%\\ppplayer_backup\\ffmpeg\\*\" \".\\ffmpeg\\\" /Y /E /I 2>nul",
+            *restore_commands,
             "",
             "# Nettoyer",
             "echo Nettoyage...",
