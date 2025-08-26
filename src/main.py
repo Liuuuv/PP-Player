@@ -175,19 +175,41 @@ class MusicPlayer:
         # Charger le dossier de téléchargements personnalisé s'il existe
         self.downloads_folder = self._load_downloads_path()
         
-        # print("self.downloads_folder:", self.downloads_folder)
-        # Localiser ffmpeg/ffprobe (packagé avec l'exe ou sur le système)
-        base_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
-        candidate_dirs = [os.path.join(base_dir, 'ffmpeg'), base_dir]
-        self.ffmpeg_dir = None
+        # print("self.downloads_folder:", self.downloads_folder)       
+        
+        # Déterminer le répertoire de base selon si on est en mode développement ou exécutable
+        if getattr(sys, 'frozen', False):
+            # Mode exécutable - le dossier de l'exécutable
+            base_dir = os.path.dirname(sys.executable)
+        else:
+            # Mode développement - le dossier du script
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+
+        candidate_dirs = [
+            os.path.join(base_dir, 'ffmpeg'),           # À côté de l'exécutable
+            base_dir,                                   # Même dossier que l'exécutable
+            os.path.join(base_dir, '_internal', 'ffmpeg'),  # Dans _internal/ffmpeg
+            os.path.join(base_dir, '_internal'),        # Directement dans _internal
+            os.path.join(os.path.dirname(base_dir), 'ffmpeg')  # Dans le dossier parent
+        ]
+
+        ffmpeg_dir = None
         for d in candidate_dirs:
-            if os.path.exists(os.path.join(d, 'ffmpeg.exe')) and os.path.exists(os.path.join(d, 'ffprobe.exe')):
-                self.ffmpeg_dir = d
+            ffmpeg_exe = os.path.join(d, 'ffmpeg.exe')
+            ffprobe_exe = os.path.join(d, 'ffprobe.exe')
+            if os.path.exists(ffmpeg_exe) and os.path.exists(ffprobe_exe):
+                ffmpeg_dir = d
                 break
+
         # Ajouter au PATH pour yt_dlp si trouvé
-        if self.ffmpeg_dir and self.ffmpeg_dir not in os.environ.get('PATH', ''):
-            os.environ['PATH'] = self.ffmpeg_dir + os.pathsep + os.environ.get('PATH', '')
-    
+        # if ffmpeg_dir and ffmpeg_dir not in os.environ.get('PATH', ''):
+        #     os.environ['PATH'] = ffmpeg_dir + os.pathsep + os.environ.get('PATH', '')
+        
+        self.ffmpeg_dir = ffmpeg_dir
+        
+        
+        print("ffmpeg_dir:", self.ffmpeg_dir)
+        
         self.ydl_opts = {
             'format': 'bestaudio/best',
             'noplaylist': True,

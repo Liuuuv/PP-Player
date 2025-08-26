@@ -13,7 +13,6 @@ def build_with_venv():
     clean_build_folders()
     
     # Chemin de l'environnement virtuel
-    base_path = os.path.dirname(__file__)
     venv_path = "build_venv"
     
     # Vérifier si l'environnement existe déjà
@@ -155,7 +154,8 @@ def build_with_pyinstaller(venv_path):
         "src/main.py",
         "--name=PPPlayer",
         "--onedir",
-        "--windowed",
+        "--windowed", # sans console
+        # "--console", # avec console
         "--clean",
         "--noconfirm",
         "--paths=src",
@@ -170,6 +170,7 @@ def build_with_pyinstaller(venv_path):
         "--hidden-import=yt_dlp",
         "--hidden-import=customtkinter",
         "--hidden-import=tkinter",  # Important pour customtkinter
+        "--hidden-import=ffmpeg",
         # Options pour réduire la taille
         "--exclude-module=matplotlib",
         "--exclude-module=pandas",
@@ -177,7 +178,7 @@ def build_with_pyinstaller(venv_path):
     ]
     
     # Ajouter le dossier ffmpeg au build si présent (placé à la racine du projet)
-    if os.path.isdir(os.path.join(os.path.dirname(__file__), "ffmpeg")):
+    if os.path.isdir("ffmpeg"):
         print("Ajout du dossier ffmpeg au build...")
         build_command += ["--add-data", f"ffmpeg{data_sep}ffmpeg"]
     else:

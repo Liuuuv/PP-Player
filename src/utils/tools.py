@@ -476,8 +476,8 @@ def _download_youtube_thread(self, url, add_to_main_playlist=False, callback=Non
                 'preferredquality': '192',
             }],
             'writethumbnail': True,
-            'quiet': True,
-            'no_warnings': True,
+            # 'quiet': True,
+            # 'no_warnings': True,
             'progress_hooks': [self._download_progress_hook],
             # Options pour contourner les restrictions YouTube
             'extractor_retries': 3,
@@ -494,6 +494,13 @@ def _download_youtube_thread(self, url, add_to_main_playlist=False, callback=Non
             },
             # 'extract_flat': False,
         }
+        print(f"DEBUG: app.ffmpeg_dir = {getattr(self, 'ffmpeg_dir', None)}")
+        if getattr(self, 'ffmpeg_dir', None):
+            ydl_opts['ffmpeg_location'] = self.ffmpeg_dir
+            # ydl_opts['ffmpeg_location'] = "C:\\ProgramData\\chocolatey\\bin"
+            print(f"DEBUG: ydl_opts['ffmpeg_location'] = {ydl_opts['ffmpeg_location']}")
+        else:
+            print("DEBUG: ffmpeg_dir not found in app")
 
         # Vérifier si les téléchargements sont en pause avant de commencer
         while hasattr(self, 'downloads_paused') and self.downloads_paused:

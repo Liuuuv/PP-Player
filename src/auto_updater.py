@@ -53,7 +53,7 @@ class AutoUpdater:
         else:
             self.window = tk.Tk()
         
-        self.window.title("Mise à jour PP Player")
+        self.window.title("Update PP Player")
         self.window.geometry("700x600")
         self.window.resizable(True, True)
         self.window.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -79,37 +79,37 @@ class AutoUpdater:
         main_frame.columnconfigure(0, weight=1)
         main_frame.rowconfigure(4, weight=1)
         
-        title_label = ttk.Label(main_frame, text="PP Player - Mise à jour", 
+        title_label = ttk.Label(main_frame, text="PP Player - Update", 
                                font=("Arial", 16, "bold"))
         title_label.grid(row=0, column=0, pady=(0, 10), sticky=tk.W)
         
         version_label = ttk.Label(main_frame, 
-                                 text=f"Version actuelle: v{self.current_version}",
+                                 text=f"Current version: v{self.current_version}",
                                  font=("Arial", 10))
         version_label.grid(row=1, column=0, pady=(0, 15), sticky=tk.W)
         
         button_frame = ttk.Frame(main_frame)
         button_frame.grid(row=2, column=0, pady=(0, 15), sticky=tk.W)
         
-        self.check_button = ttk.Button(button_frame, text="Vérifier les mises à jour", 
+        self.check_button = ttk.Button(button_frame, text="Check for updates", 
                                       command=self.start_update_check)
         self.check_button.pack(side=tk.LEFT, padx=(0, 10))
         
-        self.update_button = ttk.Button(button_frame, text="Installer la mise à jour", 
+        self.update_button = ttk.Button(button_frame, text="Install update", 
                                        command=self.start_update_process, state=tk.DISABLED)
         self.update_button.pack(side=tk.LEFT)
         
-        self.status_label = ttk.Label(main_frame, text="Cliquez sur 'Vérifier les mises à jour' pour commencer")
+        self.status_label = ttk.Label(main_frame, text="idk what to type here")
         self.status_label.grid(row=3, column=0, pady=(0, 10), sticky=tk.W)
         
-        notes_label = ttk.Label(main_frame, text="Notes de version:", font=("Arial", 11, "bold"))
+        notes_label = ttk.Label(main_frame, text="Release notes:", font=("Arial", 11, "bold"))
         notes_label.grid(row=4, column=0, pady=(10, 5), sticky=tk.W)
         
         self.release_notes_text = scrolledtext.ScrolledText(main_frame, wrap=tk.WORD, 
                                                            width=80, height=20,
                                                            font=("Arial", 9))
         self.release_notes_text.grid(row=5, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
-        self.release_notes_text.insert(tk.END, "Les notes de version s'afficheront ici après la vérification.")
+        self.release_notes_text.insert(tk.END, "Release notes will be displayed here.")
         self.release_notes_text.config(state=tk.DISABLED)
         
         self.progress = ttk.Progressbar(main_frame, mode='indeterminate')
@@ -131,7 +131,7 @@ class AutoUpdater:
         
     def start_update_check(self):
         self.check_button.config(state=tk.DISABLED)
-        self.status_label.config(text="Vérification des mises à jour...")
+        self.status_label.config(text="Checking for updates...")
         self.progress.start()
         
         thread = threading.Thread(target=self.check_for_updates_thread)
@@ -149,7 +149,7 @@ class AutoUpdater:
             self.safe_after(0, self.update_ui_after_check, latest_version)
             
         except Exception as e:
-            self.safe_after(0, self.show_error, f"Erreur lors de la vérification: {str(e)}")
+            self.safe_after(0, self.show_error, f"Error during the update check: {str(e)}")
     
     def update_ui_after_check(self, latest_version):
         if not self.is_running or not self.window or not self.window.winfo_exists():
@@ -159,14 +159,14 @@ class AutoUpdater:
         
         if self.is_newer_version(latest_version):
             self.update_available = True
-            self.status_label.config(text=f"Nouvelle version disponible: v{latest_version}")
+            self.status_label.config(text=f"New version available: v{latest_version}")
             self.update_button.config(state=tk.NORMAL)
             
-            release_notes = self.latest_release.get('body', 'Aucune note de version disponible.')
+            release_notes = self.latest_release.get('body', 'No release notes available.')
             self.display_release_notes(release_notes)
         else:
             self.update_available = False
-            self.status_label.config(text="Vous avez déjà la dernière version")
+            self.status_label.config(text="You already have the latest version.")
             self.update_button.config(state=tk.DISABLED)
             
             self.safe_after(0, self.fetch_current_version_release_notes)
@@ -186,10 +186,10 @@ class AutoUpdater:
                     break
             
             if current_release:
-                release_notes = current_release.get('body', 'Aucune note de version disponible pour cette version.')
-                self.display_release_notes(f"Notes de version de la version actuelle (v{self.current_version}):\n\n{release_notes}")
+                release_notes = current_release.get('body', 'No release notes available for this version.')
+                self.display_release_notes(f"Release notes of the current version (v{self.current_version}):\n\n{release_notes}")
             else:
-                self.display_release_notes(f"Aucune information de release trouvée pour la version v{self.current_version}.")
+                self.display_release_notes(f"No release notes available for the version v{self.current_version}.")
                 
         except Exception as e:
             self.display_release_notes(f"Impossible de récupérer les notes de version: {str(e)}")
@@ -214,14 +214,14 @@ class AutoUpdater:
         if not self.update_available or not self.latest_release:
             return
         
-        result = messagebox.askyesno("Confirmation", 
-                                    f"Voulez-vous installer la version {self.latest_release['tag_name']}?\n\nL'application sera fermée et redémarrée automatiquement.")
+        result = messagebox.askyesno("Confirm", 
+                                    f"Would you like to update to version {self.latest_release['tag_name']}?\n\nThe app will be closed after download.\n(An instance of the command interpreter can still be running, you can close it.)")
         if not result:
             return
         
         self.check_button.config(state=tk.DISABLED)
         self.update_button.config(state=tk.DISABLED)
-        self.status_label.config(text="Préparation de la mise à jour...")
+        self.status_label.config(text="Preparing update...")
         self.progress.start()
         
         thread = threading.Thread(target=self.prepare_update)
@@ -234,7 +234,7 @@ class AutoUpdater:
             # Télécharger la mise à jour
             zip_path = self.download_update(self.latest_release)
             if not zip_path:
-                self.safe_after(0, self.show_error, "Échec du téléchargement")
+                self.safe_after(0, self.show_error, "Download failed")
                 return
             
             # Créer un script de mise à jour qui s'exécutera après la fermeture
@@ -243,10 +243,10 @@ class AutoUpdater:
             if update_success:
                 self.safe_after(0, self.finalize_preparation)
             else:
-                self.safe_after(0, self.show_error, "Échec de la préparation de la mise à jour")
+                self.safe_after(0, self.show_error, "Error during update preparation (script creation)")
                 
         except Exception as e:
-            self.safe_after(0, self.show_error, f"Erreur lors de la préparation: {str(e)}")
+            self.safe_after(0, self.show_error, f"Error during update preparation (Exception) {str(e)}")
     
     def create_update_script(self, zip_path):
         """Crée un script batch qui s'exécutera après la fermeture de l'app"""
@@ -271,6 +271,10 @@ class AutoUpdater:
     def generate_update_script_content(self, zip_path, current_exe):
         """Génère le contenu du script batch de mise à jour"""
         
+        # Déterminer le nom de l'exécutable à lancer après mise à jour
+        exe_name = "PPPlayer.exe" if hasattr(sys, 'frozen') else "pythonw.exe"
+        script_args = "" if hasattr(sys, 'frozen') else " PPPlayer.py"
+        
         # Générer les commandes de sauvegarde dynamiquement
         backup_commands = []
         restore_commands = []
@@ -278,55 +282,78 @@ class AutoUpdater:
         # Sauvegarde des fichiers de configuration
         for config_file in self.config_files_to_preserve:
             if os.path.exists(config_file):
-                backup_commands.append(f'xcopy "{config_file}" "%TEMP%\\ppplayer_backup\\" /Y /I 2>nul')
-                restore_commands.append(f'xcopy "%TEMP%\\ppplayer_backup\\{config_file}" ".\\" /Y 2>nul')
+                backup_commands.append(f'copy "{config_file}" "%TEMP%\\ppplayer_backup\\{config_file}" >nul')
+                restore_commands.append(f'if exist "%TEMP%\\ppplayer_backup\\{config_file}" copy "%TEMP%\\ppplayer_backup\\{config_file}" ".\\" >nul')
         
         # Sauvegarde des dossiers à préserver
         for folder in self.folders_to_preserve:
             if os.path.exists(folder):
-                backup_commands.append(f'xcopy "{folder}\\*" "%TEMP%\\ppplayer_backup\\{folder}\\" /Y /E /I 2>nul')
-                restore_commands.append(f'xcopy "%TEMP%\\ppplayer_backup\\{folder}\\*" ".\\{folder}\\" /Y /E /I 2>nul')
-        
-        # Générer la liste des exclusions pour la suppression
-        exclude_files = " ".join([f'if not "%%i"=="{f}"' for f in self.config_files_to_preserve])
-        exclude_dirs = " ".join([f'if not "%%i"=="{d}"' for d in self.exclude_from_update])
+                backup_commands.append(f'xcopy "{folder}" "%TEMP%\\ppplayer_backup\\{folder}\\" /E /I /H /Y >nul')
+                restore_commands.append(f'if exist "%TEMP%\\ppplayer_backup\\{folder}\\" xcopy "%TEMP%\\ppplayer_backup\\{folder}\\" ".\\{folder}\\" /E /I /H /Y >nul')
         
         script_lines = [
             "@echo off",
+            "setlocal enabledelayedexpansion",
             "chcp 65001 >nul",
             "echo Mise à jour PP Player en cours...",
             "timeout /t 2 /nobreak >nul",
             "",
             "# Attendre que l'application se ferme",
             ":wait_loop",
-            f"tasklist /FI \"IMAGENAME eq {os.path.basename(current_exe)}\" 2>nul | find /I \"{os.path.basename(current_exe)}\" >nul",
-            "if %errorlevel% == 0 (",
-            "    echo En attente de la fermeture de l'application...",
-            "    timeout /t 1 /nobreak >nul",
-            "    goto wait_loop",
-            ")",
+        ]
+        
+        if current_exe:
+            script_lines.extend([
+                f'tasklist /FI "IMAGENAME eq {os.path.basename(current_exe)}" 2>nul | find /I "{os.path.basename(current_exe)}" >nul',
+                'if not errorlevel 1 (',
+                '    echo En attente de la fermeture de l''application...',
+                '    timeout /t 1 /nobreak >nul',
+                '    goto wait_loop',
+                ')'
+            ])
+        
+        script_lines.extend([
             "",
             "# Sauvegarder les fichiers importants",
             "echo Sauvegarde des configurations...",
+            "if not exist \"%TEMP%\\ppplayer_backup\" mkdir \"%TEMP%\\ppplayer_backup\"",
             *backup_commands,
             "",
             "# Supprimer les anciens fichiers (sauf ceux à exclure)",
             "echo Nettoyage des anciens fichiers...",
-            "# Fichiers",
-            "for /f \"delims=\" %%i in ('dir /b /a-d') do (",
-            f"    {exclude_files} del /f /q \"%%i\" 2>nul",
-            ")",
-            "# Dossiers",
-            "for /f \"delims=\" %%i in ('dir /b /ad') do (",
-            f"    {exclude_dirs} rd /s /q \"%%i\" 2>nul",
+            "for %%i in (*) do (",
+            "    set \"delete=yes\"",
+        ])
+        
+        # Ajouter les exclusions pour les fichiers
+        for exclude in self.config_files_to_preserve:
+            script_lines.append(f'    if "%%i" == "{exclude}" set "delete=no"')
+        
+        script_lines.extend([
+            '    if "!delete!" == "yes" del /f /q "%%i" 2>nul',
             ")",
             "",
-            "# Extraire la nouvelle version",
+            "# Supprimer les anciens dossiers (sauf ceux à exclure)",
+            "for /d %%i in (*) do (",
+            "    set \"delete=yes\"",
+        ])
+        
+        # Ajouter les exclusions pour les dossiers
+        for exclude in self.exclude_from_update:
+            script_lines.append(f'    if "%%i" == "{exclude}" set "delete=no"')
+        
+        script_lines.extend([
+            '    if "!delete!" == "yes" rd /s /q "%%i" 2>nul',
+            ")",
+            "",
+            "# Extraire la nouvelle version - Méthode simple avec tar",
             "echo Extraction de la nouvelle version...",
-            f"\"C:\\Program Files\\7-Zip\\7z.exe\" x \"{zip_path}\" -o. -y >nul",
-            "if %errorlevel% neq 0 (",
-            "    echo Utilisation de l'extracteur Windows...",
-            f"    tar -xf \"{zip_path}\" --force-local 2>nul",
+            "where tar >nul 2>nul",
+            "if not errorlevel 1 (",
+            f"    tar -xf \"{zip_path}\" --strip-components=1",
+            ") else (",
+            "    # Méthode PowerShell alternative",
+            "    powershell -command \"$shell = New-Object -ComObject shell.application; $zip = $shell.NameSpace('{zip_path}'); foreach($item in $zip.Items()) {{ $shell.NameSpace('.').CopyHere($item) }}\"".format(zip_path=zip_path),
             ")",
             "",
             "# Restaurer les fichiers sauvegardés",
@@ -338,16 +365,15 @@ class AutoUpdater:
             f"del /f /q \"{zip_path}\" 2>nul",
             "rd /s /q \"%TEMP%\\ppplayer_backup\" 2>nul",
             "",
-            "# Redémarrer l'application",
-            "echo Redémarrage de l'application...",
-            f"start \"\" \"PPPlayer.exe\"",
+            "# Message de fin",
+            "echo Mise à jour terminée avec succès!",
+            "timeout /t 2 /nobreak >nul",
             "",
-            "# Supprimer ce script",
-            "del /f /q \"%~f0\"",
+            "# Fermer proprement l'interpréteur de commandes",
             "exit"
-        ]
+        ])
         
-        return "\n".join(script_lines)
+        return "\r\n".join(script_lines)
     
     def finalize_preparation(self):
         """Finalise la préparation et demande de fermer l'application"""
@@ -356,10 +382,10 @@ class AutoUpdater:
             
         self.progress.stop()
         
-        result = messagebox.askyesno("Mise à jour prête", 
-                                    "La mise à jour est prête à être installée.\n\n"
-                                    "L'application va maintenant se fermer pour appliquer les changements.\n"
-                                    "Souhaitez-vous continuer?")
+        result = messagebox.askyesno("Update ready", 
+                                    "The update is ready to be installed.\n\n"
+                                    "The app will be automatically closed.\n"
+                                    "Continue?")
         
         if result:
             # Lancer le script de mise à jour et fermer l'application
@@ -429,5 +455,5 @@ class AutoUpdater:
         self.progress.stop()
         self.check_button.config(state=tk.NORMAL)
         self.update_button.config(state=tk.DISABLED)
-        self.status_label.config(text="Erreur")
-        messagebox.showerror("Erreur", message)
+        self.status_label.config(text="Error")
+        messagebox.showerror("Error", message)
