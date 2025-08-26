@@ -1,3 +1,0 @@
-"""
-Package services - Services externes
-"""

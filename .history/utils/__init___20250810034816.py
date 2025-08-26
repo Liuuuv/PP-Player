@@ -1,3 +1,0 @@
-"""
-Package utils - Utilitaires
-"""

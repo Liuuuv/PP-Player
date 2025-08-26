@@ -1,0 +1,13 @@
+# /pycache/*
+/.history/*
+.dist/
+.build/
+.zencoder/
+.cache/
+*.tmp
+pycache/
+history/*
+*.pyc
+*.spec
+*.exe
+downloads_path.txt
