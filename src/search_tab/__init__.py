@@ -1,0 +1,33 @@
+# Imports communs pour le module search_tab
+import sys
+import os
+
+# Ajouter le répertoire parent au path pour permettre les imports
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
+# Importer tous les modules nécessaires
+import pygame
+import tkinter as tk
+from tkinter import filedialog, ttk, simpledialog, messagebox
+from mutagen.mp3 import MP3
+import time
+import threading
+import numpy as np
+from PIL import Image, ImageTk
+from yt_dlp import YoutubeDL
+import customtkinter as ctk
+
+# Importer les modules du projet
+from config import *
+from utils import setup
+import file_services, inputs, control
+from utils import tools, tooltip
+import library_tab.playlists
+import search_tab.results
+import library_tab.downloads
+
+
+# Importer toutes les variables de config
+from config import *

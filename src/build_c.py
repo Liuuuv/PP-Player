@@ -26,8 +26,8 @@ def build_with_venv():
         # Vérifier et installer les dépendances manquantes
         check_dependencies(venv_path)
     
-    # Construire avec PyInstaller depuis l'environnement virtuel
-    build_with_pyinstaller(venv_path)
+    # Construire avec Nuitka depuis l'environnement virtuel
+    build_with_nuitka(venv_path)
     
     # Copier les ressources supplémentaires après la construction
     copy_additional_resources()
@@ -40,6 +40,10 @@ def copy_additional_resources():
     print("📁 Copie des ressources supplémentaires...")
     
     dist_dir = "dist/PPPlayer"
+    
+    # Créer le dossier dist s'il n'existe pas
+    if not os.path.exists(dist_dir):
+        os.makedirs(dist_dir)
     
     # Liste des dossiers et fichiers à copier
     resources_to_copy = [
@@ -80,8 +84,8 @@ def install_dependencies(venv_path):
     # Activer le venv et installer les dépendances
     pip_path = get_pip_path(venv_path)
     
-    # Installer PyInstaller et les dépendances
-    dependencies = ["pyinstaller"] + get_project_dependencies()
+    # Installer Nuitka et les dépendances
+    dependencies = ["nuitka"] + get_project_dependencies()
     for dep in dependencies:
         try:
             subprocess.run([pip_path, "install", dep], check=True, capture_output=True)
@@ -96,7 +100,7 @@ def check_dependencies(venv_path):
     print("🔍 Vérification des dépendances...")
     
     pip_path = get_pip_path(venv_path)
-    dependencies = ["pyinstaller"] + get_project_dependencies()
+    dependencies = ["nuitka"] + get_project_dependencies()
     
     for dep in dependencies:
         try:
@@ -123,6 +127,13 @@ def get_pip_path(venv_path):
     else:  # Linux/Mac
         return os.path.join(venv_path, "bin", "pip")
 
+def get_python_path(venv_path):
+    """Retourne le chemin vers python selon l'OS"""
+    if os.name == 'nt':  # Windows
+        return os.path.join(venv_path, "Scripts", "python.exe")
+    else:  # Linux/Mac
+        return os.path.join(venv_path, "bin", "python")
+
 def get_project_dependencies():
     """Retourne les dépendances du projet"""
     # Seulement les dépendances externes (pas les modules standards)
@@ -138,55 +149,120 @@ def get_project_dependencies():
         "bs4"
     ]
 
-def build_with_pyinstaller(venv_path):
-    """Lance PyInstaller depuis l'environnement virtuel"""
-    print("🚀 Lancement de PyInstaller depuis le venv...")
+def build_with_nuitka(venv_path):
+    """Lance Nuitka depuis l'environnement virtuel"""
+    print("🚀 Lancement de Nuitka depuis le venv...")
     
-    if os.name == 'nt':  # Windows
-        pyinstaller_path = os.path.join(venv_path, "Scripts", "pyinstaller.exe")
-        data_sep = ';'
-    else:  # Linux/Mac
-        pyinstaller_path = os.path.join(venv_path, "bin", "pyinstaller")
-        data_sep = ';'
+    # Utiliser le Python du venv pour exécuter Nuitka en module
+    python_path = get_python_path(venv_path)
     
+    # Options de base pour Nuitka
     build_command = [
-        pyinstaller_path,
-        "main.py",
-        "--name=PPPlayer",
-        "--onedir",
-        "--windowed",
-        "--clean",
-        "--noconfirm",
-        "--paths=.",
-        "--hidden-import=config",
-        "--hidden-import=player",
-        "--hidden-import=utils",
-        # Hidden imports nécessaires
-        "--hidden-import=PIL",
-        "--hidden-import=PIL._tkinter_finder",
-        "--hidden-import=mutagen",
-        "--hidden-import=mutagen.mp3",
-        "--hidden-import=yt_dlp",
-        "--hidden-import=customtkinter",
-        "--hidden-import=tkinter",  # Important pour customtkinter
-        # Options pour réduire la taille
-        "--exclude-module=matplotlib",
-        "--exclude-module=pandas",
-        "--exclude-module=scipy",
+        python_path,
+        "-m",
+        "nuitka",
+        "--standalone",
+        "--onefile",
+        "--windows-console-mode=disable",  # Nouvelle option pour désactiver la console
+        "--output-dir=dist",
+        "--output-filename=PPPlayer.exe" if os.name == 'nt' else "--output-filename=PPPlayer",
+
+        # OPTIONS DE CACHE POUR ACCÉLÉRER LES PROCHAINES COMPILATIONS
+        "--enable-cache",  # Active le cache des compilations
+        "--cache-dir=nuitka_cache",  # Dossier dédié pour le cache
+        # "--remove-output",  # REMPLACÉ pour conserver les fichiers temporaires utiles
+        
+        "--enable-plugin=tk-inter",
+        "--include-package=config",
+        "--include-package=player",
+        "--include-package=utils",
+        "--include-package=PIL",
+        "--include-package=mutagen",
+        "--include-package=yt_dlp",
+        "--include-package=customtkinter",
+        "--include-package-data=customtkinter",
+        "--include-package-data=PIL",
+        "--include-module=config",
+        "--include-module=player",
+        "--include-module=utils",
+        "--follow-imports",  # Inclure tous les imports
+        # Ajoutez ces options pour plus de verbosité :
+        "--show-progress",  # Montre la progression de la compilation
+        "--show-memory",    # Affiche l'utilisation mémoire
+        "--verbose",        # Sortie détaillée
     ]
     
-    # Ajouter le dossier ffmpeg au build si présent (placé à la racine du projet)
-    if os.path.isdir(os.path.join(os.path.dirname(__file__), "ffmpeg")):
-        print("Ajout du dossier ffmpeg au build...")
-        build_command += ["--add-data", f"ffmpeg{data_sep}ffmpeg"]
+    # Ajouter les données supplémentaires (comme ffmpeg) seulement si le dossier existe et n'est pas vide
+    ffmpeg_dir = "ffmpeg"
+    if os.path.isdir(ffmpeg_dir) and os.listdir(ffmpeg_dir):
+        print("✅ Ajout du dossier ffmpeg au build...")
+        build_command.append("--include-data-dir=ffmpeg=ffmpeg")
     else:
-        print("Aucun dossier ffmpeg trouvé, aucune option de build pour ffmpeg ajoutée")
+        print("⚠️  Dossier ffmpeg non trouvé ou vide, ignoré")
+    
+    # Fichier principal à compiler
+    build_command.append("main.py")
     
     try:
-        subprocess.run(build_command, check=True)
-        print("✅ PyInstaller a terminé avec succès")
+        print("🔨 Compilation avec Nuitka...")
+        print(f"Commande exécutée: {' '.join(build_command)}")
+        
+        # Exécuter avec affichage en temps réel
+        process = subprocess.Popen(
+            build_command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,  # Fusionner stderr dans stdout
+            universal_newlines=True,
+            bufsize=1
+        )
+        
+        # Afficher la sortie en temps réel
+        print("\n--- Début de la compilation Nuitka ---")
+        while True:
+            output = process.stdout.readline()
+            if output == '' and process.poll() is not None:
+                break
+            if output:
+                print(output.strip())
+        
+        # Attendre la fin du processus et récupérer le code de retour
+        return_code = process.wait()
+        
+        if return_code == 0:
+            print("✅ Nuitka a terminé avec succès")
+        else:
+            raise subprocess.CalledProcessError(return_code, build_command)
+        
+        # Nuitka crée un exécutable directement dans dist/
+        exe_name = "PPPlayer.exe" if os.name == 'nt' else "PPPlayer"
+        exe_path = os.path.join("dist", exe_name)
+        
+        if os.path.exists(exe_path):
+            print(f"✅ Exécutable créé: {exe_path}")
+            
+            # Créer le dossier PPPlayer et déplacer l'exécutable dedans
+            ppplayer_dir = "dist/PPPlayer"
+            if not os.path.exists(ppplayer_dir):
+                os.makedirs(ppplayer_dir)
+            
+            destination_exe = os.path.join(ppplayer_dir, exe_name)
+            shutil.move(exe_path, destination_exe)
+            print(f"✅ Exécutable déplacé vers: {destination_exe}")
+            
+        else:
+            print("⚠️  Exécutable non trouvé dans dist/")
+            
     except subprocess.CalledProcessError as e:
-        print(f"❌ Erreur lors de l'exécution de PyInstaller: {e}")
+        print(f"❌ Erreur lors de l'exécution de Nuitka: {e}")
+        if e.stdout:
+            print("Stdout:", e.stdout)
+        if e.stderr:
+            print("Stderr:", e.stderr)
+        print("Assurez-vous que Nuitka est correctement installé dans l'environnement virtuel")
+        sys.exit(1)
+    except FileNotFoundError as e:
+        print(f"❌ Fichier non trouvé: {e}")
+        print("Vérifiez les chemins de l'environnement virtuel")
         sys.exit(1)
 
 def clean_build_folders():
@@ -195,6 +271,18 @@ def clean_build_folders():
         if os.path.exists(folder):
             shutil.rmtree(folder)
             print(f"🧹 Nettoyé: {folder}")
+    
+    # Nettoyer aussi les fichiers .build générés par Nuitka
+    for build_dir in glob.glob("*.build"):
+        if os.path.exists(build_dir):
+            shutil.rmtree(build_dir)
+            print(f"🧹 Nettoyé: {build_dir}")
+    
+    # Nettoyer les fichiers .dist (anciennes versions de Nuitka)
+    for dist_dir in glob.glob("*.dist"):
+        if os.path.exists(dist_dir):
+            shutil.rmtree(dist_dir)
+            print(f"🧹 Nettoyé: {dist_dir}")
     
     for spec_file in glob.glob("*.spec"):
         os.remove(spec_file)
@@ -211,3 +299,5 @@ def clean_virtual_environment(venv_path):
 
 if __name__ == "__main__":
     build_with_venv()
+    # Optionnel: nettoyer l'environnement virtuel après construction
+    # clean_virtual_environment("build_venv")

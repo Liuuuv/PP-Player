@@ -1,0 +1,7 @@
+**/.dist
+**/.build
+**/dist
+**/build
+**/pycache
+**/.history
+/src/build_venv
