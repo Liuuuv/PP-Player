@@ -4,4 +4,6 @@
 **/build
 **/__pycache__
 **/.history
-/src/build_venv
+/build_venv
+*.spec
+*.spec

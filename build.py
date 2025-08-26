@@ -49,9 +49,9 @@ def copy_additional_resources():
     ]
     
     for resource, check_func in resources_to_copy:
-        if check_func(resource):
+        if check_func(os.path.join("src", resource)):
             destination = os.path.join(dist_dir, resource)
-            
+            resource = os.path.join("src", resource)
             if os.path.isdir(resource):
                 # Copier un dossier
                 if os.path.exists(destination):
@@ -151,16 +151,16 @@ def build_with_pyinstaller(venv_path):
     
     build_command = [
         pyinstaller_path,
-        "main.py",
+        "src/main.py",
         "--name=PPPlayer",
         "--onedir",
         "--windowed",
         "--clean",
         "--noconfirm",
         "--paths=.",
-        "--hidden-import=config",
-        "--hidden-import=player",
-        "--hidden-import=utils",
+        "--hidden-import=src.config",
+        "--hidden-import=src.player",
+        "--hidden-import=src.utils",
         # Hidden imports nécessaires
         "--hidden-import=PIL",
         "--hidden-import=PIL._tkinter_finder",
