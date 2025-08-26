@@ -2,11 +2,13 @@
 /.history/*
 .dist/
 .build/
+dist/
+build/
 .zencoder/
 .cache/
 *.tmp
 pycache/
-history/*
+.history/*
 *.pyc
 *.spec
 *.exe
