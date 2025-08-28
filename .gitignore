@@ -8,3 +8,5 @@
 *.spec
 /src/__pycache__
 *.pyc
+/.history
+/.__pycache__
