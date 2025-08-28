@@ -210,84 +210,89 @@ class DragDropHandler:
     
     def _add_to_queue(self, file_path):
         """Ajoute un fichier à la queue (juste après la chanson en cours)"""
-        if not file_path:
-            return
-        
-        # Vérifier si c'est la musique actuellement en cours de lecture
-        is_currently_playing = False
-        if (len(self.music_player.main_playlist) > 0 and 
-            hasattr(self.music_player, 'current_index') and
-            self.music_player.current_index < len(self.music_player.main_playlist) and 
-            self.music_player.main_playlist[self.music_player.current_index] == file_path):
-            is_currently_playing = True
+        try:
+            if not file_path:
+                return
             
-        # Si c'est la musique en cours de lecture, ne rien faire
-        if is_currently_playing:
-            return
-            
-        # Vérifier si le fichier est déjà en dernière position de la queue
-        if hasattr(self.music_player, 'queue_items') and self.music_player.queue_items:
-            # Trouver la dernière position dans la queue
-            sorted_queue_indices = sorted(self.music_player.queue_items)
-            if sorted_queue_indices:
-                last_queue_index = sorted_queue_indices[-1]
-                # Vérifier si ce fichier est déjà en dernière position de la queue
-                if (last_queue_index < len(self.music_player.main_playlist) and 
-                    self.music_player.main_playlist[last_queue_index] == file_path):
-                    # Le fichier est déjà en dernière position, ne pas l'ajouter
-                    return
-            
-        # Toujours ajouter le fichier à la fin de la playlist (permet les duplicatas)
-        self.music_player.main_playlist.append(file_path)
-        song_index = len(self.music_player.main_playlist) - 1  # Index du fichier qu'on vient d'ajouter
-        
-        # Si une musique joue actuellement, réorganiser pour créer la queue
-        if (len(self.music_player.main_playlist) > 0 and 
-            hasattr(self.music_player, 'current_index') and
-            self.music_player.current_index < len(self.music_player.main_playlist)):
-            
-            # Calculer la position cible (après la chanson en cours et les autres éléments de la queue)
-            target_position = self.music_player.current_index + 1
-            
-            # Chercher la prochaine position libre dans la queue
-            # (après les musiques déjà ajoutées à la queue)
-            while (target_position < song_index and
-                   hasattr(self.music_player, 'queue_items') and
-                   target_position in self.music_player.queue_items):
-                target_position += 1
-            
-            # Déplacer la musique de la fin vers sa position dans la queue
-            if song_index != target_position:
-                # Retirer la musique de la fin
-                moved_file = self.music_player.main_playlist.pop(song_index)
+            # Vérifier si c'est la musique actuellement en cours de lecture
+            is_currently_playing = False
+            if (len(self.music_player.main_playlist) > 0 and 
+                hasattr(self.music_player, 'current_index') and
+                self.music_player.current_index < len(self.music_player.main_playlist) and 
+                self.music_player.main_playlist[self.music_player.current_index] == file_path):
+                is_currently_playing = True
                 
-                # Insérer à la position cible dans la queue
-                self.music_player.main_playlist.insert(target_position, moved_file)
+            # Si c'est la musique en cours de lecture, ne rien faire
+            if is_currently_playing:
+                return
                 
-                # Mettre à jour les indices de la queue après l'insertion
-                if hasattr(self.music_player, 'queue_items'):
-                    updated_queue = set()
-                    for queue_index in self.music_player.queue_items:
-                        if queue_index >= target_position:
-                            updated_queue.add(queue_index + 1)  # Incrémenter les indices après la position d'insertion
-                        else:
-                            updated_queue.add(queue_index)  # Garder tel quel
-                    self.music_player.queue_items = updated_queue
+            # Vérifier si le fichier est déjà en dernière position de la queue
+            if hasattr(self.music_player, 'queue_items') and self.music_player.queue_items:
+                # Trouver la dernière position dans la queue
+                sorted_queue_indices = sorted(self.music_player.queue_items)
+                if sorted_queue_indices:
+                    last_queue_index = sorted_queue_indices[-1]
+                    # Vérifier si ce fichier est déjà en dernière position de la queue
+                    if (last_queue_index < len(self.music_player.main_playlist) and 
+                        self.music_player.main_playlist[last_queue_index] == file_path):
+                        # Le fichier est déjà en dernière position, ne pas l'ajouter
+                        return
+                
+            # Toujours ajouter le fichier à la fin de la playlist (permet les duplicatas)
+            self.music_player.main_playlist.append(file_path)
+            song_index = len(self.music_player.main_playlist) - 1  # Index du fichier qu'on vient d'ajouter
             
-            # Marquer cette position comme faisant partie de la queue
-            if not hasattr(self.music_player, 'queue_items'):
-                self.music_player.queue_items = set()
-            # Ajouter l'index final de la musique après le déplacement
-            final_index = target_position if song_index != target_position else song_index
-            self.music_player.queue_items.add(final_index)
-            
-            # Mettre à jour l'affichage de la playlist
-            if hasattr(self.music_player, '_refresh_main_playlist_display'):
-                self.music_player._refresh_main_playlist_display()
-            
-            # Mettre à jour l'affichage visuel des téléchargements (barre noire) sans recharger
-            if hasattr(self.music_player, '_update_downloads_queue_visual'):
-                self.music_player._update_downloads_queue_visual()
+            # Si une musique joue actuellement, réorganiser pour créer la queue
+            if (len(self.music_player.main_playlist) > 0 and 
+                hasattr(self.music_player, 'current_index') and
+                self.music_player.current_index < len(self.music_player.main_playlist)):
+                
+                # Calculer la position cible (après la chanson en cours et les autres éléments de la queue)
+                target_position = self.music_player.current_index + 1
+                
+                # Chercher la prochaine position libre dans la queue
+                # (après les musiques déjà ajoutées à la queue)
+                while (target_position < song_index and
+                    hasattr(self.music_player, 'queue_items') and
+                    target_position in self.music_player.queue_items):
+                    target_position += 1
+                
+                # Déplacer la musique de la fin vers sa position dans la queue
+                if song_index != target_position:
+                    # Retirer la musique de la fin
+                    moved_file = self.music_player.main_playlist.pop(song_index)
+                    
+                    # Insérer à la position cible dans la queue
+                    self.music_player.main_playlist.insert(target_position, moved_file)
+                    
+                    # Mettre à jour les indices de la queue après l'insertion
+                    if hasattr(self.music_player, 'queue_items'):
+                        updated_queue = set()
+                        for queue_index in self.music_player.queue_items:
+                            if queue_index >= target_position:
+                                updated_queue.add(queue_index + 1)  # Incrémenter les indices après la position d'insertion
+                            else:
+                                updated_queue.add(queue_index)  # Garder tel quel
+                        self.music_player.queue_items = updated_queue
+                
+                # Marquer cette position comme faisant partie de la queue
+                if not hasattr(self.music_player, 'queue_items'):
+                    self.music_player.queue_items = set()
+                # Ajouter l'index final de la musique après le déplacement
+                final_index = target_position if song_index != target_position else song_index
+                self.music_player.queue_items.add(final_index)
+                
+                # Mettre à jour l'affichage de la playlist
+                if hasattr(self.music_player.MainPlaylist, '_refresh_main_playlist_display'):
+                    print('Mettre à jour l\'affichage de la playlist...')
+                    self.music_player.MainPlaylist._refresh_main_playlist_display()
+                
+                # Mettre à jour l'affichage visuel des téléchargements (barre noire) sans recharger
+                if hasattr(self.music_player, '_update_downloads_queue_visual'):
+                    self.music_player._update_downloads_queue_visual()
+        except Exception as e:
+            print(f"Erreur lors de l'ajout à la queue: {e}")
+        
     
     def _add_youtube_to_playlist(self, video_data, frame):
         """Ajoute une vidéo YouTube à la playlist (télécharge si nécessaire)"""
@@ -325,6 +330,7 @@ class DragDropHandler:
     
     def _add_playlist_item_to_main(self, file_path):
         """Ajoute un élément de playlist à la queue"""
+        print(f"Ajout du fichier {file_path} à la playlist...")
         if file_path:
             filename = file_path.split('/')[-1] if '/' in file_path else file_path.split('\\')[-1]
             

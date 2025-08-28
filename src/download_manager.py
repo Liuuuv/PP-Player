@@ -12,8 +12,11 @@ class DownloadManager:
     def __init__(self, app):
         self.app = app
     
-    def download_video_sync(self, url, title, video_data):
-        """Télécharge une vidéo de manière synchrone"""
+    def download_video_sync(self, url, title, video_data, bulk_mode: bool = False):
+        """Télécharge une vidéo de manière synchrone
+        Args:
+            bulk_mode: Si True, réduit au minimum les mises à jour UI pour éviter les lags (import HTML)
+        """
         download_complete = threading.Event()
         download_success = [False]
         
@@ -22,7 +25,7 @@ class DownloadManager:
             download_complete.set()
         
         # Lancer le téléchargement asynchrone
-        success = download_youtube_video(self.app, url, title, video_data, on_complete)
+        success = download_youtube_video(self.app, url, title, video_data, on_complete, None, bulk_mode=bulk_mode)
         
         if not success:
             return False
@@ -34,7 +37,7 @@ class DownloadManager:
             print(f"Timeout téléchargement: {title}")
             return False
 
-def download_youtube_video(app, url, title=None, video_data=None, callback_on_complete=None, callback_params=None):
+def download_youtube_video(app, url, title=None, video_data=None, callback_on_complete=None, callback_params=None, bulk_mode: bool = False):
     """
     Fonction centralisée pour télécharger une vidéo YouTube
     
@@ -58,7 +61,8 @@ def download_youtube_video(app, url, title=None, video_data=None, callback_on_co
         try:
             # Étape 1: Extraire les informations si pas déjà fournies
             if not title_ or not video_data_:
-                app.root.after(0, lambda: app.status_bar.config(text="Extraction des informations..."))
+                if not bulk_mode:
+                    app.root.after(0, lambda: app.status_bar.config(text="Extraction des informations..."))
                 
                 ydl_opts = {
                     'quiet': True,
@@ -89,7 +93,8 @@ def download_youtube_video(app, url, title=None, video_data=None, callback_on_co
                 app.save_youtube_url_metadata(existing_file, url)
 
                 app.root.after(0, lambda: app._add_downloaded_file(existing_file, thumbnail_path, title_, url, False))
-                app.root.after(0, lambda: app.status_bar.config(text=f"Fichier existant trouvé: {title_}"))
+                if not bulk_mode:
+                    app.root.after(0, lambda: app.status_bar.config(text=f"Fichier existant trouvé: {title_}"))
                 # Mettre à jour la bibliothèque même pour les fichiers existants
                 app.root.after(0, lambda: app._refresh_downloads_library())
                 return
@@ -123,7 +128,8 @@ def download_youtube_video(app, url, title=None, video_data=None, callback_on_co
             app.current_download_url = url
 
             # Étape 3: Effectuer le téléchargement réel
-            app.root.after(0, lambda: app.status_bar.config(text=f"Téléchargement: {safe_title}"))
+            if not bulk_mode:
+                app.root.after(0, lambda: app.status_bar.config(text=f"Téléchargement: {safe_title}"))
             
             # Créer les options de téléchargement
             # ydl_opts = app.ydl_opts.copy()
@@ -192,11 +198,12 @@ def download_youtube_video(app, url, title=None, video_data=None, callback_on_co
                         progress = 0
                     
                     # Mettre à jour seulement si la progression a changé de plus de 5%
-                    if abs(progress - last_progress_update[0]) >= 5:
+                    if abs(progress - last_progress_update[0]) >= (10 if bulk_mode else 5):
                         last_progress_update[0] = progress
                         app.root.after(0, lambda p=progress: 
                             app.download_manager.update_progress(url, p, "Téléchargement..."))
-                        app.root.after(0, app.update_downloads_display)
+                        if not bulk_mode:
+                            app.root.after(0, app.update_downloads_display)
 
                     
                     # Extraire la vitesse au format XXX.XXKiB/s ou XXX.XXMiB/s
@@ -218,7 +225,8 @@ def download_youtube_video(app, url, title=None, video_data=None, callback_on_co
                     # Téléchargement terminé
                     app.root.after(0, lambda: 
                         app.download_manager.update_progress(url, 100, "Terminé"))
-                    app.root.after(0, app.update_downloads_display)
+                    if not bulk_mode:
+                        app.root.after(0, app.update_downloads_display)
                     
                     # Traitement post-téléchargement
                     filepath = d['filename']
@@ -241,9 +249,10 @@ def download_youtube_video(app, url, title=None, video_data=None, callback_on_co
                             app.root.after(0, lambda: callback_on_complete(True))
                     
                     # Mettre à jour les affichages
-                    app.root.after(0, app._update_downloads_button)
-                    app.root.after(0, app._refresh_downloads_library)
-                    app.root.after(0, lambda: app.status_bar.config(text=f"Téléchargé: {safe_title}"))
+                    if not bulk_mode:
+                        app.root.after(0, app._update_downloads_button)
+                        app.root.after(0, app._refresh_downloads_library)
+                        app.root.after(0, lambda: app.status_bar.config(text=f"Téléchargé: {safe_title}"))
             
             ydl_opts['progress_hooks'] = [progress_hook]
             
@@ -253,7 +262,7 @@ def download_youtube_video(app, url, title=None, video_data=None, callback_on_co
                 info = ydl.extract_info(url, download=True)
                 downloaded_file = ydl.prepare_filename(info)
                 
-                print("downloaded_file", downloaded_file)
+                # print("downloaded_file", downloaded_file)
                 final_path = downloaded_file.replace('.webm', '.mp3').replace('.m4a', '.mp3').replace('.mp4', '.mp3')
                 if not final_path.endswith('.mp3'):
                     final_path += '.mp3'
@@ -362,7 +371,7 @@ def add_to_playlist_after_download(app, filepath, playlist_name=None, queue_posi
             app._safe_add_to_main_playlist(filepath)
         
         # Rafraîchir l'affichage
-        app._refresh_main_playlist_display()
+        app.MainPlaylist._refresh_main_playlist_display()
         
     except Exception as e:
         print(f"Erreur ajout à la playlist après téléchargement: {e}")

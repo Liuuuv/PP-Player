@@ -303,7 +303,7 @@ def update_downloads_display(self):
     
     # Mettre à jour la scrollbar
     self.downloads_scrollable_frame.update_idletasks()
-    self.downloads_canvas.configure(scrollregion=self.downloads_canvas.bbox("all"))
+    self.downloads_tab_canvas.configure(scrollregion=self.downloads_tab_canvas.bbox("all"))
 
 def update_download_progress(self, url, progress, status=None):
     """Met à jour la progression d'un téléchargement"""
@@ -671,7 +671,7 @@ def scroll_to_current_download(self):
         # Position de la frame dans le container
         frame_y = frame.winfo_y()
         container_height = self.downloads_scrollable_frame.winfo_height()
-        canvas_height = self.downloads_canvas.winfo_height()
+        canvas_height = self.downloads_tab_canvas.winfo_height()
         
         if container_height <= canvas_height:
             return  # Pas besoin de scroller
@@ -681,7 +681,7 @@ def scroll_to_current_download(self):
         target_fraction = max(0, min(1, target_y / (container_height - canvas_height)))
         
         # Position actuelle
-        current_fraction = self.downloads_canvas.canvasy(0) / (container_height - canvas_height) if container_height > canvas_height else 0
+        current_fraction = self.downloads_tab_canvas.canvasy(0) / (container_height - canvas_height) if container_height > canvas_height else 0
         
         # Animation ease in out
         self.animate_scroll_to_position(current_fraction, target_fraction)
@@ -714,7 +714,7 @@ def animate_scroll_to_position(self, start_pos, end_pos, duration=500, steps=30)
         current_pos = start_pos + (end_pos - start_pos) * eased_t
         
         try:
-            self.downloads_canvas.yview_moveto(current_pos)
+            self.downloads_tab_canvas.yview_moveto(current_pos)
             self.root.after(step_duration, lambda: animate_step(step + 1))
         except tk.TclError:
             # Widget détruit, arrêter l'animation

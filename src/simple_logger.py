@@ -11,7 +11,7 @@ import threading
 class SimpleLogger:
     def __init__(self, base_dir):
         self.base_dir = base_dir
-        self.logs_dir = os.path.join(base_dir, "logs")
+        self.logs_dir = os.path.join(base_dir, "import_logs")
         self.ensure_logs_dir()
         self.current_session = None
         self.cancelled = False
@@ -20,6 +20,7 @@ class SimpleLogger:
         self.session_thread = None
         self.pause_event = threading.Event()
         self.pause_event.set()  # Initialement non en pause
+        self._lock = threading.Lock()  # Sécuriser les écritures fichiers
         
     def ensure_logs_dir(self):
         """Crée le dossier de logs s'il n'existe pas"""
@@ -42,6 +43,8 @@ class SimpleLogger:
             'skipped': 0,
             'current_index': 0,
             'pending_urls': urls or [],
+            'processed_urls': [],
+            'processed_items': [],  # structured list of processed items
             'logs': []
         }
         
@@ -67,13 +70,14 @@ class SimpleLogger:
                 'message': message
             }
             self.current_session['logs'].append(log_entry)
-            print(f"[{level}] {message}")
+            # Ne pas imprimer en console pour éviter les doublons pendant les imports massifs
     
     def log_processed(self, url, title, status, reason=None):
         """Log qu'un élément a été traité"""
         if not self.current_session:
             return
             
+        # Compteurs
         self.current_session['processed'] += 1
         
         if status == 'success':
@@ -86,10 +90,24 @@ class SimpleLogger:
             self.current_session['skipped'] += 1
             self.log("WARNING", f"⚠️ {title} - {reason}")
         
+        # Historique structuré
+        self.current_session['processed_urls'].append(url)
+        self.current_session['processed_items'].append({
+            'url': url,
+            'title': title,
+            'status': status,
+            'reason': reason
+        })
+        
+        # Sauvegardes en temps réel
         self.save()
+        try:
+            self._write_not_downloaded_report()
+        except Exception:
+            pass
     
     def end_session(self, status='completed'):
-        """Termine la session"""
+        """Termine la session et génère un rapport JSON des non-téléchargées (hors déjà téléchargées)"""
         if self.current_session:
             self.current_session['status'] = status
             self.current_session['end_time'] = datetime.now().isoformat()
@@ -99,9 +117,52 @@ class SimpleLogger:
             failed = self.current_session['failed']
             skipped = self.current_session['skipped']
             
+            # Générer le rapport des non-téléchargées
+            try:
+                session_id = self.current_session['id']
+                self._write_not_downloaded_report()  # écriture finale
+                self.log('INFO', f"Rapport non-téléchargées mis à jour pour {session_id}")
+            except Exception as e:
+                self.log('ERROR', f"Erreur génération rapport: {e}")
+            
             self.log("INFO", f"Session terminée: {success} succès, {failed} échecs, {skipped} ignorés sur {total}")
             self.save()
             self.current_session = None
+
+    def _write_not_downloaded_report(self):
+        """Écrit/actualise le JSON des non-téléchargées en temps réel (hors "déjà téléchargé")."""
+        if not self.current_session:
+            return
+        session_id = self.current_session['id']
+        total = self.current_session['total']
+        success = self.current_session['success']
+        failed = self.current_session['failed']
+        skipped = self.current_session['skipped']
+        report_items = []
+        for item in self.current_session.get('processed_items', []):
+            if item.get('status') in ('failed', 'skipped'):
+                reason = (item.get('reason') or '').lower()
+                if 'déjà téléchargé' in reason or 'deja telecharge' in reason or 'deja téléchargé' in reason:
+                    continue
+                report_items.append({
+                    'url': item.get('url'),
+                    'title': item.get('title'),
+                    'status': item.get('status'),
+                    'reason': item.get('reason')
+                })
+        report_path = os.path.join(self.logs_dir, f"not_downloaded_{session_id}.json")
+        with self._lock:
+            with open(report_path, 'w', encoding='utf-8') as f:
+                json.dump({
+                    'session_id': session_id,
+                    'source': self.current_session.get('source'),
+                    'generated_at': datetime.now().isoformat(),
+                    'total': total,
+                    'success': success,
+                    'failed': failed,
+                    'skipped': skipped,
+                    'items': report_items
+                }, f, ensure_ascii=False, indent=2)
     
     def cancel_session(self):
         """Annule la session courante"""
@@ -164,8 +225,9 @@ class SimpleLogger:
         if self.current_session:
             file_path = os.path.join(self.logs_dir, f"{self.current_session['id']}.json")
             try:
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    json.dump(self.current_session, f, ensure_ascii=False, indent=2)
+                with self._lock:
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        json.dump(self.current_session, f, ensure_ascii=False, indent=2)
             except Exception as e:
                 print(f"Erreur sauvegarde: {e}")
     

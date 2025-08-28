@@ -38,7 +38,7 @@ class MainPlaylist:
     def __init__(self, music_player):
         self.music_player = music_player
         
-    def _add_main_playlist_item(self, filepath, thumbnail_path=None, song_index=None):
+    def _add_main_playlist_item(self, filepath, thumbnail_path=None, song_index=None, placement:int=None):
             """Ajoute un élément à la main playlist avec un style rectangle uniforme"""
             try:
                 # Vérifier que le main_playlist_container existe et est accessible
@@ -47,20 +47,40 @@ class MainPlaylist:
                     # Cela peut arriver quand on ajoute depuis un autre onglet
                     print("Le container n'est pas accessible. Ne pas ajouter l'élément.")
                     return
-                    
+                song_index = placement
                 filename = os.path.basename(filepath)
+                
+                # Vérifier si c'est la chanson en cours de lecture (seulement pour les fichiers locaux)
+                is_current_song = False
+                if filepath:
+                    is_current_song = (len(self.music_player.main_playlist) > 0 and 
+                                        self.music_player.current_index < len(self.music_player.main_playlist) and 
+                                        self.music_player.main_playlist[self.music_player.current_index] == filepath)
+                    
+                    # print('is_current_song infooos ', )
+                
+                bg_color = COLOR_SELECTED if is_current_song else COLOR_BACKGROUND
                 
                 # 1. Frame principal - grand rectangle uniforme
                 item_frame = tk.Frame(
                     self.music_player.main_playlist_container,
-                    bg='#4a4a4a',  # Fond gris uniforme
+                    bg=bg_color,
                     relief='flat',
                     bd=0,
                     highlightbackground=COLOR_BACKGROUND_HIGHLIGHT,
                     highlightthickness=1,
                 )
-                item_frame.pack(fill='x', pady=2, padx=5)
-                item_frame.selected = False
+                
+                if placement is not None:
+                    item_frame.place(y=placement * (MAIN_PLAYLIST_MAX_ITEM_HEIGHT + 2*DISPLAY_PLAYLIST_PADY), x=0)
+                else:
+                    item_frame.pack(fill='x', padx=MAIN_PLAYLIST_PADX, pady=MAIN_PLAYLIST_PADY)
+                
+                
+                item_frame.selected = is_current_song
+                item_frame.config(height=MAIN_PLAYLIST_MAX_ITEM_HEIGHT)
+                item_frame.pack_propagate(False)
+                item_frame.filepath = filepath
                 
                 # Déterminer si on affiche les numéros (seulement si provient d'une playlist)
                 show_numbers = self.music_player.main_playlist_from_playlist
@@ -74,100 +94,72 @@ class MainPlaylist:
                 is_in_queue = (hasattr(self.music_player, 'queue_items') and current_song_index in self.music_player.queue_items)
                 item_frame.is_in_queue = is_in_queue
                 
-                number_label = None
-                if show_numbers:
-                    # Configuration de la grille en 6 colonnes : trait queue, numéro, miniature, titre, durée, bouton
-                    item_frame.columnconfigure(0, minsize=4, weight=0)   # Trait queue (si applicable)
-                    item_frame.columnconfigure(1, minsize=10, weight=0)  # Numéro
-                    item_frame.columnconfigure(2, minsize=80, weight=0)  # Miniature
-                    item_frame.columnconfigure(3, weight=1)              # Titre
-                    item_frame.columnconfigure(4, minsize=60, weight=0)  # Durée
-                    item_frame.columnconfigure(5, minsize=40, weight=0)  # Bouton
-                    item_frame.rowconfigure(0, minsize=50, weight=0)     # Hauteur fixe
-                    
-                    # Trait vertical queue (colonne 0) - seulement si la musique est dans la queue
-                    if is_in_queue:
-                        queue_indicator = tk.Frame(
-                            item_frame,
-                            bg='black',  # Trait noir
-                            width=QUEUE_LINE_WIDTH
-                        )
-                        queue_indicator.grid(row=0, column=0, sticky='ns', padx=QUEUE_LINE_PADX, pady=QUEUE_LINE_PADY)
-                        queue_indicator.grid_propagate(False)
-                    
-                    # Numéro de la chanson (colonne 1)
-                    number_label = tk.Label(
+                
+                # Configuration de la grille en 6 colonnes : trait queue, numéro, miniature, titre, durée, bouton
+                item_frame.columnconfigure(0, minsize=4, weight=0)   # Trait queue (si applicable)
+                item_frame.columnconfigure(1, minsize=10, weight=0)  # Numéro
+                item_frame.columnconfigure(2, minsize=80, weight=0)  # Miniature
+                item_frame.columnconfigure(3, minsize=150, weight=1) # Titre
+                item_frame.columnconfigure(4, minsize=60, weight=0)  # Durée
+                item_frame.columnconfigure(5, minsize=80, weight=0)  # Bouton
+                item_frame.rowconfigure(0, minsize=50, weight=0)     # Hauteur fixe
+                
+                # Trait vertical queue (colonne 0) - seulement si la musique est dans la queue
+                if is_in_queue:
+                    queue_indicator = tk.Frame(
                         item_frame,
-                        text=str(current_song_index + 1),  # +1 pour commencer à 1 au lieu de 0
-                        bg='#4a4a4a',
-                        fg='white',
-                        font=('TkDefaultFont', 10, 'bold'),
-                        anchor='center'
+                        bg='black',  # Trait noir
+                        width=QUEUE_LINE_WIDTH
                     )
-                    number_label.grid(row=0, column=1, sticky='nsew', padx=(2, 2), pady=2)
-                    
-                    # Miniature (colonne 2)
-                    thumbnail_label = tk.Label(
-                        item_frame,
-                        bg='#4a4a4a',
-                        width=10,
-                        height=3,
-                        anchor='center'
-                    )
-                    thumbnail_label.grid(row=0, column=2, sticky='nsew', padx=(5, 10), pady=8)
-                    thumbnail_label.grid_propagate(False)
-                    
-                    col_offset = 2  # Décalage pour les colonnes suivantes (trait + numéro)
-                else:
-                    # Configuration de la grille en 5 colonnes : trait queue, miniature, titre, durée, bouton
-                    item_frame.columnconfigure(0, minsize=4, weight=0)   # Trait queue (si applicable)
-                    item_frame.columnconfigure(1, minsize=80, weight=0)  # Miniature
-                    item_frame.columnconfigure(2, weight=1)              # Titre
-                    item_frame.columnconfigure(3, minsize=60, weight=0)  # Durée
-                    item_frame.columnconfigure(4, minsize=40, weight=0)  # Bouton
-                    item_frame.rowconfigure(0, minsize=50, weight=0)     # Hauteur fixe
-                    
-                    # Trait vertical queue (colonne 0) - seulement si la musique est dans la queue
-                    if is_in_queue:
-                        queue_indicator = tk.Frame(
-                            item_frame,
-                            bg='black',  # Trait noir
-                            width=QUEUE_LINE_WIDTH
-                        )
-                        queue_indicator.grid(row=0, column=0, sticky='ns', padx=QUEUE_LINE_PADX, pady=QUEUE_LINE_PADY)
-                        queue_indicator.grid_propagate(False)
-                    
-                    # Miniature (colonne 1)
-                    thumbnail_label = tk.Label(
-                        item_frame,
-                        bg='#4a4a4a',
-                        width=10,
-                        height=3,
-                        anchor='center'
-                    )
-                    thumbnail_label.grid(row=0, column=1, sticky='nsew', padx=(10, 10), pady=8)
-                    thumbnail_label.grid_propagate(False)
-                    
-                    col_offset = 1  # Décalage pour le trait queue
+                    queue_indicator.grid(row=0, column=0, sticky='ns', padx=QUEUE_LINE_PADX, pady=QUEUE_LINE_PADY)
+                    queue_indicator.grid_propagate(False)
+                
+                # Numéro de la chanson (colonne 1)
+                number_label = tk.Label(
+                    item_frame,
+                    text=str(current_song_index + 1) if show_numbers else "",  # +1 pour commencer à 1 au lieu de 0
+                    bg=bg_color,
+                    fg='white',
+                    font=('TkDefaultFont', 10, 'bold'),
+                    anchor='center'
+                )
+                number_label.grid(row=0, column=1, sticky='nsew', padx=(10, 5), pady=2)
+                
+                # Miniature (colonne 2)
+                thumbnail_label = tk.Label(
+                    item_frame,
+                    bg=bg_color,
+                    width=2,
+                    height=2,
+                    anchor='center',
+                    text="⏵",  # Icône temporaire
+                    font=('TkDefaultFont', 13, 'bold')
+                )
+                thumbnail_label.grid(row=0, column=2, sticky='nsew', padx=(5, 4), pady=2)
+                thumbnail_label.grid_propagate(False)
+                
+
                 
                 # Charger la miniature
-                if thumbnail_path and os.path.exists(thumbnail_path):
-                    self.music_player._load_image_thumbnail(thumbnail_path, thumbnail_label)
-                else:
-                    self.music_player._load_mp3_thumbnail(filepath, thumbnail_label)
+                # if thumbnail_path and os.path.exists(thumbnail_path):
+                #     self.music_player._load_image_thumbnail(thumbnail_path, thumbnail_label)
+                # else:
+                #     self.music_player._load_mp3_thumbnail(filepath, thumbnail_label)
 
+                thumbnail_label.filepath = filepath
+                
                 # Frame pour le texte (titre + métadonnées) (colonne 1 + col_offset)
-                text_frame = tk.Frame(item_frame, bg='#4a4a4a')
-                text_frame.grid(row=0, column=1+col_offset, sticky='nsew', padx=(0, 10), pady=8)
+                text_frame = tk.Frame(item_frame, bg=bg_color)
+                text_frame.grid(row=0, column=3, sticky='nsew', padx=(0, 2), pady=4)
                 text_frame.columnconfigure(0, weight=1)
                 
-                # Titre principal
+                # Titre principal A OPTIMISER
                 truncated_title = self.music_player._truncate_text_for_display(filename, max_width_pixels=MAIN_PLAYLIST_TITLE_MAX_WIDTH, font_family='TkDefaultFont', font_size=9)
                 # truncated_title = filename
                 title_label = tk.Label(
                     text_frame,
                     text=truncated_title,
-                    bg='#4a4a4a',
+                    bg=bg_color,
                     fg='white',
                     font=('TkDefaultFont', 9),
                     anchor='w',
@@ -183,107 +175,110 @@ class MainPlaylist:
                 title_label.pause_cycles = MAIN_PLAYLIST_TITLE_ANIMATION_PAUSE
                 
                 # Métadonnées (artiste • album • date)
-                artist, album = self.music_player._get_audio_metadata(filepath)
+                # artist, album = self.music_player._get_audio_metadata(filepath)
                 
                 # Créer un frame pour les métadonnées pour pouvoir séparer l'artiste
-                metadata_container = tk.Frame(text_frame, bg='#4a4a4a')
+                metadata_container = tk.Frame(text_frame, bg=bg_color)
                 metadata_container.grid(row=1, column=0, sticky='ew', pady=(0, 2))
                 metadata_container.columnconfigure(0, weight=0)  # Artiste
                 metadata_container.columnconfigure(1, weight=1)  # Reste des métadonnées
                 
                 # Label artiste cliquable (s'il existe)
-                artist_label = None
-                if artist:
-                    truncated_artist = self.music_player._truncate_text_for_display(artist, max_width_pixels=MAIN_PLAYLIST_ARTIST_MAX_WIDTH, font_family='TkDefaultFont', font_size=8)
-                    artist_label = tk.Label(
-                        metadata_container,
-                        text=truncated_artist,
-                        bg='#4a4a4a',
-                        fg='#cccccc',
-                        font=('TkDefaultFont', 8),
-                        anchor='w',
-                        cursor='hand2'  # Curseur main pour indiquer que c'est cliquable
-                    )
-                    artist_label.grid(row=0, column=0, sticky='w')
-                    artist_label.animation_id = None  # ID de l'animation pour le titre
-                    artist_label.scroll_position = 0  # Position de défilement actuelle
-                    artist_label.pause_counter = MAIN_PLAYLIST_ARTIST_ANIMATION_STARTUP  # Compteur pour la pause entre les cycles
-                    artist_label.max_width = MAIN_PLAYLIST_ARTIST_MAX_WIDTH  # Largeur maximale du titre
-                    artist_label.animation_active = False  # Animation en cours
-                    artist_label.full_text = artist_label.cget('text')  # Texte complet de l'artiste
-                    artist_label.pause_cycles = MAIN_PLAYLIST_ARTIST_ANIMATION_PAUSE
+                # artist_label = None
+                
+                # truncated_artist = self.music_player._truncate_text_for_display(artist, max_width_pixels=MAIN_PLAYLIST_ARTIST_MAX_WIDTH, font_family='TkDefaultFont', font_size=8)
+                artist_label = tk.Label(
+                    metadata_container,
+                    text="", # Sera rempli lors du chargement différé
+                    bg=bg_color,
+                    fg=COLOR_ARTIST_NAME,
+                    font=('TkDefaultFont', 8),
+                    anchor='w',
+                    cursor='hand2'  # Curseur main pour indiquer que c'est cliquable
+                )
+                artist_label.grid(row=0, column=0, sticky='w')
+                artist_label.animation_id = None  # ID de l'animation pour le titre
+                artist_label.scroll_position = 0  # Position de défilement actuelle
+                artist_label.pause_counter = MAIN_PLAYLIST_ARTIST_ANIMATION_STARTUP  # Compteur pour la pause entre les cycles
+                artist_label.max_width = MAIN_PLAYLIST_ARTIST_MAX_WIDTH  # Largeur maximale du titre
+                artist_label.animation_active = False  # Animation en cours
+                artist_label.full_text = artist_label.cget('text')  # Texte complet de l'artiste
+                artist_label.pause_cycles = MAIN_PLAYLIST_ARTIST_ANIMATION_PAUSE
+                
+                # Fonction pour gérer le clic sur l'artiste
+                def on_artist_click(event, artist_name, file_path=filepath):
+                    # Essayer d'obtenir les métadonnées YouTube pour récupérer l'URL de la chaîne
+                    video_data = {}
+                    artist, _ = self._get_audio_metadata(filepath)
+                    try:
+                        if not artist:
+                            return
+                        youtube_metadata = self.music_player.get_youtube_metadata(file_path)
+                        if youtube_metadata:
+                            # Essayer d'obtenir l'URL de la chaîne depuis les métadonnées
+                            channel_url = (youtube_metadata.get('channel_url') or 
+                                        youtube_metadata.get('uploader_url') or 
+                                        youtube_metadata.get('channel'))
+                            if channel_url:
+                                video_data['channel_url'] = channel_url
+                    except Exception:
+                        pass
                     
-                    # Fonction pour gérer le clic sur l'artiste
-                    def on_artist_click(event, artist_name=artist, file_path=filepath):
-                        # Essayer d'obtenir les métadonnées YouTube pour récupérer l'URL de la chaîne
-                        video_data = {}
-                        try:
-                            youtube_metadata = self.music_player.get_youtube_metadata(file_path)
-                            if youtube_metadata:
-                                # Essayer d'obtenir l'URL de la chaîne depuis les métadonnées
-                                channel_url = (youtube_metadata.get('channel_url') or 
-                                            youtube_metadata.get('uploader_url') or 
-                                            youtube_metadata.get('channel'))
-                                if channel_url:
-                                    video_data['channel_url'] = channel_url
-                        except Exception:
-                            pass
-                        
-                        # Si pas d'URL trouvée, utiliser le fallback
-                        if 'channel_url' not in video_data:
-                            import urllib.parse
-                            # Nettoyer le nom de l'artiste pour l'URL
-                            clean_artist = artist_name.replace(' ', '').replace('　', '').replace('/', '')
-                            encoded_artist = urllib.parse.quote(clean_artist, safe='')
-                            video_data['channel_url'] = f"https://www.youtube.com/@{encoded_artist}"
-                        
-                        self.music_player._show_artist_content(artist_name, video_data)
+                    # Si pas d'URL trouvée, utiliser le fallback
+                    if 'channel_url' not in video_data:
+                        import urllib.parse
+                        # Nettoyer le nom de l'artiste pour l'URL
+                        clean_artist = artist_name.replace(' ', '').replace('　', '').replace('/', '')
+                        encoded_artist = urllib.parse.quote(clean_artist, safe='')
+                        video_data['channel_url'] = f"https://www.youtube.com/@{encoded_artist}"
                     
-                    # Bind du clic sur l'artiste
-                    # artist_label.bind("<Button-1>", on_artist_click)
+                    self.music_player._show_artist_content(artist_name, video_data)
+                
+                # Bind du clic sur l'artiste
+                # artist_label.bind("<Button-1>", on_artist_click)
+                
+                # Créer le reste des métadonnées (album • date)
+                other_metadata_label = None
+                # other_parts = []
+                # if album:
+                #     other_parts.append(album)
+                
+                # # Ajouter la date si le filepath est fourni
+                # if filepath and os.path.exists(filepath):
+                #     date_str = None
+                #     try:
+                #         # Essayer d'obtenir la date de publication YouTube
+                #         youtube_metadata = self.music_player.get_youtube_metadata(filepath)
+                #         if youtube_metadata and youtube_metadata.get('upload_date'):
+                #             upload_date = youtube_metadata['upload_date']
+                #             # Convertir la date YouTube (format: YYYYMMDD) en format lisible
+                #             import datetime
+                #             date_obj = datetime.datetime.strptime(upload_date, "%Y%m%d")
+                #             date_str = date_obj.strftime("%d/%m/%y")
+                #     except Exception:
+                #         pass
                     
-                    # Créer le reste des métadonnées (album • date)
-                    other_metadata_label = None
-                    # other_parts = []
-                    # if album:
-                    #     other_parts.append(album)
+                #     # Ajouter la date si elle existe
+                #     if date_str:
+                #         other_parts.append(date_str)
+                
+                # # Afficher le reste des métadonnées s'il y en a
+                # if other_parts:
+                #     separator_and_rest = " • " + " • ".join(other_parts)
+                #     other_metadata_label = tk.Label(
+                #         metadata_container,
+                #         text=separator_and_rest,
+                #         bg='#4a4a4a',
+                #         fg='#cccccc',
+                #         font=('TkDefaultFont', 8),
+                #         anchor='w'
+                #     )
+                #     other_metadata_label.grid(row=0, column=1, sticky='w')
                     
-                    # # Ajouter la date si le filepath est fourni
-                    # if filepath and os.path.exists(filepath):
-                    #     date_str = None
-                    #     try:
-                    #         # Essayer d'obtenir la date de publication YouTube
-                    #         youtube_metadata = self.music_player.get_youtube_metadata(filepath)
-                    #         if youtube_metadata and youtube_metadata.get('upload_date'):
-                    #             upload_date = youtube_metadata['upload_date']
-                    #             # Convertir la date YouTube (format: YYYYMMDD) en format lisible
-                    #             import datetime
-                    #             date_obj = datetime.datetime.strptime(upload_date, "%Y%m%d")
-                    #             date_str = date_obj.strftime("%d/%m/%y")
-                    #     except Exception:
-                    #         pass
-                        
-                    #     # Ajouter la date si elle existe
-                    #     if date_str:
-                    #         other_parts.append(date_str)
-                    
-                    # # Afficher le reste des métadonnées s'il y en a
-                    # if other_parts:
-                    #     separator_and_rest = " • " + " • ".join(other_parts)
-                    #     other_metadata_label = tk.Label(
-                    #         metadata_container,
-                    #         text=separator_and_rest,
-                    #         bg='#4a4a4a',
-                    #         fg='#cccccc',
-                    #         font=('TkDefaultFont', 8),
-                    #         anchor='w'
-                    #     )
-                    #     other_metadata_label.grid(row=0, column=1, sticky='w')
-                        
-                    #     # Stocker la référence pour les bindings
-                    #     other_metadata_label.filepath = filepath
-                    # else:
-                    #     other_metadata_label = None
+                #     # Stocker la référence pour les bindings
+                #     other_metadata_label.filepath = filepath
+                # else:
+                #     other_metadata_label = None
                 # else:
                 #     # Pas d'artiste, afficher les métadonnées normalement
                 #     metadata_text = self.music_player._format_artist_album_info(artist, album, filepath)
@@ -304,38 +299,41 @@ class MainPlaylist:
                 #         artist_label = None
                 #         other_metadata_label = None
                 
+                
                 # Durée (colonne 2 + col_offset)
                 duration_text = self.music_player._get_audio_duration(filepath)
                 duration_label = tk.Label(
                     item_frame,
                     text=duration_text,
-                    bg='#4a4a4a',
+                    bg=bg_color,
                     fg='#cccccc',
                     font=('TkDefaultFont', 8),
                     anchor='center'
                 )
-                duration_label.grid(row=0, column=2+col_offset, sticky='ns', padx=(0, 10), pady=8)
+                duration_label.grid(row=0, column=4, sticky='ns', padx=(0, 10), pady=8)
 
                 # Bouton de suppression (colonne 3 + col_offset)
-                delete_btn = tk.Button(
-                    item_frame,
-                    image=self.music_player.icons['delete'],
-                    bg='#3d3d3d',
-                    fg='white',
-                    activebackground='#4a4a4a',
-                    relief='flat',
-                    bd=0,
-                    width=self.music_player.icons['delete'].width(),  # Utiliser la largeur de l'image
-                    height=self.music_player.icons['delete'].height(),  # Utiliser la hauteur de l'image
-                    font=('TkDefaultFont', 8),
-                    takefocus=0
-                )
-                delete_btn.grid(row=0, column=3+col_offset, sticky='ns', padx=(0, 10), pady=8)
-                delete_btn.bind("<Double-1>", lambda event, f=filepath, frame=item_frame, idx=current_song_index: self._remove_from_main_playlist(f, frame, event, idx))
-                tooltip.create_tooltip(delete_btn, "Supprimer de la playlist\nDouble-clic pour retirer cette chanson de la playlist")
+                # delete_btn = tk.Button(
+                #     item_frame,
+                #     image=self.music_player.icons['delete'],
+                #     bg='#3d3d3d',
+                #     fg='white',
+                #     activebackground='#4a4a4a',
+                #     relief='flat',
+                #     bd=0,
+                #     width=self.music_player.icons['delete'].width(),  # Utiliser la largeur de l'image
+                #     height=self.music_player.icons['delete'].height(),  # Utiliser la hauteur de l'image
+                #     font=('TkDefaultFont', 8),
+                #     takefocus=0
+                # )
+                # delete_btn.grid(row=0, column=5, sticky='ns', padx=(0, 10), pady=8)
+                # delete_btn.bind("<Double-1>", lambda event, f=filepath, frame=item_frame, idx=current_song_index: self._remove_from_main_playlist(f, frame, event, idx))
+                # tooltip.create_tooltip(delete_btn, "Supprimer de la playlist\nDouble-clic pour retirer cette chanson de la playlist")
                 
-                item_frame.filepath = filepath
                 item_frame.song_index = current_song_index  # Stocker l'index réel
+                
+                # Stocker les références pour le chargement différé des métadonnées
+                artist_label.filepath = filepath
                 
                 def on_playlist_item_click(event):
                     # Vérifier si Ctrl est enfoncé pour ouvrir sur YouTube
@@ -387,8 +385,8 @@ class MainPlaylist:
                         self.music_player._set_item_colors(item_frame, hover_color, exclude_queue_indicator=True)
                     else:
                         self.music_player._set_item_colors(item_frame, hover_color, exclude_queue_indicator=False)
-                    if artist:
-                        self.music_player._start_text_animation(artist_label.full_text, artist_label)
+                    
+                    self.music_player._start_text_animation(artist_label.full_text, artist_label)
                     self.music_player._start_text_animation(title_label.full_text, title_label)
                     
                     
@@ -405,8 +403,8 @@ class MainPlaylist:
                         self.music_player._set_item_colors(item_frame, bg_color, exclude_queue_indicator=True)
                     else:
                         self.music_player._set_item_colors(item_frame, bg_color, exclude_queue_indicator=False)
-                    if artist:
-                        self.music_player._reset_text_animation(artist_label)
+                        
+                    self.music_player._reset_text_animation(artist_label)
                     self.music_player._reset_text_animation(title_label)
                 
                 # Clic droit pour ouvrir le menu de sélection ou le menu contextuel
@@ -420,152 +418,100 @@ class MainPlaylist:
                     else:
                         # Comportement normal : ouvrir le menu contextuel pour un seul fichier
                         self.music_player._show_single_file_menu(event, filepath)
+                
+                item_frame.is_hovered = False
+                item_frame.hover_check_id = None
+                def check_mouse_in_item():
+                    """Vérifie si la souris est toujours dans la zone de l'item"""
+                    try:
+                        if not item_frame.winfo_exists():
+                            return
+                        
+                        # Ne pas vérifier le hover si un drag est en cours
+                        if hasattr(item_frame, 'is_dragging') and item_frame.is_dragging:
+                            # Programmer la prochaine vérification
+                            item_frame.hover_check_id = item_frame.after(10, check_mouse_in_item)
+                            return
+                        
+                        # Obtenir la position de la souris par rapport à l'écran
+                        mouse_x = item_frame.winfo_pointerx()
+                        mouse_y = item_frame.winfo_pointery()
+                        
+                        # Obtenir les coordonnées de l'item_frame
+                        frame_x = item_frame.winfo_rootx()
+                        frame_y = item_frame.winfo_rooty()
+                        frame_width = item_frame.winfo_width()
+                        frame_height = item_frame.winfo_height()
+                        
+                        # Vérifier si la souris est dans la zone de l'item
+                        mouse_in_item = (frame_x <= mouse_x <= frame_x + frame_width and 
+                                    frame_y <= mouse_y <= frame_y + frame_height)
+                        
+                        # Si l'état a changé
+                        if mouse_in_item != item_frame.is_hovered:
+                            item_frame.is_hovered = mouse_in_item
+                            if mouse_in_item:
+                                on_enter(None)
+                            else:
+                                on_leave(None)
+                        
+                        # Programmer la prochaine vérification si la souris est dans l'item
+                        if mouse_in_item:
+                            item_frame.hover_check_id = item_frame.after(10, check_mouse_in_item)
+                        else:
+                            item_frame.hover_check_id = None
+                            
+                    except tk.TclError:
+                        # Widget détruit
+                        pass
+                
+                def on_motion(event):
+                    """Déclenché quand la souris bouge dans l'item ou ses enfants"""
+                    # Ne pas déclencher on_enter si un drag est en cours
+                    if hasattr(item_frame, 'is_dragging') and item_frame.is_dragging:
+                        return
                     
-                # Bindings pour clics simples et doubles
-                # item_frame.bind("<ButtonPress-1>", on_left_button_press)
-                # item_frame.bind("<Double-1>", on_playlist_item_double_click)
-                # thumbnail_label.bind("<ButtonPress-1>", on_left_button_press)
-                # thumbnail_label.bind("<Double-1>", on_playlist_item_double_click)
-                # text_frame.bind("<ButtonPress-1>", on_left_button_press)
-                # text_frame.bind("<Double-1>", on_playlist_item_double_click)
-                # title_label.bind("<ButtonPress-1>", on_left_button_press)
-                # title_label.bind("<Double-1>", on_playlist_item_double_click)
-                
-                # Ajouter les bindings pour les labels de métadonnées s'ils existent
-                # if artist:
-                #     # Pour l'artiste, on ne veut pas le binding normal car il a son propre clic
-                #     # Mais on veut quand même les autres bindings (drag, etc.)
-                #     if other_metadata_label:
-                #         other_metadata_label.bind("<ButtonPress-1>", on_left_button_press)
-                #         other_metadata_label.bind("<Double-1>", on_playlist_item_double_click)
-                # else:
-                #     # Pas d'artiste, utiliser le label de métadonnées normal
-                #     if 'metadata_label' in locals():
-                #         metadata_label.bind("<ButtonPress-1>", on_left_button_press)
-                #         metadata_label.bind("<Double-1>", on_playlist_item_double_click)
-                
-                # duration_label.bind("<ButtonPress-1>", on_left_button_press)
-                # duration_label.bind("<Double-1>", on_playlist_item_double_click)
-                
-                # Ajouter le binding pour le numéro si il existe
-                # if show_numbers:
-                #     number_label.bind("<ButtonPress-1>", on_left_button_press)
-                #     number_label.bind("<Double-1>", on_playlist_item_double_click)
-                
-                
+                    
+                    if not item_frame.is_hovered:
+                        item_frame.is_hovered = True
+                        on_enter(event)
+                    
+                    # Annuler la vérification précédente et en programmer une nouvelle
+                    if item_frame.hover_check_id:
+                        item_frame.after_cancel(item_frame.hover_check_id)
+                    item_frame.hover_check_id = item_frame.after(100, check_mouse_in_item)
+                                
                 widgets_to_bind = [item_frame, number_label, thumbnail_label, text_frame, 
                                 title_label, duration_label, artist_label, metadata_container]
+                
                 for widget in widgets_to_bind:
-                    if widget is None:
-                        continue
-                    widget.bind("<ButtonPress-1>", on_left_button_press)
-                    widget.bind("<Double-1>", on_playlist_item_double_click)
-                    widget.bind("<ButtonPress-3>", on_playlist_item_right_click)
-                    # Ajouter les événements de survol
-                    widget.bind("<Leave>", on_leave)
-                    widget.bind("<Enter>", on_enter)
+                    # Binder les clics sur tous les enfants pour qu'ils remontent à l'item_frame
+                    widget.bind("<ButtonPress-1>", on_playlist_item_click, add='+')
+                    widget.bind("<Double-1>", on_playlist_item_double_click, add='+')
+                    widget.bind("<ButtonPress-3>", on_playlist_item_right_click, add='+')
+                    # Binder le motion sur tous les enfants
+                    widget.bind("<Motion>", on_motion, add='+')
                     
-                    # Ajouter un gestionnaire pour la molette de souris qui transmet l'événement directement au canvas
-                    if hasattr(self.music_player, 'main_playlist_canvas') and self.music_player.main_playlist_canvas:
-                        # Fonction locale pour transmettre l'événement
-                        def forward_wheel(event, canvas=self.music_player.main_playlist_canvas):
-                            # Optimisation: Limiter la fréquence des événements
-                            if hasattr(self.music_player, '_last_wheel_time'):
-                                current_time = time.time()
-                                if current_time - self.music_player._last_wheel_time < 0.01:  # 10ms entre les scrolls
-                                    return "break"
-                                self.music_player._last_wheel_time = current_time
-                            else:
-                                self.music_player._last_wheel_time = time.time()
+                    widget.bind("<B1-Motion>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_motion(e, f), add='+')
+                    widget.bind("<ButtonRelease-1>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_release(e, f), add='+')
+                    widget.bind("<B3-Motion>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_motion(e, f), add='+')
+                    widget.bind("<ButtonRelease-3>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_release(e, f), add='+')
                                 
-                            # Vérifier les verrous de chargement avant de traiter le scroll
-                            loading_up = getattr(self.music_player, '_loading_up_in_progress', False)
-                            loading_down = getattr(self.music_player, '_loading_down_in_progress', False)
-                            
-                            # Déterminer la direction du scroll
-                            scroll_direction = 0
-                            if hasattr(event, 'delta') and event.delta:
-                                scroll_direction = int(-1*(event.delta/120))
-                            elif hasattr(event, 'num'):
-                                if event.num == 4:
-                                    scroll_direction = -1  # Vers le haut
-                                elif event.num == 5:
-                                    scroll_direction = 1   # Vers le bas
-                            
-                            # Bloquer le scroll dans la direction où on charge
-                            should_block = False
-                            if scroll_direction < 0 and loading_up:
-                                # Scroll vers le haut bloqué pendant chargement vers le haut
-                                should_block = True
-                                if USE_NEW_CONFIG and get_main_playlist_config('debug_scroll'):
-                                    print("🚫 Scroll vers le haut bloqué (chargement en cours)")
-                            elif scroll_direction > 0 and loading_down:
-                                # Scroll vers le bas bloqué pendant chargement vers le bas
-                                should_block = True
-                                if USE_NEW_CONFIG and get_main_playlist_config('debug_scroll'):
-                                    print("🚫 Scroll vers le bas bloqué (chargement en cours)")
-                            
-                            # Traiter l'événement seulement si pas bloqué
-                            if not should_block:
-                                if hasattr(event, 'delta') and event.delta:
-                                    canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-                                else:
-                                    if hasattr(event, 'num'):
-                                        if event.num == 4:
-                                            canvas.yview_scroll(-1, "units")
-                                        elif event.num == 5:
-                                            canvas.yview_scroll(1, "units")
-                                    
-                            # Vérifier le scroll infini avec un délai
-                            # if hasattr(self, '_check_infinite_scroll'):
-                            #     self.music_player.root.after(50, self._check_infinite_scroll)
-                            self._check_infinite_scroll(event)
-                            
-                            # Empêcher la propagation pour éviter le double traitement
-                            return "break"
-                        
-                        # Lier les événements de la molette
-                        widget.bind("<MouseWheel>", forward_wheel, add="+")
-                        widget.bind("<Button-4>", forward_wheel, add="+")  # Linux
-                        widget.bind("<Button-5>", forward_wheel, add="+")  # Linux
-                    
-                    # # Ajouter un gestionnaire pour la molette de souris qui transmet l'événement directement au canvas
-                    # if hasattr(self.music_player, 'main_playlist_canvas') and self.music_player.main_playlist_canvas:
-                    #     # Fonction locale pour transmettre l'événement
-                    #     def forward_wheel(event, canvas=self.music_player.main_playlist_canvas):
-                    #         if event.delta:
-                    #             canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-                    #         else:
-                    #             if event.num == 4:
-                    #                 canvas.yview_scroll(-1, "units")
-                    #             elif event.num == 5:
-                    #                 canvas.yview_scroll(1, "units")
-                    #         # Vérifier le scroll infini
-                    #         if hasattr(self, '_check_infinite_scroll'):
-                    #             self.music_player.root.after(50, self._check_infinite_scroll)
-                    #         return "break"  # Empêcher la propagation
-                        
-                    #     widget.bind("<MouseWheel>", forward_wheel)
-                    #     widget.bind("<Button-4>", forward_wheel)  # Linux
-                    #     widget.bind("<Button-5>", forward_wheel)  # Linux
-                    
+                item_frame.bind("<ButtonPress-1>", on_playlist_item_click)
+                item_frame.bind("<Double-1>", on_playlist_item_double_click)
+                item_frame.bind("<ButtonPress-3>", on_playlist_item_right_click, add='+')
+                item_frame.bind("<Motion>", on_motion)
                 
-                
+                item_frame.bind("<B1-Motion>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_motion(e, f))
+                item_frame.bind("<ButtonRelease-1>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_release(e, f))
+                item_frame.bind("<B3-Motion>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_motion(e, f))
+                item_frame.bind("<ButtonRelease-3>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_release(e, f))
                 
                 # item_frame.bind("<ButtonPress-3>", on_playlist_item_right_click)
                 # thumbnail_label.bind("<ButtonPress-3>", on_playlist_item_right_click)
                 # text_frame.bind("<ButtonPress-3>", on_playlist_item_right_click)
                 # title_label.bind("<ButtonPress-3>", on_playlist_item_right_click)
                 # Ajouter les bindings pour le clic droit sur les labels de métadonnées s'ils existent
-                # if artist:
-                #     # Pour l'artiste, on veut quand même le clic droit normal
-                #     artist_label.bind("<ButtonPress-3>", on_playlist_item_right_click)
-                #     if other_metadata_label:
-                #         other_metadata_label.bind("<ButtonPress-3>", on_playlist_item_right_click)
-                # else:
-                    # # Pas d'artiste, utiliser le label de métadonnées normal
-                    # if 'metadata_label' in locals():
-                    #     metadata_label.bind("<ButtonPress-3>", on_playlist_item_right_click)
                 # duration_label.bind("<ButtonPress-3>", on_playlist_item_right_click)
                 
                 # if show_numbers:
@@ -577,33 +523,6 @@ class MainPlaylist:
                     file_path=filepath, 
                     item_type="playlist_item"
                 )
-                
-                # CORRECTION: Forcer les bindings de motion après tous les autres bindings
-                # pour éviter qu'ils soient écrasés
-                # def force_motion_bindings():
-                #     widgets_to_fix = [item_frame, thumbnail_label, text_frame, title_label, duration_label]
-                #     # Ajouter les labels de métadonnées s'ils existent
-                #     if artist:
-                #         widgets_to_fix.append(artist_label)
-                #         if other_metadata_label:
-                #             widgets_to_fix.append(other_metadata_label)
-                #     else:
-                #         # Pas d'artiste, utiliser le label de métadonnées normal
-                #         if 'metadata_label' in locals():
-                #             widgets_to_fix.append(metadata_label)
-                #     if show_numbers:  # Ajouter le numéro s'il existe
-                #         widgets_to_fix.append(number_label)
-                    
-                #     for widget in widgets_to_fix:
-                #         if widget and widget.winfo_exists():
-                #             widget.bind("<B1-Motion>", lambda e, f=item_frame: self.music_player.drag_drop_handler._on_drag_motion(e, f))
-                #             widget.bind("<ButtonRelease-1>", lambda e, f=item_frame: self.music_player.drag_drop_handler._on_drag_release(e, f))
-                #             widget.bind("<B3-Motion>", lambda e, f=item_frame: self.music_player.drag_drop_handler._on_drag_motion(e, f))
-                #             widget.bind("<ButtonRelease-3>", lambda e, f=item_frame: self.music_player.drag_drop_handler._on_drag_release(e, f))
-                
-                # Programmer l'exécution après que tous les bindings soient configurés
-                # Utiliser un délai pour s'assurer que c'est vraiment appliqué en dernier
-                # self.music_player.root.after(50, force_motion_bindings)
                 
                 # Tooltip pour expliquer les interactions
                 tooltip_text = "Musique de la playlist principale\nDouble-clic: Jouer cette musique\nCtrl + Clic: Ouvrir sur YouTube\nDrag vers la droite: Ajouter à la queue (prochaines musiques)\nDrag vers la gauche: Placer en premier dans la queue\nShift + Clic: Sélection multiple\nClic droit: Ouvrir le menu contextuel"
@@ -627,62 +546,131 @@ class MainPlaylist:
                 print(f"Erreur affichage playlist item: {e}")
                 return None
 
-    def forward_wheel(self, event):
-        canvas = self.music_player.main_playlist_canvas
-        # Optimisation: Limiter la fréquence des événements
-        if hasattr(self.music_player, '_last_wheel_time'):
-            current_time = time.time()
-            if current_time - self.music_player._last_wheel_time < 0.01:  # 10ms entre les scrolls
-                return "break"
-            self.music_player._last_wheel_time = current_time
-        else:
-            self.music_player._last_wheel_time = time.time()
+
+
+    
+    def _display_main_playlist(self, files_to_display, preserve_scroll=False):
+        """Affiche la main playlist"""
+        # Marquer qu'on est en train de faire un refresh pour éviter la boucle infinie
+        print("_display_main_playlist appelée")
+        
+        files_to_display = self.music_player.main_playlist.copy()
+        
+        # Vider le container actuel
+        try:
+            # Vérifier que le container existe encore
+            if hasattr(self, 'main_playlist_container') and self.music_player.main_playlist_container.winfo_exists():
+                for widget in self.music_player.main_playlist_container.winfo_children():
+                    try:
+                        if widget.winfo_exists():
+                            widget.destroy()
+                    except tk.TclError:
+                        # Widget déjà détruit, ignorer
+                        continue
+        except tk.TclError:
+            # Container détruit, ignorer
+            pass
+        
+        
+        # Remonter le scroll en haut après chaque recherche (sauf si preserve_scroll=True)
+        if not preserve_scroll and hasattr(self.music_player, 'main_playlist_canvas'):
+            try:
+                if self.music_player.main_playlist_canvas.winfo_exists():
+                    self.music_player.main_playlist_canvas.yview_moveto(0.0)
+            except tk.TclError:
+                # Canvas détruit, ignorer
+                pass
+        
+        # Si aucun fichier à afficher, montrer le message "Aucun résultat"
+        # if not files_to_display:
+        #     _show_no_results_message(self)
+        #     # Marquer la fin du refresh
+        #     self._refreshing_downloads = False
+        #     return
+        
+        # Afficher avec chargement différé des miniatures
+        # item_list = []
+        self.music_player.main_playlist_all_widgets = {}
+        self.music_player.main_playlist_visible_widgets = {}
+        limit = 30
+        for i, filepath in enumerate(files_to_display):
+            # if i >= limit:
+            #     break
+            # self._add_download_item_fast(filepath)
             
-        # Vérifier les verrous de chargement avant de traiter le scroll
-        loading_up = getattr(self.music_player, '_loading_up_in_progress', False)
-        loading_down = getattr(self.music_player, '_loading_down_in_progress', False)
+            # item = self._add_song_item_empty(filepath, self.downloads_container)
+            
+            # self._load_song_item(item, self.downloads_container)
+            # if i >= limit:
+            #     item_list.append(item)
+            # self.visible_widgets[i] = item
+            
+            # self.all_widgets[i] = item
+            self.music_player.main_playlist_all_widgets[i] = filepath
         
-        # Déterminer la direction du scroll
-        scroll_direction = 0
-        if hasattr(event, 'delta') and event.delta:
-            scroll_direction = int(-1*np.sign(event.delta))
-        elif hasattr(event, 'num'):
-            if event.num == 4:
-                scroll_direction = -1  # Vers le haut
-            elif event.num == 5:
-                scroll_direction = 1   # Vers le bas
         
-        # Bloquer le scroll dans la direction où on charge
-        should_block = False
-        if scroll_direction < 0 and loading_up:
-            # Scroll vers le haut bloqué pendant chargement vers le haut
-            should_block = True
-            if USE_NEW_CONFIG and get_main_playlist_config('debug_scroll'):
-                print("🚫 Scroll vers le haut bloqué (chargement en cours)")
-        elif scroll_direction > 0 and loading_down:
-            # Scroll vers le bas bloqué pendant chargement vers le bas
-            should_block = True
-            if USE_NEW_CONFIG and get_main_playlist_config('debug_scroll'):
-                print("🚫 Scroll vers le bas bloqué (chargement en cours)")
+        # Forcer la mise à jour de la scrollbar après l'ajout des éléments
+        # self._update_scrollbar()
         
-        # Traiter l'événement seulement si pas bloqué
-        if not should_block:
-            if hasattr(event, 'delta') and event.delta:
-                canvas.yview_scroll(int(-1*(np.sign(event.delta))), "units")
-            else:
-                if hasattr(event, 'num'):
-                    if event.num == 4:
-                        canvas.yview_scroll(-1, "units")
-                    elif event.num == 5:
-                        canvas.yview_scroll(1, "units")
+        
+        # from library_tab.downloads import _update_visible_items
+        # self.root.after(3000, lambda a=self: _update_visible_items(self))
+        
+        self.music_player.root.after(0, lambda: (self._update_visible_items(), self.on_canvas_scroll_end()))
+        # self._update_visible_items()
+        
+        # Lancer le chargement différé des miniatures et durées
+        # self.music_player._start_thumbnail_loading(files_to_display, self.music_player.main_playlist_container)
+    
+    def on_canvas_scroll_end(self):
+        files_to_display = [item.filepath for item in self.music_player.main_playlist_visible_widgets.values()]
+        self.music_player._start_thumbnail_loading(files_to_display, self.music_player.main_playlist_container)
+    
+    def _update_visible_items(self):
+        """Met à jour les widgets visibles"""
+        start_index, end_index = self._calculate_visible_range()
+        # print('start end ', start_index, end_index)
+        
+        # Supprimer les widgets qui ne sont plus visibles
+        for idx in list(self.music_player.main_playlist_visible_widgets.keys()):
+            if idx < start_index or idx >= end_index:
+                self.music_player._unload_song_item(self.music_player.main_playlist_visible_widgets[idx], self.music_player.downloads_container)
+                self.music_player.main_playlist_visible_widgets.pop(idx)
+        
+        # Créer les widgets qui deviennent visibles
+        for idx in range(start_index, end_index):
+            # print('nyan ', idx, self.visible_widgets)
+            if idx not in self.music_player.main_playlist_visible_widgets.keys():
+                # threading.Thread(target=lambda :self._load_song_item(self.all_widgets[idx], self.downloads_container), daemon=True).start()
+                # self.visible_widgets[idx] = self.all_widgets[idx]
                 
-        # Vérifier le scroll infini avec un délai
-        # if hasattr(self, '_check_infinite_scroll'):
-        #     self.music_player.root.after(50, self._check_infinite_scroll)
-        self._check_infinite_scroll(event)
+                item = self._add_main_playlist_item(self.music_player.main_playlist_all_widgets[idx], placement=idx)
+                # item = self._add_song_item(self.all_widgets[idx], self.downloads_container, placement=50)
+                self.music_player.main_playlist_visible_widgets[idx] = item
+    
+    def _calculate_visible_range(self):
+        """Calcule la plage d'éléments visibles"""
+        # Obtenir les coordonnées visibles du canvas
+        canvas = self.music_player.main_playlist_canvas
+        bbox = canvas.bbox("all")
+        if not bbox:
+            return 0, 0
         
-        # Empêcher la propagation pour éviter le double traitement
-        return "break"
+        
+        height = (MAIN_PLAYLIST_MAX_ITEM_HEIGHT + 2 * MAIN_PLAYLIST_PADY) * len(self.music_player.main_playlist)
+        self.music_player.main_playlist_container.config(height=height)
+        
+        canvas_height = canvas.winfo_height()
+        canvas_height = 600 if canvas_height == 1 else canvas_height # pour que ça affiche bien au début
+        scroll_pos = canvas.canvasy(0)  # Position verticale en pixels
+        
+        # print("_calculate_visible_range" ,scroll_pos, canvas_height)
+        # Calcul des indices
+        start_index = max(0, int(scroll_pos / (MAIN_PLAYLIST_MAX_ITEM_HEIGHT + 2 *MAIN_PLAYLIST_PADY)) - MAIN_PLAYLIST_TOP_ITEM_BUFFERING)  # -2 pour le buffering
+        end_index = min(len(self.music_player.main_playlist_all_widgets), int((scroll_pos + canvas_height) / (MAIN_PLAYLIST_MAX_ITEM_HEIGHT  + 2 *MAIN_PLAYLIST_PADY)) + MAIN_PLAYLIST_BOTTOM_ITEM_BUFFERING) # +3
+        
+        return start_index, end_index
+            
 
     def select_playlist_item(self, item_frame=None, index=None, auto_scroll=True, is_manual=False):
         """Met en surbrillance l'élément sélectionné dans la playlist
@@ -692,6 +680,7 @@ class MainPlaylist:
             index: Index de l'élément à sélectionner (alternatif à item_frame)
             auto_scroll: Si True, fait défiler automatiquement vers l'élément (défaut: True)
         """
+        print("select_playlist_item appelée")
         # Protection contre les appels multiples rapides
         if not hasattr(self.music_player, '_last_select_time'):
             self.music_player._last_select_time = 0
@@ -708,73 +697,36 @@ class MainPlaylist:
                     children_for_deselect = self.music_player.main_playlist_container.winfo_children()
                 except tk.TclError:
                     children_for_deselect = []
-                # if len(children_for_deselect) > 0:
-                #     for child in children_for_deselect:
-                #         print(child.filepath)
-                # print('SELECT_PLAYLIST_ITEM ', [child.filepath for child in children_for_deselect])
+
                 for child in children_for_deselect:
                     try:
                         if child.winfo_exists() and hasattr(child, 'selected'):
                             child.selected = False
-                            self.music_player._set_item_colors(child, '#4a4a4a')  # Couleur normale
+                            self.music_player._set_item_colors(child, COLOR_BACKGROUND)  # Couleur normale
                     except tk.TclError:
                         # Widget détruit, ignorer
                         continue
-                
-                # Si on a fourni un index plutôt qu'un frame
-                if index is not None:
-                    try:
-                        children = self.music_player.main_playlist_container.winfo_children()
-                        
-                        # Vérifier si l'index fourni pourrait être un index absolu dans la playlist
-                        # au lieu d'un index relatif dans la fenêtre chargée
-                        if (USE_NEW_CONFIG and get_main_playlist_config('enable_smart_loading') and 
-                            hasattr(self.music_player, '_last_window_start') and hasattr(self.music_player, '_last_window_end')):
-                            
-                            start_index = self.music_player._last_window_start
-                            end_index = self.music_player._last_window_end
-                            
-                            # Si l'index semble être un index absolu (hors limites des enfants chargés)
-                            if index >= len(children):
-                                if USE_NEW_CONFIG and get_main_playlist_config('debug_scroll'):
-                                    print(f"⚠️  Index {index} semble absolu, fenêtre chargée: {start_index}-{end_index}")
-                                
-                                # Si l'index absolu est dans la fenêtre chargée, convertir en relatif
-                                if start_index <= index < end_index:
-                                    relative_index = index - start_index
-                                    if 0 <= relative_index < len(children):
-                                        index = relative_index
-                                        if USE_NEW_CONFIG and get_main_playlist_config('debug_scroll'):
-                                            print(f"✅ Converti en index relatif: {index}")
-                                    else:
-                                        if USE_NEW_CONFIG and get_main_playlist_config('debug_scroll'):
-                                            print(f"❌ Index relatif {relative_index} hors limites")
-                                        return
-                                else:
-                                    # L'index absolu n'est pas dans la fenêtre chargée
-                                    if USE_NEW_CONFIG and get_main_playlist_config('debug_scroll'):
-                                        print(f"❌ Index absolu {index} pas dans fenêtre chargée, impossible de sélectionner")
-                                    return
-                        
-                        # Maintenant, index devrait être un index relatif valide
-                        if 0 <= index < len(children):
-                            item_frame = children[index]
-                        else:
-                            return
-                            
-                    except tk.TclError:
-                        # Erreur lors de l'accès aux enfants, ignorer
-                        return
+
         except tk.TclError:
             # Container détruit, ignorer
             return
         
+        if index in self.music_player.main_playlist_visible_widgets:
+            item_frame = self.music_player.main_playlist_visible_widgets[index]
+        else:
+            self.load_missing_items(index)
+            item_frame = self.music_player.main_playlist_visible_widgets[index]
+            
+            files_to_display = [item.filepath for item in self.music_player.main_playlist_visible_widgets.values()]
+            self.music_player._start_thumbnail_loading(files_to_display, self.music_player.main_playlist_container)
+
         # Sélectionner l'élément courant si fourni
         if item_frame:
+            item_frame.update_idletasks()
             try:
                 if item_frame.winfo_exists():
                     item_frame.selected = True
-                    self.music_player._set_item_colors(item_frame, '#5a9fd8')  # Couleur de surbrillance (bleu)
+                    self.music_player._set_item_colors(item_frame, COLOR_SELECTED)  # Couleur de surbrillance (bleu)
                     
                     # Faire défiler avec animation pour que l'élément soit visible (seulement si auto_scroll=True)
                     if auto_scroll:
@@ -785,9 +737,11 @@ class MainPlaylist:
                                 
                                 container_height = self.music_player.main_playlist_container.winfo_height()
                                 if container_height > 0:
+                                    
                                     item_y = item_frame.winfo_y()
                                     target_position = item_y / container_height
-                                    self._smooth_scroll_to_position(target_position, is_manual=is_manual)
+                                    
+                                    self._smooth_scroll_to_position(target_position, is_manual=is_manual, callback=self._refresh_main_playlist_display)
                                     
                                 else:
                                     # Fallback si la hauteur n'est pas disponible
@@ -807,7 +761,34 @@ class MainPlaylist:
                 # item_frame détruit, ignorer
                 pass
 
-
+    def load_missing_items(self, index, callback=None):
+        """Charge les éléments manquants de la playlist si besoin"""
+        
+        
+        scroll_top, scroll_bottom = self.music_player.main_playlist_canvas.yview()
+        top_y = self.music_player.main_playlist_container.winfo_height() * scroll_top
+        top_index = int(top_y // (MAIN_PLAYLIST_MAX_ITEM_HEIGHT + 2 * MAIN_PLAYLIST_PADY))
+        
+        index_offset = int(self.music_player.main_playlist_canvas.winfo_height() / (MAIN_PLAYLIST_MAX_ITEM_HEIGHT  + 2 *MAIN_PLAYLIST_PADY)) + MAIN_PLAYLIST_BOTTOM_ITEM_BUFFERING # pour qu'une fois qu'on a scroll, on ait toujours plus qu'une musique affichée
+        
+        # print("scroll_top top_y", scroll_top, top_y)
+        # print('top current', top_index, index)
+        
+        start_index = min(top_index, index)
+        end_index = max(top_index, index)
+        
+        end_index = min(len(self.music_player.main_playlist), end_index + index_offset)
+        
+        # print('start end indexes', start_index, end_index)
+        
+        for idx in range(start_index, end_index + 1):
+            if not idx in self.music_player.main_playlist_visible_widgets:
+                item = self._add_main_playlist_item(self.music_player.main_playlist_all_widgets[idx], placement=idx)
+                self.music_player.main_playlist_visible_widgets[idx] = item
+            # print('IDX LOADED', idx)
+        
+        if callback:
+            callback()
 
     def _remove_from_main_playlist(self, filepath, frame, event=None, song_index=None):
         """Supprime un élément de la main playlist"""
@@ -877,7 +858,6 @@ class MainPlaylist:
         
         self.reset_main_playlist()
         self.music_player.go_to_top(self.music_player.main_playlist_canvas)
-        self.music_player.main_playlist_is_loading_more_items = False
 
     def _scroll_to_current_song(self, event=None, is_manual=False):
         """Bouton find.png : Compatible ancien et nouveau système"""
@@ -886,86 +866,7 @@ class MainPlaylist:
             return
         
         try:
-            # if USE_NEW_CONFIG and get_main_playlist_config('debug_scroll'):
-            #     print(f"🎯 FIND BUTTON: Vers chanson {self.music_player.current_index}")
             
-            # # SYSTÈME DE SCROLL DYNAMIQUE
-            # if USE_NEW_CONFIG and get_main_playlist_config('enable_dynamic_scroll'):
-            #     # Vérifier si la chanson courante est déjà chargée
-            #     if self.music_player._is_index_already_loaded(self.music_player.current_index):
-            #         # Scroll direct vers la chanson déjà chargée
-            #         relative_index = self._find_relative_index_in_loaded(self.music_player.current_index)
-            #         if relative_index is not None:
-            #             self.select_playlist_item(index=relative_index, auto_scroll=True)
-                        
-            #             total_songs = len(self.music_player.main_playlist)
-            #             self.music_player.status_bar.config(text=f"🎯 Navigation vers la chanson {self.music_player.current_index + 1}/{total_songs}")
-                        
-            #             if USE_NEW_CONFIG and get_main_playlist_config('debug_scroll'):
-            #                 print(f"✅ Find scroll direct progressif: chanson {self.music_player.current_index} (relatif: {relative_index})")
-            #             return
-                
-            #     # Chanson pas encore chargée : déclencher le chargement progressif
-            #     if USE_NEW_CONFIG and get_main_playlist_config('debug_scroll'):
-            #         print(f"🔄 Find button: Chargement progressif requis pour chanson {self.music_player.current_index}")
-                
-            #     # Déclencher le chargement progressif depuis cette position
-            #     self._progressive_load_system()
-                
-            #     # Scroll après chargement
-            #     def scroll_after_progressive_load():
-            #         try:
-            #             relative_index = self._find_relative_index_in_loaded(self.music_player.current_index)
-            #             if relative_index is not None:
-            #                 self.select_playlist_item(index=relative_index, auto_scroll=True)
-                            
-            #                 total_songs = len(self.music_player.main_playlist)
-            #                 self.music_player.status_bar.config(text=f"🎯 Navigation vers la chanson {self.music_player.current_index + 1}/{total_songs}")
-                            
-            #                 if USE_NEW_CONFIG and get_main_playlist_config('debug_scroll'):
-            #                     print(f"✅ Find scroll après chargement progressif: chanson {self.music_player.current_index}")
-            #         except Exception as e:
-            #             if USE_NEW_CONFIG and get_main_playlist_config('debug_scroll'):
-            #                 print(f"❌ Erreur find scroll après chargement progressif: {e}")
-                
-            #     self.music_player.root.after(50, scroll_after_progressive_load)
-                
-            # # ANCIEN SYSTÈME FENÊTRÉ
-            # elif USE_NEW_CONFIG and get_main_playlist_config('enable_smart_loading'):
-            #     # [Code ancien conservé]
-            #     if (hasattr(self.music_player, '_last_window_start') and hasattr(self.music_player, '_last_window_end')):
-            #         start_index = self.music_player._last_window_start
-            #         end_index = self.music_player._last_window_end
-                    
-            #         if start_index <= self.music_player.current_index < end_index:
-            #             relative_index = self.music_player.current_index - start_index
-            #             self.select_playlist_item(index=relative_index, auto_scroll=True)
-                        
-            #             total_songs = len(self.music_player.main_playlist)
-            #             self.music_player.status_bar.config(text=f"🎯 Navigation vers la chanson {self.music_player.current_index + 1}/{total_songs}")
-            #             return
-                
-            #     songs_before = get_main_playlist_config('songs_before_current')
-            #     songs_after = get_main_playlist_config('songs_after_current')
-            #     start_index = max(0, self.music_player.current_index - songs_before)
-            #     end_index = min(len(self.music_player.main_playlist), self.music_player.current_index + songs_after + 1)
-                
-            #     self._force_reload_window(start_index, end_index)
-                
-            #     def scroll_after_reload():
-            #         try:
-            #             relative_index = self.music_player.current_index - start_index
-            #             self.select_playlist_item(index=relative_index, auto_scroll=True)
-                        
-            #             total_songs = len(self.music_player.main_playlist)
-            #             self.music_player.status_bar.config(text=f"🎯 Navigation vers la chanson {self.music_player.current_index + 1}/{total_songs}")
-            #         except Exception as e:
-            #             pass
-                
-            #     self.music_player.root.after(50, scroll_after_reload)
-                
-            # else:
-            # Système classique (sans intelligence)
             self.select_playlist_item(index=self.music_player.current_index, auto_scroll=True, is_manual=is_manual)
             
             total_songs = len(self.music_player.main_playlist)
@@ -977,76 +878,9 @@ class MainPlaylist:
 
     def select_current_song_smart(self, auto_scroll=True, force_reload=False, is_manual=False):
         """Auto-scroll intelligent : Compatible ancien et nouveau système"""
+        print("select_current_song_smart appelé")
         try:
-            if not self.music_player.main_playlist or self.music_player.current_index >= len(self.music_player.main_playlist):
-                return
-                
-            if USE_NEW_CONFIG and get_main_playlist_config('debug_scroll'):
-                print(f"🎮 AUTO-SCROLL SMART: Vers chanson {self.music_player.current_index}")
-            
-            # SYSTÈME DE SCROLL DYNAMIQUE
-            if USE_NEW_CONFIG and get_main_playlist_config('enable_dynamic_scroll'):
-                # Vérifier si la chanson courante est déjà chargée
-                if self._is_index_already_loaded(self.music_player.current_index):
-                    # Chanson déjà chargée : scroll direct vers elle
-                    relative_index = self._find_relative_index_in_loaded(self.music_player.current_index)
-                    if relative_index is not None:
-                        self.select_playlist_item(index=relative_index, auto_scroll=auto_scroll, is_manual=is_manual)
-                        if USE_NEW_CONFIG and get_main_playlist_config('debug_scroll'):
-                            print(f"✅ Auto-scroll progressif direct: chanson {self.music_player.current_index} (relatif: {relative_index})")
-                        return
-                
-                # Chanson pas encore chargée : déclencher le chargement progressif
-                if USE_NEW_CONFIG and get_main_playlist_config('debug_scroll'):
-                    print(f"🎵 Auto-scroll progressif: Chargement requis pour chanson {self.music_player.current_index}")
-                
-                # Déclencher le chargement progressif depuis cette position
-                # self._progressive_load_system()
-                self._load_more_songs_below(unload=False)
-                
-                # Auto-scroll après chargement
-                def auto_scroll_after_progressive_load():
-                    try:
-                        relative_index = self._find_relative_index_in_loaded(self.music_player.current_index)
-                        if relative_index is not None:
-                            self.select_playlist_item(index=relative_index, auto_scroll=auto_scroll)
-                            if USE_NEW_CONFIG and get_main_playlist_config('debug_scroll'):
-                                print(f"✅ Auto-scroll après chargement progressif: chanson {self.music_player.current_index}")
-                    except Exception as e:
-                        if USE_NEW_CONFIG and get_main_playlist_config('debug_scroll'):
-                            print(f"❌ Erreur auto-scroll après chargement progressif: {e}")
-                
-                self.music_player.root.after(50, auto_scroll_after_progressive_load)
-                
-            # ANCIEN SYSTÈME FENÊTRÉ
-            elif USE_NEW_CONFIG and get_main_playlist_config('enable_smart_loading'):
-                # [Ancien code conservé pour compatibilité]
-                if (hasattr(self.music_player, '_last_window_start') and hasattr(self.music_player, '_last_window_end') and not force_reload):
-                    start_index = self.music_player._last_window_start
-                    end_index = self.music_player._last_window_end
-                    
-                    if start_index <= self.music_player.current_index < end_index:
-                        relative_index = self.music_player.current_index - start_index
-                        self.select_playlist_item(index=relative_index, auto_scroll=auto_scroll)
-                        return
-                
-                songs_before = get_main_playlist_config('songs_before_current')
-                songs_after = get_main_playlist_config('songs_after_current')
-                start_index = max(0, self.music_player.current_index - songs_before)
-                end_index = min(len(self.music_player.main_playlist), self.music_player.current_index + songs_after + 1)
-                self._force_reload_window(start_index, end_index)
-                
-                def auto_scroll_after_reload():
-                    try:
-                        relative_index = self.music_player.current_index - start_index
-                        self.select_playlist_item(index=relative_index, auto_scroll=auto_scroll)
-                    except Exception as e:
-                        pass
-                self.music_player.root.after(50, auto_scroll_after_reload)
-                
-            else:
-                # Système classique avec animation
-                self.select_playlist_item(index=self.music_player.current_index, auto_scroll=auto_scroll)
+            self.select_playlist_item(index=self.music_player.current_index, auto_scroll=auto_scroll)
                 
         except Exception as e:
             if USE_NEW_CONFIG and get_main_playlist_config('debug_scroll'):
@@ -1073,12 +907,14 @@ class MainPlaylist:
             show_status: Afficher le message de statut (défaut: True)
             allow_duplicates: Permettre les doublons (défaut: False)
         """
-        print(f"Ajout de {filepath} à la main playlist add_to_main_playlist ", allow_duplicates, filepath in self.music_player.main_playlist)
+        print(f"add_to_main_playlist appelée: Ajout de {filepath} à la main playlist add_to_main_playlist ", allow_duplicates, filepath in self.music_player.main_playlist)
+
         full_filepath = os.path.join(self.music_player.downloads_folder, filepath)
         if allow_duplicates or filepath not in self.music_player.main_playlist:
             self.music_player.main_playlist.append(full_filepath)
-            self._add_main_playlist_item(full_filepath, thumbnail_path, song_index)
+            # self._add_main_playlist_item(full_filepath, thumbnail_path, song_index)
             self.music_player._update_downloads_queue_visual()
+            self._refresh_main_playlist_display()
             
             if show_status:
                 self.music_player.status_bar.config(text=f"Ajouté à la liste de lecture principale: {filepath}")
@@ -1088,7 +924,7 @@ class MainPlaylist:
                 self.music_player.status_bar.config(text=f"Déjà dans la liste de lecture principale: {filepath}")
             return False
 
-    def _smooth_scroll_to_position(self, target_position, duration=500, is_manual=False):
+    def _smooth_scroll_to_position(self, target_position, duration=500, is_manual=False, callback=None):
         """Anime le scroll vers une position cible avec une courbe ease-in-out"""
         try:
             # Vérifier que le canvas existe encore avant de commencer
@@ -1112,7 +948,6 @@ class MainPlaylist:
                 # Vérifier que le canvas existe encore
                 if not (hasattr(self.music_player, 'main_playlist_canvas') and self.music_player.main_playlist_canvas.winfo_exists()):
                     return
-                    
                 current_top, current_bottom = self.music_player.main_playlist_canvas.yview()
                 start_position = current_top
             except tk.TclError:
@@ -1132,6 +967,7 @@ class MainPlaylist:
             # Si on est déjà à la bonne position, ne rien faire
             if abs(start_position - target_position) < 0.001:
                 return
+            
             
             # Paramètres de l'animation
             start_time = time.time() * 1000  # Temps en millisecondes
@@ -1181,8 +1017,8 @@ class MainPlaylist:
                 else:
                     self.music_player.scroll_animation_active = False
                     self.music_player.scroll_animation_id = None
-                    if is_manual:
-                        self.music_player._check_and_unload_items(self.music_player.current_index)
+                    if callback is not None:
+                        callback()
             
             # Démarrer l'animation
             animate_step()
@@ -1255,7 +1091,7 @@ class MainPlaylist:
 
     def _refresh_main_playlist_display(self, force_full_refresh=False):
             """Rafraîchit l'affichage de la main playlist avec optimisation par fenêtrage"""
-            print
+            # print("_refresh_main_playlist_display appelée")
             # Protection contre les appels multiples rapides
             if not hasattr(self.music_player, '_last_refresh_time'):
                 self.music_player._last_refresh_time = 0
@@ -1273,26 +1109,42 @@ class MainPlaylist:
                 if not self.music_player.main_playlist_container.winfo_exists():
                     return
                 
-                playlist_size = len(self.music_player.main_playlist)
                 
-                # Utiliser la nouvelle configuration si disponible
+                # self._refresh_full_playlist_display()
+                
+                
+                
+                
+                # Vider le container actuel
+                try:
+                    children = self.music_player.main_playlist_container.winfo_children()
+                except tk.TclError:
+                    children = []
+                    
+                for widget in children:
+                    try:
+                        if widget.winfo_exists():
+                            widget.destroy()
+                    except tk.TclError:
+                        continue
+                
+                self._display_main_playlist(self.music_player.main_playlist, preserve_scroll=True)
+                
+                # Remettre en surbrillance la chanson en cours si elle existe
+                # if len(self.music_player.main_playlist) > 0 and self.music_player.current_index < len(self.music_player.main_playlist):
+                #     try:
+                #         self.select_playlist_item(index=self.music_player.current_index, auto_scroll=False)
+                #     except tk.TclError:
+                #         pass
+                
+                # Mettre à jour la région de scroll du canvas
+                # Différer légèrement pour s'assurer que la géométrie est calculée
                 if USE_NEW_CONFIG:
-                    optimizations_enabled = get_main_playlist_config('enable_optimizations')
-                    use_windowing = config_should_use_windowing(playlist_size)
+                    delay = get_main_playlist_config('scroll_update_delay')
                 else:
-                    # Fallback vers l'ancienne configuration
-                    optimizations_enabled = get_config("enable_optimizations", True)
-                    use_windowing = should_use_windowing(playlist_size)
-
-                # Décider du mode d'affichage selon la taille et la configuration
-                if not optimizations_enabled or not use_windowing:
-                    # Optimisations désactivées ou petite playlist : affichage complet
-                    self._refresh_full_playlist_display()
-                    return
+                    delay = 10
+                # self.music_player.root.after(delay, lambda: self._update_canvas_scroll_region())
                 
-                # Grande playlist : utiliser le fenêtrage optimisé même avec force_full_refresh
-                # Le force_full_refresh ne fait que forcer la recréation des widgets, pas l'affichage complet
-                self._refresh_windowed_playlist_display(force_recreate=force_full_refresh)
                     
             except tk.TclError as e:
                 # Container détruit ou problème avec l'interface, ignorer silencieusement
@@ -1301,7 +1153,9 @@ class MainPlaylist:
                 print(f"Erreur lors du rafraîchissement de la playlist: {e}")
 
     def _refresh_full_playlist_display(self):
+            print("_refresh_full_playlist_display appelée NON UTILISEE")
             """Rafraîchit complètement l'affichage de la playlist (version originale)"""
+            return
             try:
                 # Vider le container actuel
                 try:
@@ -1317,8 +1171,10 @@ class MainPlaylist:
                         continue
                 
                 # Recréer tous les éléments avec les bons index
-                for i, filepath in enumerate(self.music_player.main_playlist):
-                    self._add_main_playlist_item(filepath, song_index=i)
+                # for i, filepath in enumerate(self.music_player.main_playlist):
+                #     self._add_main_playlist_item(filepath, song_index=i)
+                
+                self._display_main_playlist(self.music_player.main_playlist, preserve_scroll=True)
                 
                 # Remettre en surbrillance la chanson en cours si elle existe
                 if len(self.music_player.main_playlist) > 0 and self.music_player.current_index < len(self.music_player.main_playlist):
@@ -1329,17 +1185,19 @@ class MainPlaylist:
                 
                 # Mettre à jour la région de scroll du canvas
                 # Différer légèrement pour s'assurer que la géométrie est calculée
-                if USE_NEW_CONFIG:
-                    delay = get_main_playlist_config('scroll_update_delay')
-                else:
-                    delay = 10
-                self.music_player.root.after(delay, lambda: self._update_canvas_scroll_region())
+                # if USE_NEW_CONFIG:
+                #     delay = get_main_playlist_config('scroll_update_delay')
+                # else:
+                #     delay = 10
+                # self.music_player.root.after(delay, lambda: self._update_canvas_scroll_region())
                         
             except Exception as e:
                 print(f"Erreur lors du rafraîchissement complet: {e}")
 
     def _refresh_windowed_playlist_display(self, force_recreate=False):
             """Rafraîchit l'affichage avec fenêtrage optimisé (n'affiche que les éléments visibles)"""
+            print("_refresh_windowed_playlist_display appelé")
+            return
             try:
                 # Optimisation: Éviter les rafraîchissements trop fréquents
                 if not force_recreate and hasattr(self.music_player, '_last_refresh_time'):
@@ -2014,6 +1872,8 @@ class MainPlaylist:
                     print(f"Erreur lors de la mise à jour basée sur le scroll: {e}")
 
     def _update_windowed_display(self, start_index, end_index, center_index):
+            print("_update_windowed_display est appelé NONONONON")
+            return
             """Met à jour l'affichage avec une nouvelle fenêtre"""
             try:
                 # Sauvegarder les nouveaux paramètres de fenêtre
@@ -2360,6 +2220,8 @@ class MainPlaylist:
                 return getattr(self.music_player, 'current_index', 0)
             
     def _append_progressive_items(self, start_index, end_index):
+            print("_update_windowed_display appelée")
+            return
             """Ajoute des éléments progressivement SANS supprimer les existants"""
             try:
                 if start_index >= end_index or start_index >= len(self.music_player.main_playlist):
@@ -2495,6 +2357,8 @@ class MainPlaylist:
                 print(f"❌ Erreur chargement supplémentaire: {e}")
 
     def _force_reload_window(self, start_index, end_index):
+            print("_force_reload_window appelé")
+            return
             """Force le rechargement d'une fenêtre spécifique - PROTECTION INDEX"""
             try:
                 # SÉCURITÉ : Valider les paramètres d'entrée
@@ -2569,6 +2433,8 @@ class MainPlaylist:
 
     def _highlight_current_song_in_window(self, start_index, end_index):
             """Remet en surbrillance la chanson courante si elle est dans la fenêtre"""
+            print("_highlight_current_song_in_window appelé PAS UTILSIEE")
+            return
             try:
                 current_index = getattr(self.music_player, 'current_index', 0)
                 
@@ -2633,6 +2499,8 @@ class MainPlaylist:
                     print(f"Erreur déchargement: {e}")
 
     def _load_required_items(self, target_start, target_end, current_start, current_end):
+            print("_load_required_items appelé")
+            return
             """Charge les nouveaux éléments nécessaires"""
             try:
                 # Déterminer quels éléments charger
@@ -2684,12 +2552,16 @@ class MainPlaylist:
             """Déclenche le rechargement intelligent lors d'un changement de musique - VERSION DIRECTE"""
             print('non')
             return
+    
+    def on_canvas_scroll(self):
+        self._update_visible_items()
 
 
     def _check_infinite_scroll(self, event):
+            print("_check_infinite_scroll appelé")
+            return
             """Vérifie si on doit charger plus d'éléments en haut ou en bas"""
             try:
-                print("_check_infinite_scroll appelé")
                 # Optimisation: Éviter les appels trop fréquents
                 if hasattr(self.music_player, '_last_infinite_check_time'):
                     current_time = time.time()
@@ -2825,6 +2697,8 @@ class MainPlaylist:
                 print(f"Erreur lors du chargement des musiques en-dessous: {e}")
 
     def _extend_window_up(self, new_start):
+            print("_extend_window_up appelé")
+            return
             """Étend la fenêtre d'affichage vers le haut"""
             try:
                 if not hasattr(self.music_player, '_last_window_start') or not hasattr(self.music_player, '_last_window_end'):
@@ -2865,6 +2739,8 @@ class MainPlaylist:
 
     def _extend_window_down(self, new_end):
             """Étend la fenêtre d'affichage vers le bas"""
+            print("_extend_window_down appelée")
+            return
             try:
                 print("_extend_window_down appelée")
                 if not hasattr(self.music_player, '_last_window_start') or not hasattr(self.music_player, '_last_window_end'):
@@ -3224,6 +3100,8 @@ class MainPlaylist:
             return False
 
     def _add_main_playlist_item_at_position(self, filepath, song_index=None, position='bottom'):
+            print("_add_main_playlist_item_at_position appelée")
+            return
             """Ajoute un élément de playlist à une position spécifique (top ou bottom)"""
             try:
                 if position == 'bottom':
@@ -3286,6 +3164,8 @@ class MainPlaylist:
 
     def _create_playlist_item_frame(self, filepath, song_index=None):
             """Crée un frame pour un élément de playlist"""
+            print("_create_playlist_item_frame appelée")
+            return
             try:
                 # Utiliser la fonction existante qui maintenant retourne le frame
                 frame = self._add_main_playlist_item(filepath, song_index=song_index)

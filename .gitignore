@@ -6,3 +6,5 @@
 **/.history
 /build_venv
 *.spec
+/src/__pycache__
+*.pyc

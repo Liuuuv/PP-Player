@@ -15,11 +15,11 @@ def test_imports():
         import inputs
         print("✅ inputs.py importé")
         
-        import import_logger
-        print("✅ import_logger.py importé")
+        import simple_logger
+        print("✅ simple_logger.py importé")
         
-        import logs_viewer
-        print("✅ logs_viewer.py importé")
+        import simple_logs_viewer
+        print("✅ simple_logs_viewer.py importé")
         
         import extract_from_html
         print("✅ extract_from_html.py importé")
@@ -34,26 +34,25 @@ def test_logger():
     print("\n🧪 Test du système de logs...")
     
     try:
-        from import_logger import get_import_logger
+        from simple_logger import get_logger
         
         # Créer un logger de test
-        logger = get_import_logger(".")
+        logger = get_logger(".")
         
         # Démarrer une session de test
-        session_id = logger.start_session('TEST', 'test_file.html')
+        session_id = logger.start_session('TEST', ['https://youtube.com/test1','https://youtube.com/test2','https://youtube.com/test3'])
         print(f"✅ Session créée: {session_id}")
         
         # Ajouter quelques logs
-        logger.set_total_links(5)
-        logger.log_info("Test d'information")
-        logger.log_warning("Test d'avertissement")
-        logger.log_error("Test d'erreur")
-        logger.log_success("Test de succès")
+        logger.set_total(5)
+        logger.log("INFO", "Test d'information")
+        logger.log("WARNING", "Test d'avertissement")
+        logger.log("ERROR", "Test d'erreur")
         
         # Simuler le traitement d'URLs
-        logger.log_url_processed("https://youtube.com/test1", "Test Video 1", "success")
-        logger.log_url_processed("https://youtube.com/test2", "Test Video 2", "failed", "Erreur de test")
-        logger.log_url_processed("https://youtube.com/test3", "Test Video 3", "skipped", "Durée trop longue")
+        logger.log_processed("https://youtube.com/test1", "Test Video 1", "success")
+        logger.log_processed("https://youtube.com/test2", "Test Video 2", "failed", "Erreur de test")
+        logger.log_processed("https://youtube.com/test3", "Test Video 3", "skipped", "Durée trop longue")
         
         # Terminer la session
         logger.end_session('completed')

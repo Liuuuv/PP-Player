@@ -97,8 +97,28 @@ class MusicPlayer:
     def __init__(self, root):
         self.root = root
     
+    def schedule_status(self, text, delay_ms=400):
+        """Planifie une mise à jour de la barre de statut avec debounce."""
+        # Annule une mise à jour précédente si elle existe
+        if hasattr(self, '_status_after_id') and self._status_after_id:
+            try:
+                self.root.after_cancel(self._status_after_id)
+            except Exception:
+                pass
+            self._status_after_id = None
+        
+        def do_update():
+            try:
+                if hasattr(self, 'status_bar') and self.status_bar:
+                    self.status_bar.config(text=text)
+            finally:
+                self._status_after_id = None
+        
+        # Programme la mise à jour
+        self._status_after_id = self.root.after(delay_ms, do_update)
+    
     def init(self):
-        self.current_version = "0.0.1"
+        self.current_version = "0.0.2"
         self.root.title("Pipi Player")
         self.root.geometry(GEOMETRY)
         # Fixer la taille mais permettre le déplacement
@@ -120,7 +140,7 @@ class MusicPlayer:
         self.AutoUpdater = auto_updater.AutoUpdater(
             current_version=self.current_version,
             parent=self.root,
-            config_files_to_preserve=[],
+            config_files_to_preserve=["download_path.txt"],
             folders_to_preserve=["logs", "downloads"],
             exclude_from_update=["logs", "downloads"]
         )
@@ -358,7 +378,6 @@ class MusicPlayer:
         self.main_playlist = self.playlists[self.current_playlist_name]
         self.current_viewing_playlist = None  # Playlist actuellement visualisée
         self.main_playlist_from_playlist = False  # True si la main playlist provient d'une playlist
-        self.main_playlist_is_loading_more_items = False  # True si la main playlist est en cours de chargement plus d'items
         # self._last_window_start = None  # Index du début de la fenêtre
         # self._last_window_end = None  # Index de la fin de la fenêtre
 
@@ -427,6 +446,9 @@ class MusicPlayer:
 
         self.all_widgets = {}
         self.visible_widgets = {}
+        self.main_playlist_all_widgets ={}
+        self.main_playlist_visible_widgets = {}
+        
         self.Setup.setup()
         
         # Initialiser le gestionnaire de fichiers
@@ -785,6 +807,7 @@ class MusicPlayer:
         from simple_logger import get_logger
         from simple_logs_viewer import SimpleLogsViewer
         logger = get_logger(self.downloads_folder)
+        # Utiliser le viewer unique de logs
         logs_viewer = SimpleLogsViewer(self.root, logger, self)
         logs_viewer.show_window()
     
@@ -994,7 +1017,7 @@ class MusicPlayer:
             self.safe_after(50, self.clear_selection)
 
         selected_tab = self.notebook.tab(self.notebook.select(), "text")
-        if selected_tab == "Recherche":
+        if selected_tab == "Search":
             # Vous pourriez ajouter ici des actions spécifiques au changement d'onglet
             pass
         elif selected_tab == "Bibliothèque":
@@ -1136,7 +1159,7 @@ class MusicPlayer:
         dialog.grab_set()
         
         # Frame principal
-        main_frame = tk.Frame(dialog)
+        main_frame = tk.Frame(dialog, bg='#2d2d2d')
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
         # Titre
@@ -1150,11 +1173,11 @@ class MusicPlayer:
         title_label.pack(pady=(0, 10))
         
         # Frame pour la liste des erreurs avec scrollbar
-        list_frame = tk.Frame(main_frame)
+        list_frame = tk.Frame(main_frame, bg='#2d2d2d')
         list_frame.pack(fill=tk.BOTH, expand=True)
         
         # Scrollbar et Listbox
-        scrollbar = tk.Scrollbar(list_frame)
+        scrollbar = tk.Scrollbar(list_frame, bg='#2d2d2d')
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         listbox = tk.Listbox(
@@ -1178,7 +1201,7 @@ class MusicPlayer:
                 listbox.insert(tk.END, error_text)
         
         # Frame pour les boutons
-        button_frame = tk.Frame(main_frame)
+        button_frame = tk.Frame(main_frame, bg='#2d2d2d')
         button_frame.pack(fill=tk.X, pady=(10, 0))
         
         # Bouton Clear Errors
@@ -1409,13 +1432,13 @@ class MusicPlayer:
         """Restaure le binding de recherche après un refresh"""
         return library_tab.downloads._restore_search_binding(self)
 
-    def _display_files_batch(self, files_to_display, start_index, batch_size=20):
-        """Affiche les fichiers par batch pour éviter de bloquer l'interface"""
-        return library_tab.downloads._display_files_batch(self, files_to_display, start_index, batch_size)
+    # def _display_files_batch(self, files_to_display, start_index, batch_size=20):
+    #     """Affiche les fichiers par batch pour éviter de bloquer l'interface"""
+    #     return library_tab.downloads._display_files_batch(self, files_to_display, start_index, batch_size)
 
-    def _display_files_batch_optimized(self, files_to_display, start_index, total_files, batch_size=50):
-        """Version optimisée de l'affichage par batch"""
-        return library_tab.downloads._display_files_batch_optimized(self, files_to_display, start_index, total_files, batch_size)
+    # def _display_files_batch_optimized(self, files_to_display, start_index, total_files, batch_size=50):
+    #     """Version optimisée de l'affichage par batch"""
+    #     return library_tab.downloads._display_files_batch_optimized(self, files_to_display, start_index, total_files, batch_size)
 
     def _show_loading_progress(self, total_files):
         """Affiche un indicateur de progression pendant le chargement"""
@@ -1574,6 +1597,10 @@ class MusicPlayer:
     def _show_result_context_menu(self, item, event):
         """Affiche le menu contextuel pour un fichier avec support YouTube"""
         return ui_menus._show_result_context_menu(self, item, event)
+    
+    def print_traceback(self):
+        import traceback
+        traceback.print_stack()
 
     def _play_after_current(self, filepath):
         """Place une musique juste après celle qui joue actuellement et la lance"""
@@ -2040,7 +2067,7 @@ class MusicPlayer:
             # return library_tab.playlists.select_playlist_content_item(self, current_filepath)
             return tools.select_song_item_from_filepath(self, current_filepath, self.playlist_content_container)
 
-    def _delete_from_downloads(self, filepath, frame):
+    def _delete_from_downloads(self, filepath, frame=None):
         """Supprime définitivement un fichier du dossier downloads"""
         return tools._delete_from_downloads(self, filepath, frame)
 
@@ -2067,7 +2094,6 @@ class MusicPlayer:
     def _on_mousewheel_end(self, canvas):
         """Appelée à la fin du défilement pour mettre à jour l'affichage"""
         # canvas.configure(state="normal")
-        # print("Fin du scroll détectée")
         return inputs._on_mousewheel_end(self, canvas)
 
     # def search_youtube(self):
@@ -2325,7 +2351,6 @@ class MusicPlayer:
         return control.on_waveform_canvas_resize(self, event)
 
     def on_song_change(self):
-        print('SONG CHANGED')
         self.Subtitles.loaded_subtitles = None
 
 

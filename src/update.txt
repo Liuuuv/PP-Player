@@ -1,13 +1,33 @@
-1 à 2 :
-ajout d'une selection multiple de musiques pour ajouter à des playlists
-selection de musiques possible de partout
-boutons "play" et "play random" ajoutés dans la liste des musiques téléchargées
-possibilité de chercher des musiques et ou des artistes
-bouton pour vider la liste de lecture
-bouton pour revenir à la musique en cours
-ajout de stats
-ajout de si on clique + glisse musique, alors ça la met en dernier ou en premier dans liste de lecture
-ajout de crtl + clic gauche pour avoir la vidéo dans youtube
-ajout d'un autoscroll
-ajout d'un bouton clear pour clear la liste de lecture
-possibilité de changer l'output
+v0.0.2
+
+
+New features:
+- Added a reload button for the main playlist
+- Added a settings button to update all the stored metadatas
+
+Changes:
+- The search bar of library>downloaded is now just above the display frame.
+- Changed the way the main playlist is displayed to the same way as library>downloaded is: only the visible songs are rendered.
+- Ajusted the logic behind the "scroll to current song" button
+- Changed the sizes of thumbnails in the main playlist: Now they are all the same size : 80x45 (16:9)
+- Now you need to open a menu with right click on a song in order to delete it (from a playlist or the device)
+- Changed the horrible colors in the "errors" window.
+
+Fixed issues:
+- The right click on items in library>downloaded now works.
+- Fixed the missalignment in library>downloaded and in library>playlists.
+- Fixed the weird color changing when scrolling and hovering songs in the main playlist.
+- Fixed the issue where YouTube results weren't showing because of lives showing.
+- Fixed the issue where the YouTube results were showing if you untick and then tick the "Tracks" or the "Artists" button.
+- Fixed the issue where "download_path.txt" was deleted when updating.
+
+
+Known issues:
+- The CPU usage is abnormally high sometimes when you're downloading all songs from an HTML page (liked videos/songs for example).
+- The progress in the downloads tab looks bad under the texts.
+- The scrollwheel doesn't work in the downloads tab.
+- Some (not important) errors car occur during a download ("can't access the file because it's being use").
+- The highlights in the artist page are not staying if you hover.
+- The name of the artist takes too much space in the artist page.
+- Search cache doesn't seem to work anymore.
+- When closing an artist page, the song thumbnail is no longer visible. (to fix it, start a song and click on the cross that clears the search bar) This leads to a missing sliding panel.

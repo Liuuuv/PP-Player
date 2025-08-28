@@ -511,7 +511,7 @@ def _download_youtube_thread(self, url, add_to_main_playlist=False, callback=Non
             info = ydl.extract_info(url, download=True)
             downloaded_file = ydl.prepare_filename(info)
             
-            print("downloaded_file", downloaded_file)
+            # print("downloaded_file", downloaded_file)
             final_path = downloaded_file.replace('.webm', '.mp3').replace('.m4a', '.mp3').replace('.mp4', '.mp3')
             if not final_path.endswith('.mp3'):
                 final_path += '.mp3'
@@ -601,6 +601,8 @@ def _extract_and_save_metadata(self, info, filepath):
         album = info.get('album', '')
         
        
+        if not os.path.isabs(filepath):
+            filepath = os.path.join(self.downloads_folder, filepath)
         
         # Essayer d'extraire l'artiste et l'album depuis le titre et les métadonnées YouTube
         # print("Debug: _extract_and_save_metadata", info)
@@ -627,13 +629,14 @@ def _extract_and_save_metadata(self, info, filepath):
                     print(f"Métadonnées: Album '{album}' ajouté à {os.path.basename(filepath)}")
                 
                 # Sauvegarder le titre nettoyé
-                clean_title = title
-                if artist and clean_title.startswith(artist):
-                    # Enlever l'artiste du début du titre s'il y est
-                    clean_title = clean_title[len(artist):].lstrip(' -:').strip()
-                
-                if clean_title:
-                    audio_file.tags['TIT2'] = TIT2(encoding=3, text=clean_title)
+                if title is not None:
+                    clean_title = title
+                    if artist and clean_title.startswith(artist):
+                        # Enlever l'artiste du début du titre s'il y est
+                        clean_title = clean_title[len(artist):].lstrip(' -:').strip()
+                    
+                    if clean_title:
+                        audio_file.tags['TIT2'] = TIT2(encoding=3, text=clean_title)
                 
                 # Sauvegarder les modifications
                 audio_file.save()
@@ -816,7 +819,6 @@ def update_stored_truncated_titles(self):
             except:
                 metadata = {}
         # Ajouter les nouvelles métadonnées (maintien compatibilité avec ancien format)
-        print('BONJOUR')
         for filename in metadata.keys():
             downloads_truncated_title = self._truncate_text_for_display(filename, max_width_pixels=DOWNLOADS_TITLE_MAX_WIDTH, font_family='TkDefaultFont', font_size=9)
             metadata[filename]['downloads_truncated_title'] = downloads_truncated_title
@@ -829,6 +831,104 @@ def update_stored_truncated_titles(self):
             
     except Exception as e:
         print(f"Erreur réécriture métadonnées titres tronqués YouTube: {e}")
+
+def update_all_metadatas(self):
+    try:
+        import json
+        metadata_file = os.path.join(self.downloads_folder, "youtube_urls.json")
+        
+        # Charger les métadonnées existantes
+        metadata = {}
+        if os.path.exists(metadata_file):
+            try:
+                with open(metadata_file, 'r', encoding='utf-8') as f:
+                    metadata = json.load(f)
+            except:
+                metadata = {}
+        # Ajouter les nouvelles métadonnées (maintien compatibilité avec ancien format)
+        for rel_file_name in metadata:
+            
+            if rel_file_name.endswith('.mp4'):
+                continue
+            
+            file_metadata = metadata[rel_file_name]
+            
+            import json
+            from yt_dlp import YoutubeDL
+            
+            
+            
+            # Récupérer l'URL YouTube
+            is_ok = True
+            if isinstance(file_metadata, dict):
+                # Vérifier si on a tout
+                # print("aaaaa ",file_metadata)
+                if file_metadata.get('url') is None:
+                    is_ok = False
+                    print(f"Aucune URL pour {file_metadata}")
+                    continue # pas d'url on ne peut rien faire
+                if file_metadata.get('upload_date') is None:
+                    is_ok = False
+                if file_metadata.get('downloads_truncated_title') is None:
+                    downloads_truncated_title = self._truncate_text_for_display(file_metadata, max_width_pixels=DOWNLOADS_TITLE_MAX_WIDTH, font_family='TkDefaultFont', font_size=9)
+                    metadata[file_metadata]['downloads_truncated_title'] = downloads_truncated_title
+                artist, album = self._get_audio_metadata(rel_file_name)
+                
+                if artist is None:
+                    is_ok = False
+
+            if is_ok:
+                continue
+            
+            url = file_metadata.get('url')
+            
+            # Récupérer les informations depuis YouTube
+            try:
+                ydl_opts = {
+                    'quiet': True,
+                    'no_warnings': True,
+                    'extract_flat': False,
+                }
+                
+                with YoutubeDL(ydl_opts) as ydl:
+                    print(f"Récupération des informations pour {rel_file_name}...")
+                    info = ydl.extract_info(url, download=False)
+                    
+                    self._extract_and_save_metadata(info, rel_file_name)
+                    
+                    upload_date = info.get('upload_date')
+                    
+                    if upload_date:
+                        # Mettre à jour les métadonnées
+                        if isinstance(file_metadata, dict):
+                            file_metadata['upload_date'] = upload_date
+                        
+                        # Sauvegarder les métadonnées mises à jour
+                        with open(metadata_file, 'w', encoding='utf-8') as f:
+                            json.dump(metadata, f, ensure_ascii=False, indent=2)
+                        
+                        # Formater la date pour l'affichage (YYYYMMDD -> DD/MM/YYYY)
+                        if len(upload_date) == 8:
+                            formatted_date = f"{upload_date[6:8]}/{upload_date[4:6]}/{upload_date[0:4]}"
+                        else:
+                            formatted_date = upload_date
+                        
+                        print(f"Date de publication mise à jour pour {file_metadata}: {formatted_date}")
+                    else:
+                        print(f"Impossible de récupérer la date de publication pour {file_metadata}")
+                    
+            except Exception as e:
+                print(f"Erreur récupération informations YouTube pour {file_metadata}: {e}")
+        
+        # Sauvegarder les métadonnées mises à jour
+        with open(metadata_file, 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, ensure_ascii=False, indent=2)
+        
+        print('mise à jour des métadonnées YouTube terminées')
+        
+        
+    except Exception as e:
+        print(f"Erreur mise à jour toutes les métadonnées: {e}")
 
 def _add_downloaded_to_playlist(self, filepath, thumbnail_path, title, playlist_name, url=None):
     """Ajoute un fichier téléchargé à une playlist spécifique (à appeler dans le thread principal)"""
@@ -1173,7 +1273,7 @@ def select_song_item_from_filepath(self, filepath, container):
 #                     child.selected = False
 #                     self._set_item_colors(child, '#4a4a4a')  # Couleur normale
 
-def _delete_from_downloads(self, filepath, frame):
+def _delete_from_downloads(self, filepath, frame=None):
     """Supprime définitivement un fichier du dossier downloads"""
     try:
         if os.path.exists(filepath):
@@ -1237,7 +1337,8 @@ def _delete_from_downloads(self, filepath, frame):
             self.save_playlists()
             
             # Détruire l'élément de l'interface
-            frame.destroy()
+            if frame:
+                frame.destroy()
             
             # Mettre à jour le compteur
             self.FileServices._count_downloaded_files()
@@ -1247,6 +1348,7 @@ def _delete_from_downloads(self, filepath, frame):
             
             # Rafraîchir la bibliothèque si nécessaire (en préservant le scroll)
             self._refresh_downloads_library(preserve_scroll=True)
+            self.MainPlaylist._refresh_main_playlist_display()
             
     except Exception as e:
         self.status_bar.config(text=f"Erreur suppression fichier: {str(e)}")
@@ -1657,6 +1759,8 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
             is_current_song = (len(self.main_playlist) > 0 and 
                                 self.current_index < len(self.main_playlist) and 
                                 self.main_playlist[self.current_index] == filepath)
+            
+            # print('is_current_song infooos ', )
         
         # Déterminer la couleur de fond
         if item_type == "search_result":
@@ -1731,7 +1835,7 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
         item_frame.columnconfigure(0, minsize=4, weight=0)   # Trait queue (si applicable)
         item_frame.columnconfigure(1, minsize=10, weight=0)  # Numéro
         item_frame.columnconfigure(2, minsize=80, weight=0)  # Miniature
-        item_frame.columnconfigure(3, minsize=346, weight=1) # Texte
+        item_frame.columnconfigure(3, minsize=346, weight=1) # Titre
         item_frame.columnconfigure(4, minsize=60, weight=0)  # Durée
         item_frame.columnconfigure(5, minsize=80, weight=0)  # Bouton
         item_frame.rowconfigure(0, minsize=50, weight=0)     # Hauteur fixe
@@ -2151,6 +2255,7 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
             # Binder les clics sur tous les enfants pour qu'ils remontent à l'item_frame
             widget.bind("<ButtonPress-1>", on_item_left_click, add='+')
             widget.bind("<Double-1>", on_item_left_double_click, add='+')
+            widget.bind("<ButtonPress-3>", on_item_right_click, add='+')
             # Binder le motion sur tous les enfants
             widget.bind("<Motion>", on_motion, add='+')
             
@@ -2162,6 +2267,7 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
         
         item_frame.bind("<ButtonPress-1>", on_item_left_click)
         item_frame.bind("<Double-1>", on_item_left_double_click)
+        item_frame.bind("<ButtonPress-3>", on_item_right_click, add='+')
         # Ajouter les événements de survol
         # item_frame.bind("<Enter>", on_enter)
         # item_frame.bind("<Leave>", on_leave)
@@ -2173,9 +2279,7 @@ def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_
         item_frame.bind("<B3-Motion>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_motion(e, f))
         item_frame.bind("<ButtonRelease-3>", lambda e, f=item_frame: self.drag_drop_handler._on_drag_release(e, f))
         
-        
-        
-        
+
         tooltip.create_tooltip(title_label, "Double click: start music\nRight click: open context menu\nShift + click: select multiple items\nCtrl + click: open on YouTube\nClick+drag right: Play next\nClick+drag left: Add to queue")
         
         # def on_delete_double_click_download(event):
@@ -2859,7 +2963,7 @@ def _load_next_thumbnail(self, container):
     
     # Prendre le prochain fichier
     filepath = self.thumbnail_loading_queue.pop(0)
-    
+        
     # Trouver les widgets correspondants
     try:
         for widget in container.winfo_children():
@@ -3064,6 +3168,8 @@ def _get_audio_metadata(self, filepath):
     try:
         if not os.path.isabs(filepath):
             filepath = os.path.join(self.downloads_folder, filepath)
+        
+        
         if filepath.lower().endswith('.mp3'):
             from mutagen.id3 import ID3
             audio = MP3(filepath)
@@ -3424,7 +3530,6 @@ def _show_single_file_menu(self, event, filepath):
     """Affiche un menu contextuel pour un seul fichier"""
     # Vérifier si c'est une vidéo YouTube non téléchargée
     is_youtube_video = filepath.startswith("https://www.youtube.com/watch?v=")
-    print('downloads etc.. menu')
     
     # Créer le menu contextuel
     context_menu = tk.Menu(self.root, tearoff=0, bg='white', fg='black', 
@@ -3476,7 +3581,7 @@ def _show_single_file_menu(self, event, filepath):
         command=lambda f=filepath, yt=is_youtube_video: self._safe_create_new_playlist_dialog(f, yt)
     )
     
-    context_menu.add_cascade(label="📁 Playlists", menu=playlist_menu)
+    context_menu.add_cascade(label="📁 Add to...", menu=playlist_menu)
     
     context_menu.add_separator()
     context_menu.add_command(
@@ -3484,11 +3589,49 @@ def _show_single_file_menu(self, event, filepath):
         command=lambda f=filepath: self.change_url_dialog(f)
     )
     
+    if not is_youtube_video:
+        context_menu.add_command(
+            label="Delete",
+            command=lambda f=filepath: delete_file(self, f, permanent=False)
+        )
+
+        delete_perm_menu = tk.Menu(context_menu, tearoff=0)
+        delete_perm_menu.add_command(
+            label="Delete from this device",
+            command=lambda f=filepath: delete_file(self, f, permanent=True)
+        )
+        
+        context_menu.add_cascade(
+            label="Delete from this device",
+            menu=delete_perm_menu
+        )
+        
+    
     # Afficher le menu à la position de la souris
     try:
         context_menu.tk_popup(event.x_root, event.y_root)
     finally:
         context_menu.grab_release()
+
+def delete_file(self, filepath, permanent=False):
+    if permanent:
+        self._delete_from_downloads(filepath)
+    else:
+        if filepath in self.main_playlist:
+            index = self.main_playlist.index(filepath)
+            self.main_playlist.remove(filepath)
+            if index < self.current_index:
+                self.current_index -= 1
+            elif index == self.current_index:
+                pygame.mixer.music.stop()
+                self.current_index = min(index, len(self.main_playlist) - 1)
+                if len(self.main_playlist) > 0:
+                    self.play_track()
+                else:
+                    pygame.mixer.music.unload()
+                    self._show_current_song_thumbnail()
+            self.MainPlaylist._refresh_main_playlist_display()
+            self.status_bar.config(text=f"Retiré de la playlist: {os.path.basename(filepath)}")
 
 def change_url_dialog(self, filepath):
     """Dialogue pour changer l'URL d'un fichier"""
@@ -3756,7 +3899,7 @@ def add_selection_to_main_playlist(self):
             # Ajouter directement à la playlist sans déclencher les mises à jour visuelles
             if filepath not in self.main_playlist:
                 self.main_playlist.append(full_filepath)
-                self.MainPlaylist_add_main_playlist_item(full_filepath)
+                # self.MainPlaylist_add_main_playlist_item(full_filepath)
                 added_count += 1
     
     # Rafraîchir l'affichage seulement de la playlist, pas des téléchargements
@@ -4336,6 +4479,8 @@ def _download_youtube_selection_to_queue(self, youtube_urls, queue_position):
     
 def get_label_font_size(self, label):
     """Récupère la taille de police d'un label de manière sécurisée"""
+    if not label.winfo_exists():
+        return 0
     font_spec = label.cget('font')
     
     # Cas où c'est une chaîne (ex: "TkDefaultFont 8")

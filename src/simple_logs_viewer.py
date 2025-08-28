@@ -6,6 +6,7 @@ import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox
 from datetime import datetime
 import threading
+import os
 
 class SimpleLogsViewer:
     def __init__(self, parent, logger, music_player=None):
@@ -24,7 +25,7 @@ class SimpleLogsViewer:
             return
         
         self.window = tk.Toplevel(self.parent)
-        self.window.title("Logs d'importation")
+        self.window.title("Logs d'importation (unique)")
         self.window.geometry("1000x700")
         self.window.configure(bg='#2d2d2d')
         self.window.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -32,6 +33,10 @@ class SimpleLogsViewer:
         self.create_widgets()
         self.load_sessions()
         self.start_auto_refresh()
+        
+        # Initial state: disable open JSON button until a session is selected
+        if hasattr(self, 'open_not_downloaded_btn'):
+            self.open_not_downloaded_btn.config(state='disabled')
     
     def create_widgets(self):
         """Crée l'interface"""
@@ -60,7 +65,7 @@ class SimpleLogsViewer:
         sessions_frame.pack(fill='x', pady=(0, 10))
         
         # Liste des sessions
-        columns = ('Date', 'Source', 'Statut', 'Progression', 'Succès', 'Échecs')
+        columns = ('Date', 'Source', 'Statut', 'Progression', 'Succès', 'Échecs', 'Ignorés')
         self.sessions_tree = ttk.Treeview(sessions_frame, columns=columns, show='headings', height=6)
         
         for col in columns:
@@ -69,9 +74,10 @@ class SimpleLogsViewer:
         self.sessions_tree.column('Date', width=120)
         self.sessions_tree.column('Source', width=300)
         self.sessions_tree.column('Statut', width=80)
-        self.sessions_tree.column('Progression', width=100)
+        self.sessions_tree.column('Progression', width=110)
         self.sessions_tree.column('Succès', width=60)
         self.sessions_tree.column('Échecs', width=60)
+        self.sessions_tree.column('Ignorés', width=60)
         
         scrollbar = ttk.Scrollbar(sessions_frame, orient='vertical', command=self.sessions_tree.yview)
         self.sessions_tree.configure(yscrollcommand=scrollbar.set)
@@ -153,6 +159,21 @@ class SimpleLogsViewer:
         )
         self.cancel_btn.pack(side='left', padx=(0, 10))
         
+        # Ouvrir le JSON des non-téléchargées
+        self.open_not_downloaded_btn = tk.Button(
+            buttons_frame,
+            text="📄 Ouvrir non téléchargées (JSON)",
+            command=self.open_not_downloaded_json,
+            bg='#6c757d',
+            fg='white',
+            font=("Arial", 9),
+            relief='flat',
+            padx=15,
+            pady=5,
+            state='disabled'
+        )
+        self.open_not_downloaded_btn.pack(side='left', padx=(0, 10))
+        
         # Auto-refresh (activé par défaut)
         self.auto_refresh_var = tk.BooleanVar(value=True)
         tk.Checkbutton(
@@ -217,6 +238,7 @@ class SimpleLogsViewer:
             processed = session.get('processed', 0)
             success = session.get('success', 0)
             failed = session.get('failed', 0)
+            skipped = session.get('skipped', 0)
             
             progression = f"{processed}/{total}" if total > 0 else "0/0"
             
@@ -234,7 +256,7 @@ class SimpleLogsViewer:
                 tags = ('interrupted',)
             
             self.sessions_tree.insert('', 'end', values=(
-                date_str, source, status, progression, success, failed
+                date_str, source, status, progression, success, failed, skipped
             ), tags=tags)
         
         # Couleurs
@@ -250,6 +272,7 @@ class SimpleLogsViewer:
         if not selection:
             self.delete_btn.config(state='disabled')
             self.cancel_btn.config(state='disabled')
+            self.open_not_downloaded_btn.config(state='disabled')
             self.current_session = None
             return
         
@@ -283,10 +306,21 @@ class SimpleLogsViewer:
                         self.resume_btn.config(state='disabled')
                         self.cancel_btn.config(state='disabled')
                     
+                    # Activer le bouton d'ouverture JSON (sans vérifier l'existence du fichier)
+                    try:
+                        self.open_not_downloaded_btn.config(state='normal')
+                    except:
+                        pass
+                    
                     # Afficher les logs
                     self.display_logs(session)
                     break
-            except:
+            except Exception as e:
+                # En cas d'erreur robuste, désactiver le bouton et continuer
+                try:
+                    self.open_not_downloaded_btn.config(state='disabled')
+                except:
+                    pass
                 continue
     
     def display_logs(self, session):
@@ -299,7 +333,7 @@ class SimpleLogsViewer:
         header += f"Source: {session.get('source', 'N/A')}\n"
         header += f"Début: {session.get('start_time', 'N/A')}\n"
         header += f"Statut: {session.get('status', 'N/A')}\n"
-        header += f"Progression: {session.get('processed', 0)}/{session.get('total', 0)}\n"
+        header += f"Progression: {session.get('processed', 0)}/{session.get('total', 0)} (✅ {session.get('success', 0)} | ❌ {session.get('failed', 0)} | ⚠️ {session.get('skipped', 0)})\n"
         header += "=" * 50 + "\n\n"
         
         self.logs_text.insert(tk.END, header, 'INFO')
@@ -448,3 +482,35 @@ class SimpleLogsViewer:
         """Fermeture de la fenêtre"""
         self.stop_auto_refresh()
         self.window.destroy()
+    
+    def open_not_downloaded_json(self):
+        """Ouvre (ou génère) le JSON des non téléchargées pour la session sélectionnée"""
+        if not self.current_session:
+            messagebox.showwarning("Aucune session", "Sélectionnez d'abord une session")
+            return
+        try:
+            # Tenter d'actualiser le rapport avec le dernier état
+            try:
+                self.logger._write_not_downloaded_report()
+            except Exception:
+                pass
+            sid = self.current_session.get('id')
+            report_path = os.path.join(self.logger.logs_dir, f"not_downloaded_{sid}.json")
+            if not os.path.exists(report_path):
+                messagebox.showinfo("Non disponible", "Aucun élément non téléchargé à afficher pour cette session")
+                self.open_not_downloaded_btn.config(state='disabled')
+                return
+            # Ouvrir avec l'application par défaut
+            try:
+                os.startfile(report_path)
+            except Exception:
+                with open(report_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                top = tk.Toplevel(self.window)
+                top.title("Non téléchargées (JSON)")
+                txt = scrolledtext.ScrolledText(top, width=120, height=40)
+                txt.pack(fill='both', expand=True)
+                txt.insert('1.0', content)
+                txt.config(state='disabled')
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Impossible d'ouvrir le JSON: {e}")

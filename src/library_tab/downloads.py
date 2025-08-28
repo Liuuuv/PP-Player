@@ -17,43 +17,7 @@ def show_downloads_content(self):
     
     # S'assurer que les données sont à jour avant l'affichage
     self._refresh_downloads_library()
-    
-    # Frame pour la barre de recherche
-    search_frame = ttk.Frame(self.library_content_frame)
-    search_frame.pack(fill=tk.X, padx=10, pady=(0, 20))
-    
-    # Barre de recherche
-    self.library_search_entry = tk.Entry(
-        search_frame,
-        bg='#3d3d3d',
-        fg='white',
-        insertbackground='white',
-        relief='flat',
-        bd=5
-    )
-    self.library_search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-    
-    # Lier l'événement de saisie pour la recherche en temps réel
-    self.library_search_entry.bind('<KeyRelease>', self._on_library_search_change)
-    
-    # Bouton pour effacer la recherche
-    clear_btn = tk.Button(
-        search_frame,
-        image=self.icons["cross_small"],
-        bg="#3d3d3d",
-        fg="white",
-        activebackground="#4a4a4a",
-        relief="flat",
-        bd=0,
-        padx=4,
-        pady=4,
-        width=20,
-        height=20,
-        takefocus=0
-    )
-    clear_btn.bind("<Button-1>", lambda event: self._clear_library_search())
-    clear_btn.pack(side=tk.RIGHT, padx=(5, 0))
-    
+        
     # Frame pour les boutons de lecture
     buttons_frame = ttk.Frame(self.library_content_frame)
     buttons_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
@@ -91,6 +55,43 @@ def show_downloads_content(self):
     )
     shuffle_all_btn.pack(side=tk.LEFT)
     tooltip.create_tooltip(shuffle_all_btn, "Jouer en mode aléatoire\nLit toutes les musiques téléchargées dans un ordre aléatoire")
+    
+    # Frame pour la barre de recherche
+    search_frame = ttk.Frame(self.library_content_frame)
+    search_frame.pack(fill=tk.X, padx=10, pady=(0, 20))
+    
+    # Barre de recherche
+    self.library_search_entry = tk.Entry(
+        search_frame,
+        bg='#3d3d3d',
+        fg='white',
+        insertbackground='white',
+        relief='flat',
+        bd=5
+    )
+    self.library_search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+    
+    # Lier l'événement de saisie pour la recherche en temps réel
+    self.library_search_entry.bind('<KeyRelease>', self._on_library_search_change)
+    
+    # Bouton pour effacer la recherche
+    clear_btn = tk.Button(
+        search_frame,
+        image=self.icons["cross_small"],
+        bg="#3d3d3d",
+        fg="white",
+        activebackground="#4a4a4a",
+        relief="flat",
+        bd=0,
+        padx=4,
+        pady=4,
+        width=20,
+        height=20,
+        takefocus=0
+    )
+    clear_btn.bind("<Button-1>", lambda event: self._clear_library_search())
+    clear_btn.pack(side=tk.RIGHT, padx=(5, 0))
+    
     
     # Canvas avec scrollbar pour les téléchargements
     self.downloads_canvas = tk.Canvas(
@@ -342,7 +343,7 @@ def _display_filtered_downloads(self, files_to_display, preserve_scroll=False):
     self.root.after(0, lambda: (_update_visible_items(self), on_canvas_scroll_end(self)))
     
     # Lancer le chargement différé des miniatures et durées
-    self._start_thumbnail_loading(files_to_display, self.downloads_container)
+    # self._start_thumbnail_loading(files_to_display, self.downloads_container)
     
     # Marquer la fin du refresh
     self._refreshing_downloads = False
@@ -470,45 +471,45 @@ def _update_downloads_button(self):
     if hasattr(self, 'downloads_btn'):
         self.downloads_btn.configure(text="Téléchargées " + f"({self.num_downloaded_files})")
         
-def _display_files_batch(self, files_to_display, start_index, batch_size=20):
-    """Affiche les fichiers par batch pour éviter de bloquer l'interface (ancienne version)"""
+# def _display_files_batch(self, files_to_display, start_index, batch_size=20):
+#     """Affiche les fichiers par batch pour éviter de bloquer l'interface (ancienne version)"""
     
-    end_index = min(start_index + batch_size, len(files_to_display))
+#     end_index = min(start_index + batch_size, len(files_to_display))
     
-    # Afficher le batch actuel
-    for i in range(start_index, end_index):
-        self._add_download_item(files_to_display[i])
+#     # Afficher le batch actuel
+#     for i in range(start_index, end_index):
+#         self._add_download_item(files_to_display[i])
     
-    # Programmer le batch suivant si nécessaire
-    if end_index < len(files_to_display):
-        self.safe_after(10, lambda: self._display_files_batch(files_to_display, end_index, batch_size))
+#     # Programmer le batch suivant si nécessaire
+#     if end_index < len(files_to_display):
+#         self.safe_after(10, lambda: self._display_files_batch(files_to_display, end_index, batch_size))
 
-def _display_files_batch_optimized(self, files_to_display, start_index, total_files, batch_size=50): # pas utilisé
-    """Version optimisée de l'affichage par batch"""
-    print('BAAAAAAAAAAAAAAAAAAAAAAAAATCH')
-    end_index = min(start_index + batch_size, len(files_to_display))
+# def _display_files_batch_optimized(self, files_to_display, start_index, total_files, batch_size=50): # pas utilisé
+#     """Version optimisée de l'affichage par batch"""
+#     print('BAAAAAAAAAAAAAAAAAAAAAAAAATCH')
+#     end_index = min(start_index + batch_size, len(files_to_display))
     
-    # Afficher le batch actuel avec chargement rapide
-    for i in range(start_index, end_index):
-        self._add_download_item_fast(files_to_display[i])
+#     # Afficher le batch actuel avec chargement rapide
+#     for i in range(start_index, end_index):
+#         self._add_download_item_fast(files_to_display[i])
     
-    # Mettre à jour l'indicateur de progression
-    if hasattr(self, 'loading_progress_label'):
-        progress = int((end_index / total_files) * 100)
-        self.loading_progress_label.config(text=f"Chargement... {progress}% ({end_index}/{total_files})")
+#     # Mettre à jour l'indicateur de progression
+#     if hasattr(self, 'loading_progress_label'):
+#         progress = int((end_index / total_files) * 100)
+#         self.loading_progress_label.config(text=f"Chargement... {progress}% ({end_index}/{total_files})")
     
-    # Programmer le batch suivant si nécessaire
-    if end_index < len(files_to_display):
-        # Délai réduit pour un chargement plus fluide
-        self.safe_after(5, lambda: self._display_files_batch_optimized(files_to_display, end_index, total_files, batch_size))
-    else:
-        # Chargement terminé, supprimer l'indicateur de progression
-        if hasattr(self, 'loading_progress_label'):
-            self.loading_progress_label.destroy()
-            delattr(self, 'loading_progress_label')
+#     # Programmer le batch suivant si nécessaire
+#     if end_index < len(files_to_display):
+#         # Délai réduit pour un chargement plus fluide
+#         self.safe_after(5, lambda: self._display_files_batch_optimized(files_to_display, end_index, total_files, batch_size))
+#     else:
+#         # Chargement terminé, supprimer l'indicateur de progression
+#         if hasattr(self, 'loading_progress_label'):
+#             self.loading_progress_label.destroy()
+#             delattr(self, 'loading_progress_label')
         
-        # Lancer le chargement différé des miniatures
-        self._start_thumbnail_loading(files_to_display, self.downloads_container)
+#         # Lancer le chargement différé des miniatures
+#         self._start_thumbnail_loading(files_to_display, self.downloads_container)
 
 def _show_loading_progress(self, total_files):
     """Affiche un indicateur de progression pendant le chargement"""

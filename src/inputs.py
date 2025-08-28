@@ -6,7 +6,7 @@ import json
 import threading
 import time
 from simple_logger import get_logger
-from simple_logs_viewer import SimpleLogsViewer
+from simple_logs_viewer import SimpleLogsViewer  # Viewer unique
 from urllib.parse import urlparse, parse_qs
 
 def clean_youtube_url(url):
@@ -89,14 +89,14 @@ def on_escape_pressed(self, event):
     # Priorité 3: Vérifier sur quel onglet on se trouve
     current_tab = self.notebook.tab(self.notebook.select(), "text")
     
-    if current_tab == "Recherche":
+    if current_tab == "Search":
         # Si on est sur l'onglet recherche, effacer la barre de recherche
         self._clear_youtube_search()
     else:
         # Si on n'est pas sur l'onglet recherche, y revenir
         # Trouver l'index de l'onglet recherche
         for i in range(self.notebook.index("end")):
-            if self.notebook.tab(i, "text") == "Recherche":
+            if self.notebook.tab(i, "text") == "Search":
                 self.notebook.select(i)
                 break
     
@@ -132,6 +132,19 @@ def on_closing(self):
     
     # Arrêter l'animation du titre
     self._stop_text_animation(self.song_label)
+    
+    # Annuler les callbacks after connus pour éviter des fuites
+    for attr in ('_status_after_id', 'thumbnail_loading_timer_id', 'search_timer', 'resize_timer'):
+        try:
+            if hasattr(self, attr) and getattr(self, attr):
+                self.root.after_cancel(getattr(self, attr))
+        except Exception:
+            pass
+        finally:
+            try:
+                setattr(self, attr, None)
+            except Exception:
+                pass
     
     # Arrêter la surveillance du dossier downloads
     # if hasattr(self, 'downloads_watcher_active'):
@@ -177,7 +190,6 @@ def on_closing(self):
 
 def _on_mousewheel(self, event, canvas):
     """Gère le défilement avec la molette de souris"""
-    print("_on_mousewheel appelé")
     # Détecter le scroll manuel sur la playlist pour désactiver l'auto-scroll
     if hasattr(self, 'main_playlist_canvas') and canvas == self.main_playlist_canvas:
         if hasattr(self, 'auto_scroll_enabled') and self.auto_scroll_enabled:
@@ -210,10 +222,10 @@ def _on_mousewheel(self, event, canvas):
 
     # Vérifier le scroll infini pour la playlist
     if hasattr(self, 'main_playlist_canvas') and canvas == self.main_playlist_canvas:
-        if hasattr(self.MainPlaylist, '_check_infinite_scroll'):
+        if hasattr(self.MainPlaylist, 'on_canvas_scroll'):
             # Différer légèrement la vérification pour laisser le scroll se terminer
             # self.root.after(50, self.MainPlaylist._check_infinite_scroll)
-            self.root.after(0, self.MainPlaylist._check_infinite_scroll)
+            self.MainPlaylist.on_canvas_scroll()
     
     if hasattr(self, 'downloads_canvas') and canvas == self.downloads_canvas:
         from library_tab.downloads import on_canvas_scroll
@@ -237,8 +249,11 @@ def _on_mousewheel_end(self, canvas):
         return
     
     if hasattr(self, 'downloads_canvas') and canvas == self.downloads_canvas:
-            from library_tab.downloads import on_canvas_scroll_end
-            on_canvas_scroll_end(self)
+        from library_tab.downloads import on_canvas_scroll_end
+        on_canvas_scroll_end(self)
+    
+    if hasattr(self, 'main_playlist_canvas') and canvas == self.main_playlist_canvas:
+        self.MainPlaylist.on_canvas_scroll_end()
         
     # print("Fin du scroll détectée")
 
@@ -659,20 +674,19 @@ class ImportDialog:
         """Traite un fichier HTML pour extraire et télécharger les vidéos YouTube"""
         def process_in_thread():
             try:
-                self.music_player.status_bar.config(text="Extraction des liens YouTube depuis le fichier HTML...")
+                self.music_player.schedule_status("Extraction des liens YouTube depuis le fichier HTML...", 400)
                 
                 # Extraire les liens depuis le fichier HTML
                 youtube_links = extract_from_html.extract_youtube_links_from_html(html_file_path)
                 
                 if not youtube_links:
-                    self.music_player.root.after(0, lambda: self.music_player.status_bar.config(
-                        text="Aucun lien YouTube trouvé dans le fichier HTML"))
+                    self.music_player.schedule_status("Aucun lien YouTube trouvé dans le fichier HTML", 400)
                     return
                 
                 print(f"Trouvé {len(youtube_links)} liens YouTube.")
                 print("🔄 Mise à jour de la barre de statut...")
-                self.music_player.root.after(0, lambda total=len(youtube_links): 
-                    self.music_player.status_bar.config(text=f"📋 Trouvé {total} liens YouTube. Préparation du traitement..."))
+                total = len(youtube_links)
+                self.music_player.schedule_status(f"📋 Trouvé {total} liens YouTube. Préparation du traitement...", 500)
                 
                 print("🔄 Récupération de la taille des paquets...")
                 # Récupérer la taille des paquets depuis l'interface
@@ -750,7 +764,7 @@ class ImportDialog:
             except Exception as e:
                 error_msg = f"Erreur lors du traitement du fichier HTML: {str(e)}"
                 print(error_msg)
-                self.music_player.root.after(0, lambda: self.music_player.status_bar.config(text=error_msg))
+                self.music_player.schedule_status(error_msg, 400)
         
         # Lancer le traitement dans un thread
         threading.Thread(target=process_in_thread, daemon=True).start()
@@ -779,8 +793,7 @@ class ImportDialog:
             
             print(f"Fichier JSON créé: {json_file_path}")
             self.log("INFO", f"Fichier JSON créé: {json_file_path}")
-            self.music_player.root.after(0, lambda: self.music_player.status_bar.config(
-                text=f"Fichier JSON créé avec {len(skipped_videos)} vidéos non téléchargées"))
+            self.music_player.schedule_status(f"Fichier JSON créé avec {len(skipped_videos)} vidéos non téléchargées", 400)
             
         except Exception as e:
             print(f"Erreur lors de la création du fichier JSON: {e}")
@@ -814,9 +827,7 @@ class ImportDialog:
                         playlist_title = info.get('title', 'Playlist')
                         entries = [entry for entry in info['entries'] if entry is not None]
                         
-                        self.music_player.root.after(0, lambda: self.music_player.status_bar.config(
-                            text=f"Playlist trouvée: {playlist_title} ({len(entries)} vidéos)"
-                        ))
+                        self.music_player.schedule_status(f"Playlist trouvée: {playlist_title} ({len(entries)} vidéos)", 400)
                         
                         # Ajouter toutes les vidéos à l'onglet téléchargements
                         for i, entry in enumerate(entries):
@@ -833,15 +844,11 @@ class ImportDialog:
                         self._download_playlist_sequential(entries)
                         
                     else:
-                        self.music_player.root.after(0, lambda: self.music_player.status_bar.config(
-                            text="Aucune vidéo trouvée dans la playlist"
-                        ))
+                        self.music_player.schedule_status("Aucune vidéo trouvée dans la playlist", 400)
                         
             except Exception as e:
                 error_msg = str(e)
-                self.music_player.root.after(0, lambda: self.music_player.status_bar.config(
-                    text=f"Erreur lors de l'extraction de la playlist: {error_msg}"
-                ))
+                self.music_player.schedule_status(f"Erreur lors de l'extraction de la playlist: {error_msg}", 400)
         
         # Lancer dans un thread séparé
         thread = threading.Thread(target=extract_and_queue_playlist, daemon=True)
@@ -851,9 +858,7 @@ class ImportDialog:
         """Télécharge les vidéos de la playlist une par une avec vérification"""
         def download_next_video(index=0):
             if index >= len(entries):
-                self.music_player.root.after(0, lambda: self.music_player.status_bar.config(
-                    text="Téléchargement de la playlist terminé"
-                ))
+                self.music_player.schedule_status("Téléchargement de la playlist terminé", 300)
                 return
             
             entry = entries[index]
@@ -907,8 +912,10 @@ class ImportDialog:
         # Démarrer le téléchargement de la première vidéo
         download_next_video(0)
     
-    def _process_videos_in_waves_sequential(self, youtube_links, max_duration, batch_size, html_file_path, session_id):
-        """Traite les vidéos par vagues avec vérification groupée puis téléchargement séquentiel"""
+    def _process_videos_in_waves_sequential(self, youtube_links, max_duration, batch_size, html_file_path, session_id, base_index=0):
+        """Traite les vidéos par vagues avec vérification groupée puis téléchargement séquentiel
+        base_index: décalage de départ dans la liste complète (utile pour reprise de session)
+        """
         print("🔄 Entrée dans _process_videos_in_waves_sequential")
         
         def process_wave_thread():
@@ -925,8 +932,14 @@ class ImportDialog:
                 
                 # Message de démarrage détaillé
                 print(f"📊 Configuration: {total_links} liens, vagues de {batch_size}, durée max: {max_duration}s")
-                self.music_player.root.after(0, lambda: 
-                    self.music_player.status_bar.config(text=f"🚀 Démarrage du traitement de {total_links} liens par vagues de {batch_size}..."))
+                self.music_player.schedule_status(f"🚀 Démarrage du traitement de {total_links} liens par vagues de {batch_size}...", 400)
+                
+                # Si reprise, positionner l'index de base auprès du logger pour un comptage cohérent
+                if session_id and base_index:
+                    try:
+                        self.logger.update_current_index(base_index)
+                    except Exception:
+                        pass
                 
                 # Pause pour laisser l'interface se mettre à jour et éviter les conditions de course
                 time.sleep(0.5)
@@ -938,8 +951,7 @@ class ImportDialog:
                     # Vérifier si la session a été annulée
                     if session_id and self.logger.is_cancelled():
                         print("⏹️ Session annulée par l'utilisateur")
-                        self.music_player.root.after(0, lambda: 
-                            self.music_player.status_bar.config(text="⏹️ Traitement annulé par l'utilisateur"))
+                        self.music_player.schedule_status("⏹️ Traitement annulé par l'utilisateur", 300)
                         return
                     
                     wave_end = min(wave_start + batch_size, total_links)
@@ -948,9 +960,7 @@ class ImportDialog:
                     total_waves = (total_links + batch_size - 1) // batch_size
                     
                     print(f"🔍 Vague {wave_num}/{total_waves} - Vérification des liens {wave_start+1}-{wave_end}")
-                    self.music_player.root.after(0, lambda w=wave_num, tw=total_waves, ws=wave_start, we=wave_end: 
-                        self.music_player.status_bar.config(
-                            text=f"🔍 Vague {w}/{tw} - Vérification des liens {ws+1}-{we}..."))
+                    self.music_player.schedule_status(f"🔍 Vague {wave_num}/{total_waves} - Vérification des liens {wave_start+1}-{wave_end}...", 400)
                     
                     if session_id:
                         self.logger.log("INFO", f"Vague {wave_num}/{total_waves} - Vérification des liens {wave_start+1}-{wave_end}")
@@ -966,8 +976,7 @@ class ImportDialog:
                         # Vérifier si la session a été annulée ou en pause
                         if session_id and self.logger.is_cancelled():
                             print("⏹️ Session annulée pendant la vérification")
-                            self.music_player.root.after(0, lambda: 
-                                self.music_player.status_bar.config(text="⏹️ Traitement annulé par l'utilisateur"))
+                            self.music_player.schedule_status("⏹️ Traitement annulé par l'utilisateur", 300)
                             return
                         
                         # Attendre si en pause
@@ -976,21 +985,19 @@ class ImportDialog:
                         
                         try:
                             # Mettre à jour le statut de vérification seulement tous les 5 liens
-                            current_check = wave_start + i + 1
+                            current_check = base_index + wave_start + i + 1
                             # Réduire les prints pour éviter la surcharge console
                             if i % 10 == 0:  # Print seulement tous les 10 liens
-                                print(f"🔍 Vérification {current_check}/{total_links}: {url[:80]}...")
+                                print(f"🔍 Vérification {current_check}/{base_index + total_links}: {url[:80]}...")
                             # Mise à jour de statut limitée dans le temps (max toutes les 2 secondes)
                             current_time = time.time()
                             if current_time - last_status_update >= 2.0:  # Max toutes les 2 secondes
                                 last_status_update = current_time
-                                self.music_player.root.after(0, lambda cc=current_check, tl=total_links: 
-                                    self.music_player.status_bar.config(
-                                        text=f"🔍 Vérification {cc}/{tl}..."))
+                                self.music_player.schedule_status(f"🔍 Vérification {current_check}/{base_index + total_links}...", 700)
                             
                             # Réduire les logs pour éviter la surcharge
                             if session_id and i % 10 == 0:  # Log seulement tous les 10 liens
-                                self.logger.log("INFO", f"Vérification {current_check}/{total_links}")
+                                self.logger.log("INFO", f"Vérification {current_check}/{base_index + total_links}")
                             
                             # Nettoyer l'URL
                             url = clean_youtube_url(url)
@@ -1102,9 +1109,7 @@ class ImportDialog:
                     
                     # Phase 2 : Télécharger IMMÉDIATEMENT les vidéos valides de cette vague
                     if valid_videos_wave:
-                        self.music_player.root.after(0, lambda w=wave_num, tw=total_waves, vv=len(valid_videos_wave): 
-                            self.music_player.status_bar.config(
-                                text=f"⬇️ Vague {w}/{tw} - Téléchargement de {vv} vidéos..."))
+                        self.music_player.schedule_status(f"⬇️ Vague {wave_num}/{total_waves} - Téléchargement de {len(valid_videos_wave)} vidéos...", 400)
                         
                         if session_id:
                             self.logger.log("INFO", f"Début du téléchargement de {len(valid_videos_wave)} vidéos de la vague {wave_num}")
@@ -1114,8 +1119,7 @@ class ImportDialog:
                             # Vérifier si la session a été annulée ou mise en pause
                             if session_id and self.logger.is_cancelled():
                                 print("⏹️ Session annulée pendant le téléchargement")
-                                self.music_player.root.after(0, lambda: 
-                                    self.music_player.status_bar.config(text="⏹️ Traitement annulé par l'utilisateur"))
+                                self.music_player.schedule_status("⏹️ Traitement annulé par l'utilisateur", 300)
                                 return
                             
                             # Attendre si la session est en pause (avec attente efficace)
@@ -1126,22 +1130,37 @@ class ImportDialog:
                                     return
                             
                             try:
-                                current_index = wave_start + j
+                                # Index cohérent en cas de reprise: décalage base_index
+                                current_index = base_index + wave_start + j
                                 if session_id:
                                     self.logger.update_current_index(current_index)
                                 
                                 # Mise à jour de statut moins fréquente
                                 if j % 2 == 0:  # Seulement tous les 2 téléchargements
-                                    self.music_player.root.after(0, lambda w=wave_num, tw=total_waves, j=j+1, vv=len(valid_videos_wave): 
-                                        self.music_player.status_bar.config(
-                                            text=f"⬇️ Vague {w}/{tw} - Téléchargement {j}/{vv}..."))
+                                    if j % 2 == 0:
+                                        self.music_player.schedule_status(f"⬇️ Vague {wave_num}/{total_waves} - Téléchargement {j+1}/{len(valid_videos_wave)}...", 500)
                                 
                                 # Réduire les logs de téléchargement
                                 if session_id and j % 3 == 0:  # Log seulement tous les 3 téléchargements
                                     self.logger.log("INFO", f"Téléchargement {j+1}/{len(valid_videos_wave)}: {title[:50]}...")
                                 
                                 # Téléchargement synchrone avec attente
-                                success = self._download_video_sync(url, title, video_data)
+                                # bulk_mode=True pour limiter l'impact UI pendant les imports HTML
+                                success = self._download_video_sync(url, title, video_data, bulk_mode=True)
+                                
+                                # Synchroniser la session pour éviter les doublons lors d'une reprise
+                                try:
+                                    if session_id and hasattr(self.logger, 'current_session') and self.logger.current_session:
+                                        sess = self.logger.current_session
+                                        # Enlever des pending dès qu'on a tenté le téléchargement
+                                        if 'pending_urls' in sess and url in sess['pending_urls']:
+                                            sess['pending_urls'].remove(url)
+                                        # Mémoriser comme traité
+                                        if 'processed_urls' in sess:
+                                            sess['processed_urls'].append(url)
+                                        self.logger.save()
+                                except Exception:
+                                    pass
                                 
                                 if success:
                                     total_downloaded += 1
@@ -1163,14 +1182,11 @@ class ImportDialog:
                         
                         # Pause entre les vagues (réduite)
                         if wave_end < total_links:
-                            self.music_player.root.after(0, lambda: 
-                                self.music_player.status_bar.config(text="⏸️ Pause entre les vagues (2s)..."))
+                            self.music_player.schedule_status("⏸️ Pause entre les vagues (2s)...", 300)
                             time.sleep(2)
                     
                     else:
-                        self.music_player.root.after(0, lambda w=wave_num, tw=total_waves: 
-                            self.music_player.status_bar.config(
-                                text=f"⚠️ Vague {w}/{tw} - Aucune vidéo valide trouvée"))
+                        self.music_player.schedule_status(f"⚠️ Vague {wave_num}/{total_waves} - Aucune vidéo valide trouvée", 400)
                         time.sleep(1)
                 
                 # Sauvegarder le rapport final
@@ -1182,9 +1198,7 @@ class ImportDialog:
                     self.logger.end_session('completed')
                 
                 # Message final
-                self.music_player.root.after(0, lambda td=total_downloaded, tl=total_links: 
-                    self.music_player.status_bar.config(
-                        text=f"✅ Terminé ! {td}/{tl} vidéos téléchargées avec succès"))
+                self.music_player.schedule_status(f"✅ Terminé ! {total_downloaded}/{total_links} vidéos téléchargées avec succès", 400)
                 
             except Exception as e:
                 if session_id:
@@ -1199,14 +1213,16 @@ class ImportDialog:
         thread.start()
         print(f"✅ Thread lancé: {thread.name}")
     
-    def _download_video_sync(self, url, title, video_data):
-        """Télécharge une vidéo de manière synchrone (attend la fin)"""
+    def _download_video_sync(self, url, title, video_data, bulk_mode=False):
+        """Télécharge une vidéo de manière synchrone (attend la fin)
+        bulk_mode: réduit les mises à jour UI pour les gros imports (HTML)
+        """
         try:
             # Utiliser directement le gestionnaire de téléchargement
             download_manager_instance = download_manager.DownloadManager(self.music_player)
             
             # Téléchargement synchrone
-            success = download_manager_instance.download_video_sync(url, title, video_data)
+            success = download_manager_instance.download_video_sync(url, title, video_data, bulk_mode=bulk_mode)
             
             if success:
                 print(f"✅ Téléchargement réussi: {title}")
@@ -1237,46 +1253,7 @@ class ImportDialog:
             print(f"Erreur téléchargement simple: {e}")
             return False
     
-    def _download_video_sync(self, url, title, video_data):
-        """Télécharge une vidéo de manière synchrone"""
-        try:
-            # Utiliser le gestionnaire de téléchargement existant
-            # Mais de manière synchrone
-            success_flag = {'success': False}
-            
-            def download_callback(filepath, **kwargs):
-                success_flag['success'] = True
-                # Ajouter à la playlist
-                try:
-                    download_manager.add_to_playlist_after_download(
-                        self.music_player, 
-                        filepath, 
-                        queue_position='last'
-                    )
-                except Exception as e:
-                    print(f"Erreur ajout playlist: {e}")
-            
-            # Lancer le téléchargement
-            download_manager.download_youtube_video(
-                self.music_player,
-                url,
-                title,
-                video_data,
-                callback_on_complete=download_callback
-            )
-            
-            # Attendre que le téléchargement se termine (avec timeout)
-            timeout = 300  # 5 minutes max par vidéo
-            start_time = time.time()
-            
-            while not success_flag['success'] and (time.time() - start_time) < timeout:
-                time.sleep(1)
-            
-            return success_flag['success']
-            
-        except Exception as e:
-            print(f"Erreur téléchargement sync: {e}")
-            return False
+
     
     def _download_videos_in_batches(self, valid_videos, batch_size=10):
         """Télécharge les vidéos par paquets pour éviter la surcharge"""
@@ -1495,10 +1472,10 @@ class ImportDialog:
                     except:
                         pass
                 
-                # Relancer le traitement
+                # Relancer le traitement avec un index de base pour un affichage cohérent
                 self._process_videos_in_waves_sequential(
                     remaining_urls, max_duration, batch_size, 
-                    session.get('source', ''), session_id
+                    session.get('source', ''), session_id, base_index=current_index
                 )
             else:
                 print("Aucune URL restante à traiter")

@@ -125,7 +125,7 @@ class Setup:
                     self.music_player.icons[key + "_small"] = ImageTk.PhotoImage(image_small)
                 
                 # Créer une version plus petite pour les icônes clear, find, auto_scroll et pause
-                if key in ["clear", "find", "auto_scroll", "pause", "play", "activate_ai"]:
+                if key in ["clear", "find", "auto_scroll", "pause", "play", "activate_ai", "reload"]:
                     image_small = Image.open(path).resize((20, 20), Image.Resampling.LANCZOS)
                     self.music_player.icons[key + "_small"] = ImageTk.PhotoImage(image_small)
                 
@@ -343,7 +343,7 @@ class Setup:
         
         """Frame pour l'onglet Recherche"""
         self.music_player.search_tab = ttk.Frame(self.music_player.notebook)
-        self.music_player.notebook.add(self.music_player.search_tab, text="Recherche")
+        self.music_player.notebook.add(self.music_player.search_tab, text="Search")
         
         # Frame pour l'onglet Bibliothèque
         self.music_player.library_tab = ttk.Frame(self.music_player.notebook)
@@ -500,26 +500,26 @@ class Setup:
         list_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
         # Canvas et scrollbar pour la liste
-        self.music_player.downloads_canvas = tk.Canvas(list_frame, bg='#2d2d2d', highlightthickness=0)
-        downloads_scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.music_player.downloads_canvas.yview)
-        self.music_player.downloads_scrollable_frame = tk.Frame(self.music_player.downloads_canvas, bg='#2d2d2d')
+        self.music_player.downloads_tab_canvas = tk.Canvas(list_frame, bg='#2d2d2d', highlightthickness=0)
+        downloads_scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.music_player.downloads_tab_canvas.yview)
+        self.music_player.downloads_scrollable_frame = tk.Frame(self.music_player.downloads_tab_canvas, bg='#2d2d2d')
         
         self.music_player.downloads_scrollable_frame.bind(
             "<Configure>",
-            lambda e: self.music_player.downloads_canvas.configure(scrollregion=self.music_player.downloads_canvas.bbox("all"))
+            lambda e: self.music_player.downloads_tab_canvas.configure(scrollregion=self.music_player.downloads_tab_canvas.bbox("all"))
         )
         
-        self.music_player.downloads_canvas.create_window((0, 0), window=self.music_player.downloads_scrollable_frame, anchor="nw")
-        self.music_player.downloads_canvas.configure(yscrollcommand=downloads_scrollbar.set)
+        self.music_player.downloads_tab_canvas.create_window((0, 0), window=self.music_player.downloads_scrollable_frame, anchor="nw")
+        self.music_player.downloads_tab_canvas.configure(yscrollcommand=downloads_scrollbar.set)
         
-        self.music_player.downloads_canvas.pack(side="left", fill="both", expand=True)
+        self.music_player.downloads_tab_canvas.pack(side="left", fill="both", expand=True)
         downloads_scrollbar.pack(side="right", fill="y")
         
         # Bind mousewheel
         def _on_downloads_mousewheel(event):
-            self.music_player.downloads_canvas.yview_scroll(int(-1*(np.sign(event.delta))), "units")
+            self.music_player.downloads_tab_canvas.yview_scroll(int(-1*(np.sign(event.delta))), "units")
         
-        self.music_player.downloads_canvas.bind("<MouseWheel>", _on_downloads_mousewheel)
+        self.music_player.downloads_tab_canvas.bind("<MouseWheel>", _on_downloads_mousewheel)
         
         # Message quand aucun téléchargement
         self.music_player.no_downloads_label = tk.Label(
@@ -1280,6 +1280,23 @@ def setup_search_tab(self):
     buttons_right_frame = tk.Frame(playlist_header_frame, bg='#2d2d2d')
     buttons_right_frame.pack(side=tk.RIGHT)
     
+    self.reload_btn = tk.Button(
+        buttons_right_frame,
+        image=self.icons["reload_small"],
+        bg="#4a4a4a",
+        fg="white",
+        activebackground="#5a5a5a",
+        relief="flat",
+        bd=0,
+        width=20,
+        height=20,
+        takefocus=0
+    )
+    self.reload_btn.pack(side=tk.LEFT, padx=(0, 5))
+    self.reload_btn.bind("<Button-1>", lambda event: (self.MainPlaylist._refresh_main_playlist_display(), self.status_bar.config(text="Refreshing playlist...")))
+    tooltip.create_tooltip(self.reload_btn, "Reloads the playlist display.")
+    
+    
     # Bouton auto_scroll pour l'autoscroll automatique
     self.auto_scroll_btn = tk.Button(
         buttons_right_frame,
@@ -1365,11 +1382,16 @@ def setup_search_tab(self):
         command=self.main_playlist_canvas.yview
     )
     self.main_playlist_canvas.configure(yscrollcommand=self.playlist_scrollbar.set)
+    
+    self.main_playlist_canvas.pack(side=tk.LEFT, fill=tk.BOTH)
+    self.main_playlist_canvas.propagate(False)  # Maintenir la largeur fixe
 
     self.playlist_scrollbar.pack(side="right", fill="y")
     self.main_playlist_canvas.pack(side="left", fill="both", expand=True)
 
-    self.main_playlist_container = ttk.Frame(self.main_playlist_canvas)
+    self.main_playlist_container = tk.Frame(self.main_playlist_canvas, bg="#3d3d3d")
+    self.main_playlist_container.config(height=0, width=385)
+    self.main_playlist_container.propagate(False)
     self.main_playlist_canvas.create_window((0, 0), window=self.main_playlist_container, anchor="nw")
     # self.main_playlist_container.pack(side="left", fill="both", expand=True)
 
@@ -1383,8 +1405,10 @@ def setup_search_tab(self):
     # self._bind_mousewheel(self.main_playlist_container, self.main_playlist_canvas)
     
     # import search_tab.main_playlist
-    self._bind_mousewheel(self.main_playlist_canvas, self.main_playlist_canvas, func=self.MainPlaylist.forward_wheel)
-    self._bind_mousewheel(self.main_playlist_container, self.main_playlist_canvas, func=self.MainPlaylist.forward_wheel)
+    # self._bind_mousewheel(self.main_playlist_canvas, self.main_playlist_canvas, func=self.MainPlaylist.forward_wheel)
+    # self._bind_mousewheel(self.main_playlist_container, self.main_playlist_canvas, func=self.MainPlaylist.forward_wheel)
+    self._bind_mousewheel(self.main_playlist_container, self.main_playlist_canvas)
+    self._bind_mousewheel(self.main_playlist_canvas, self.main_playlist_canvas)
     
     # Youtube Results Frame (right side - expandable)
     self.youtube_results_frame = ttk.Frame(middle_frame)

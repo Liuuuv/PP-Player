@@ -25,9 +25,9 @@ class AutoUpdater:
         self.github_api = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/releases/latest"
         
         # Paramètres configurables avec valeurs par défaut
-        self.config_files_to_preserve = config_files_to_preserve or ["player_config.json", "ai_music_data.json"]
-        self.folders_to_preserve = folders_to_preserve or ["logs", "downloads", "assets", "ffmpeg"]
-        self.exclude_from_update = exclude_from_update or ["logs", "downloads", "assets", "ffmpeg"]
+        self.config_files_to_preserve = config_files_to_preserve # ["player_config.json", "ai_music_data.json"]
+        self.folders_to_preserve = folders_to_preserve # ["logs", "downloads", "assets", "ffmpeg"]
+        self.exclude_from_update = exclude_from_update # ["logs", "downloads", "assets", "ffmpeg"]
         
         # Référence à la fenêtre parente
         self.parent = parent

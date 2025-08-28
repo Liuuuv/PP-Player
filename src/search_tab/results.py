@@ -541,6 +541,12 @@ def _filter_search_results(self, entries):
         is_video = "https://www.youtube.com/watch?v=" in url
         is_channel = "https://www.youtube.com/channel/" in url or "https://www.youtube.com/@" in url
         
+        if url is None:
+            url = ''
+        if duration is None:
+            duration = np.inf
+
+        
         # Filtrer selon les préférences
         if is_video and show_tracks_val and duration <= 600.0:  # Vidéos (tracks) max 10 minutes
             filtered_results.append(entry)
@@ -674,6 +680,9 @@ def _save_current_search_state(self):
         # Sauvegarder la requête de recherche actuelle
         if hasattr(self, 'youtube_entry') and self.youtube_entry.winfo_exists():
             search_state['search_query'] = self.youtube_entry.get().strip()
+        
+        if search_state['search_query']:
+            return
         
         # Sauvegarder les résultats de recherche actuels
         if hasattr(self, 'all_search_results'):
@@ -1020,7 +1029,8 @@ def _execute_search_change(self, query):
                     # Vérifier que la frame existe encore et est valide
                     if self.thumbnail_frame and self.thumbnail_frame.winfo_exists():
                         for widget in self.thumbnail_frame.winfo_children():
-                            widget.destroy()
+                            # widget.destroy()
+                            widget.pack_forget()
                 except (tk.TclError, AttributeError):
                     # La frame n'existe plus ou est invalide, l'ignorer
                     pass
@@ -1052,6 +1062,7 @@ def _clear_youtube_search(self):
     self.search_results_count = 0
     self.current_search_batch = 1
     self.all_search_results = []
+    self.all_raw_search_results = []
     self.is_searching = False
     self.is_loading_more = False
     self.search_cancelled = False

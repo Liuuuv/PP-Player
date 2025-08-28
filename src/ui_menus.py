@@ -116,14 +116,19 @@ def show_settings_menu(self):
         
         # Ajouter les statistiques
         settings_menu.add_command(
-            label=f"Update upload date from links (if they exsist)",
+            label=f"Update upload date from links (if they exsist) [don't close during the process]",
             command=self.update_upload_date_from_links
         )
         
         from utils import tools
         settings_menu.add_command(
-            label=f"Update stored truncated titles (for \"downloaded\" and \"playlists\")",
+            label=f"Update stored truncated titles (for \"downloaded\" and \"playlists\") [don't close during the process]",
             command=lambda: tools.update_stored_truncated_titles(self)
+        )
+        
+        settings_menu.add_command(
+            label=f"Update all stored metadatas (titles, artists, albums, upload dates, and truncated titles) [don't close during the process]",
+            command=lambda: tools.update_all_metadatas(self)
         )
         
         settings_menu.add_separator()

@@ -299,10 +299,10 @@ def _show_artist_content(self, artist_name, video_data):
         if self.artist_mode and self.current_artist_name == artist_name:
             # Si on est déjà sur la page de cet artiste, basculer vers l'onglet recherche
             current_tab = self.notebook.tab(self.notebook.select(), "text")
-            if current_tab != "Recherche":
-                # Trouver l'index de l'onglet "Recherche" et le sélectionner
+            if current_tab != "Search":
+                # Trouver l'index de l'onglet "Search" et le sélectionner
                 for i in range(self.notebook.index("end")):
-                    if self.notebook.tab(i, "text") == "Recherche":
+                    if self.notebook.tab(i, "text") == "Search":
                         self.notebook.select(i)
                         break
             return
@@ -311,12 +311,12 @@ def _show_artist_content(self, artist_name, video_data):
         if self.artist_mode and self.current_artist_name != artist_name:
             _return_to_search(self)
         
-        # S'assurer qu'on est sur l'onglet "Recherche"
+        # S'assurer qu'on est sur l'onglet "Search"
         current_tab = self.notebook.tab(self.notebook.select(), "text")
-        if current_tab != "Recherche":
-            # Trouver l'index de l'onglet "Recherche" et le sélectionner
+        if current_tab != "Search":
+            # Trouver l'index de l'onglet "Search" et le sélectionner
             for i in range(self.notebook.index("end")):
-                if self.notebook.tab(i, "text") == "Recherche":
+                if self.notebook.tab(i, "text") == "Search":
                     self.notebook.select(i)
                     break
         
@@ -348,7 +348,7 @@ def _show_artist_content(self, artist_name, video_data):
         self._save_current_search_state()
         
         # S'assurer que la zone YouTube est visible
-        self._show_search_results()
+        # self._show_search_results()
         
         # Créer les onglets IMMÉDIATEMENT (UI d'abord, contenu après)
         _create_artist_tabs(self)
