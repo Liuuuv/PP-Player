@@ -1,33 +1,44 @@
-v0.0.2
+v0.0.3
 
 
 New features:
-- Added a reload button for the main playlist
-- Added a settings button to update all the stored metadatas
+- You can now export playlist to a text file with optionnal compression (up to 62.5% less characters).
+- Added a button in the insert url dialog so you can copy the url to the clipboard.
 
 Changes:
-- The search bar of library>downloaded is now just above the display frame.
-- Changed the way the main playlist is displayed to the same way as library>downloaded is: only the visible songs are rendered.
-- Ajusted the logic behind the "scroll to current song" button
-- Changed the sizes of thumbnails in the main playlist: Now they are all the same size : 80x45 (16:9)
-- Now you need to open a menu with right click on a song in order to delete it (from a playlist or the device)
-- Changed the horrible colors in the "errors" window.
+- Made that you can paste any YouTube url in the url changer (right click + insert url) and it will keep the good one. Example: https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RDdQw4w9WgXcQ&start_radio=1&pp=ygUXbmV2ZXIgZ29ubmEgZ2l2ZSB5b3UgdXCgBwHSBwkJsgkBhyohjO8%3D -> https://www.youtube.com/watch?v=dQw4w9WgXcQ)
+- Removed the waveform feature.
+- Changed the style of the buttons in the upper right corner and the copy to clipboard button. (groove -> flat)
+- Move the copy to clipboard bottom. (below the status bar -> to the left of the status bar)
+- Changed the error color (less yellow-ish).
+- The reason for an error in the logs is now more detailed.
+- Changed the local search algorithm, it now shows more results (one letter flexibility).
+- Lowered the speed and frame rate of the sliding panel (of the large thumbnail).
+- Added more fallbacks for potential errors.
+- Optimized even more the loading of song items.
+- Changed the hover cursor for lots of icons.
+- Remove the possibility to remove a song from the main playlist if you aren't directly in it.
+- The auto-scroll won't load in-between item songs if more than 50 need to be loaded.
+- Deactivated the "add song file" and "recommendation" buttons.
 
 Fixed issues:
-- The right click on items in library>downloaded now works.
-- Fixed the missalignment in library>downloaded and in library>playlists.
-- Fixed the weird color changing when scrolling and hovering songs in the main playlist.
-- Fixed the issue where YouTube results weren't showing because of lives showing.
-- Fixed the issue where the YouTube results were showing if you untick and then tick the "Tracks" or the "Artists" button.
-- Fixed the issue where "download_path.txt" was deleted when updating.
-
+- Made the logs less laggy when downloading a lot of songs.
+- Fixed an issue where you can't download a song from Youtube because the app thinks it is already downloaded.
+- Fixed an issue where the artist page doesn't show up if you clic on an artist's name in the main playlist.
+- Fixed an issue where the title wasn't shown completly during the hover animation. (library>downloads, main playlist, playlist contents)
+- Fixed an issue where the large thumbnail wasn't showing anymore if you opened an artist's page.
+- Fixed an issue where the YouTube results were not showing properly after opening an artist's page.
+- Fixed an issue where the right click wouldn't be working in an artist's page.
+- Fixed an issue where the click+drag wouldn't be working in an artist's page.
+- Fixed an issue where the color of a song item wouldn't be correct if you hover it in an artist's page.
+- Fixed an issue where if you have multiple instances of a song display in the same list, only the first one would be completly loaded.
+- Fixed an issue where the clic+drag commands were inverted.
+- Fixed an issue where the queue indicator wasn't showing anymore (unless refresh) if you hover the song item
+- Fixed an issue where if you remove a song from the main playlist that is in the queue, the place in the queue would be tranfered to another song.
+- Fixed an error that can occurs when auto-scrolling to the current song.
+- Fixed an issue where the auto-scroll doesn't work sometimes (e.g. for two consecutive songs for a +1600 songs main playlist).
 
 Known issues:
-- The CPU usage is abnormally high sometimes when you're downloading all songs from an HTML page (liked videos/songs for example).
-- The progress in the downloads tab looks bad under the texts.
-- The scrollwheel doesn't work in the downloads tab.
-- Some (not important) errors car occur during a download ("can't access the file because it's being use").
-- The highlights in the artist page are not staying if you hover.
-- The name of the artist takes too much space in the artist page.
-- Search cache doesn't seem to work anymore.
-- When closing an artist page, the song thumbnail is no longer visible. (to fix it, start a song and click on the cross that clears the search bar) This leads to a missing sliding panel.
+- Some YouTube videos can encounter the following error: "Got error: X bytes read, Y more expected." (really rare, maybe due to the format)
+- 2 videos with closed titles and not usual characters can be seen as the same.
+- The first local search can be really slow.

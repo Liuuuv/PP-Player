@@ -56,6 +56,7 @@ class Subtitles:
             'quiet': True,
             'writesubtitles': False,
             'writeautomaticsub': False,
+            'update': True
         }
         
         try:

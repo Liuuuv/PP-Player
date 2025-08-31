@@ -122,12 +122,6 @@ class ThreadOptimizer:
                 text=time.strftime('%M:%S', time.gmtime(self.app.current_time))
             )
             
-            # Waveform seulement si activée
-            if getattr(self.app, 'show_waveform_current', False):
-                self.app.draw_waveform_around(self.app.current_time)
-            else:
-                if hasattr(self.app, 'waveform_canvas'):
-                    self.app.waveform_canvas.delete("all")
                     
         except (tk.TclError, AttributeError):
             # Interface détruite, ignorer silencieusement

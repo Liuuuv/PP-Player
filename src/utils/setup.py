@@ -210,7 +210,7 @@ class Setup:
             bg="#3d3d3d",
             fg="white",
             activebackground="#4a4a4a",
-            relief="raised",
+            relief="flat",
             bd=1,
             width=20,
             height=20,
@@ -229,7 +229,7 @@ class Setup:
             bg="#3d3d3d",
             fg="white",
             activebackground="#4a4a4a",
-            relief="raised",
+            relief="flat",
             bd=1,
             width=20,
             height=20,
@@ -248,7 +248,7 @@ class Setup:
             bg="#3d3d3d",
             fg="white",
             activebackground="#4a4a4a",
-            relief="raised",
+            relief="flat",
             bd=1,
             width=20,
             height=20,
@@ -270,7 +270,7 @@ class Setup:
             bg="#3d3d3d",
             fg="white",
             activebackground="#4a4a4a",
-            relief="raised",
+            relief="flat",
             bd=1,
             width=20,
             height=20,
@@ -289,7 +289,7 @@ class Setup:
             bg="#3d3d3d",
             fg="white",
             activebackground="#4a4a4a",
-            relief="raised",
+            relief="flat",
             bd=1,
             width=20,
             height=20,
@@ -309,7 +309,7 @@ class Setup:
             bg="#3d3d3d",
             fg="white",
             activebackground="#4a4a4a",
-            relief="raised",
+            relief="flat",
             bd=1,
             width=20,
             height=20,
@@ -328,7 +328,7 @@ class Setup:
             bg="#3d3d3d",
             fg="white",
             activebackground="#4a4a4a",
-            relief="raised",
+            relief="flat",
             bd=1,
             width=20,
 
@@ -727,9 +727,6 @@ def setup_controls(self):
         control_frame = ttk.Frame(self.main_frame)
         control_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(5, 0))
         
-        # Waveform Frame (above song info)
-        waveform_frame = ttk.Frame(control_frame)
-        waveform_frame.pack(fill=tk.X)
         
         # Song Info Frame (conteneur horizontal pour titre centré)
         song_info_frame = ttk.Frame(control_frame)
@@ -873,8 +870,8 @@ def setup_controls(self):
         tooltip.create_tooltip(self.recommendation_button, "Recommandations automatiques\nClic gauche: Active/désactive\nClic droit: Options")
         
         # Bind des événements pour le bouton recommandations
-        self.recommendation_button.bind("<Button-1>", self.on_recommendation_left_click)
-        self.recommendation_button.bind("<Button-3>", self.on_recommendation_right_click)
+        # self.recommendation_button.bind("<Button-1>", self.on_recommendation_left_click)
+        # self.recommendation_button.bind("<Button-3>", self.on_recommendation_right_click)
         self.recommendation_button.bind("<Enter>", self.on_recommendation_hover_enter)
         self.recommendation_button.bind("<Leave>", self.on_recommendation_hover_leave)
         
@@ -980,7 +977,7 @@ def setup_controls(self):
         # )
         self.add_button = ctk.CTkButton(button_frame,
                                       image=self.icons["add"],
-                                      command=self.add_to_playlist,
+                                    #   command=self.add_to_playlist,
                                       cursor='hand2',
                                       text="",
                                       width=42,
@@ -1085,6 +1082,26 @@ def setup_controls(self):
         status_frame = tk.Frame(control_frame, bg='#2d2d2d')
         status_frame.pack(fill=tk.X, pady=(5,0))
         
+        # Bouton de copie de la status bar (en bas à droite sous la status bar)
+        self.copy_status_button = tk.Button(
+            status_frame,
+            image=self.icons["stats_small"],  # Utiliser l'icône stats.png
+            bg="#3d3d3d",
+            fg="white",
+            activebackground="#4a4a4a",
+            relief="flat",
+            bd=1,
+            width=20,
+            height=20,
+            command=self.copy_status_to_clipboard,
+            cursor='hand2',
+            takefocus=0
+        )
+        # Positionner le bouton en bas à gauche, juste sous la status bar
+        # self.copy_status_button.place(in_=status_frame, relx=0.0, rely=1.0, anchor="sw", x=5, y=25)
+        self.copy_status_button.pack(side=tk.LEFT, padx=5, pady=5)
+        tooltip.create_tooltip(self.copy_status_button, "Copier dans le presse-papier\nCopie le texte de la barre de statut dans le presse-papier")
+        
         # Status Bar gauche (messages)
         self.status_bar = ttk.Label(
             status_frame, text="Ready", relief=tk.SUNKEN, anchor=tk.W
@@ -1096,50 +1113,6 @@ def setup_controls(self):
             status_frame, text="", relief=tk.SUNKEN, anchor=tk.E, width=20
         )
         self.stats_bar.pack(side=tk.RIGHT, padx=(5,0))
-        
-        # Bouton de copie de la status bar (en bas à droite sous la status bar)
-        self.copy_status_button = tk.Button(
-            control_frame,
-            image=self.icons["stats_small"],  # Utiliser l'icône stats.png
-            bg="#3d3d3d",
-            fg="white",
-            activebackground="#4a4a4a",
-            relief="raised",
-            bd=1,
-            width=20,
-            height=20,
-            command=self.copy_status_to_clipboard,
-            cursor='hand2',
-            takefocus=0
-        )
-        # Positionner le bouton en bas à gauche, juste sous la status bar
-        self.copy_status_button.place(in_=status_frame, relx=0.0, rely=1.0, anchor="sw", x=5, y=25)
-        tooltip.create_tooltip(self.copy_status_button, "Copier dans le presse-papier\nCopie le texte de la barre de statut dans le presse-papier")
-        
-        ## Bouton Show Waveform
-        self.show_waveform_btn = tk.Button(
-            control_frame,
-            text="Show Waveform",
-            command=self.show_waveform_on_clicked,
-            bg="#3d3d3d",
-            fg="white",
-            activebackground="#4a4a4a",
-            relief="flat",
-            bd=0,
-            padx=10,
-            pady=5,
-            takefocus=0
-        )
-        self.show_waveform_btn.pack(pady=(0, 5))
-        tooltip.create_tooltip(self.show_waveform_btn, "Afficher la forme d'onde\nAffiche/masque la visualisation de la forme d'onde audio")
-        
-        # Waveform Canvas
-        self.waveform_canvas = tk.Canvas(waveform_frame, height=0, bg='#2d2d2d', highlightthickness=0, takefocus=0)
-        self.waveform_canvas.pack(fill=tk.X, pady=0)
-        # Canvas starts with height=0, will expand when waveform button is clicked
-        
-        # Bind resize event to update waveform when window is resized
-        self.waveform_canvas.bind('<Configure>', self.on_waveform_canvas_resize)
 
 
 
@@ -1220,7 +1193,8 @@ def setup_search_tab(self):
         pady=4,
         width=20,
         height=20,
-        takefocus=0
+        takefocus=0,
+        cursor="hand2"
     )
     clear_youtube_btn.bind("<Button-1>", lambda event: self._clear_youtube_search())
     clear_youtube_btn.pack(side=tk.LEFT, padx=(5, 0))
@@ -1239,7 +1213,8 @@ def setup_search_tab(self):
         width=20,
         height=20,
         command=self.search_youtube,
-        takefocus=0
+        takefocus=0,
+        cursor="hand2"
     )
     search_btn.pack(side=tk.LEFT, padx=(5, 5))
     tooltip.create_tooltip(search_btn, "Rechercher sur YouTube\nLance une recherche de vidéos sur YouTube\n(Raccourci: Entrée dans le champ de recherche)")
@@ -1290,7 +1265,8 @@ def setup_search_tab(self):
         bd=0,
         width=20,
         height=20,
-        takefocus=0
+        takefocus=0,
+        cursor="hand2"
     )
     self.reload_btn.pack(side=tk.LEFT, padx=(0, 5))
     self.reload_btn.bind("<Button-1>", lambda event: (self.MainPlaylist._refresh_main_playlist_display(), self.status_bar.config(text="Refreshing playlist...")))
@@ -1308,7 +1284,8 @@ def setup_search_tab(self):
         bd=0,
         width=20,
         height=20,
-        takefocus=0
+        takefocus=0,
+        cursor="hand2"
     )
     self.auto_scroll_btn.pack(side=tk.LEFT, padx=(0, 5))
     self.auto_scroll_btn.bind("<Button-1>", self._toggle_auto_scroll)
@@ -1325,7 +1302,8 @@ def setup_search_tab(self):
         bd=0,
         width=20,
         height=20,
-        takefocus=0
+        takefocus=0,
+        cursor="hand2"
     )
     self.ai_button.pack(side=tk.LEFT, padx=(0, 5))
     tooltip.create_tooltip(self.ai_button, "Configuration IA\nActive l'apprentissage et les recommandations personnalisées")
@@ -1341,7 +1319,8 @@ def setup_search_tab(self):
         bd=0,
         width=20,
         height=20,
-        takefocus=0
+        takefocus=0,
+        cursor="hand2"
     )
     find_current_btn.pack(side=tk.LEFT, padx=(0, 5))
     # find_current_btn.bind("<Button-1>", lambda event: self.MainPlaylist._scroll_to_current_song(event, is_manual=True))
@@ -1360,7 +1339,8 @@ def setup_search_tab(self):
         bd=0,
         width=20,
         height=20,
-        takefocus=0
+        takefocus=0,
+        cursor="hand2"
     )
 
 

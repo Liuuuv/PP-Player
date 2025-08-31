@@ -34,7 +34,8 @@ def show_downloads_content(self):
         padx=8,
         pady=8,
         command=self.play_all_downloads_ordered,
-        takefocus=0
+        takefocus=0,
+        cursor="hand2"
     )
     play_all_btn.pack(side=tk.LEFT, padx=(0, 10))
     tooltip.create_tooltip(play_all_btn, "Jouer toutes les musiques\nLit toutes les musiques téléchargées dans l'ordre")
@@ -51,7 +52,8 @@ def show_downloads_content(self):
         padx=8,
         pady=8,
         command=self.play_all_downloads_shuffle,
-        takefocus=0
+        takefocus=0,
+        cursor="hand2"
     )
     shuffle_all_btn.pack(side=tk.LEFT)
     tooltip.create_tooltip(shuffle_all_btn, "Jouer en mode aléatoire\nLit toutes les musiques téléchargées dans un ordre aléatoire")
@@ -87,7 +89,8 @@ def show_downloads_content(self):
         pady=4,
         width=20,
         height=20,
-        takefocus=0
+        takefocus=0,
+        cursor="hand2"
     )
     clear_btn.bind("<Button-1>", lambda event: self._clear_library_search())
     clear_btn.pack(side=tk.RIGHT, padx=(5, 0))
@@ -147,6 +150,7 @@ def show_downloads_content(self):
     
     # Charger et afficher les fichiers téléchargés
     self.load_downloaded_files()
+    self.LocalSearch.init(self.all_downloaded_files)
 
 def on_canvas_scroll(self):
     _update_visible_items(self)
@@ -161,7 +165,12 @@ def on_canvas_scroll(self):
     
 
 def on_canvas_scroll_end(self):
-    files_to_display = [item.filepath for item in self.visible_widgets.values()]
+    files_to_display = []
+    for item in self.visible_widgets.values():
+        if item is not None:
+            files_to_display.append(item.filepath)
+    
+    # files_to_display = [item.filepath for item in self.visible_widgets.values()]
     self._start_thumbnail_loading(files_to_display, self.downloads_container)
     
     # for item in self.visible_widgets.values():
@@ -270,7 +279,7 @@ def load_downloaded_files(self):
 def _display_filtered_downloads(self, files_to_display, preserve_scroll=False):
     """Affiche une liste filtrée de fichiers téléchargés"""
     # Marquer qu'on est en train de faire un refresh pour éviter la boucle infinie
-    print("_display_filtered_downloads appelée")
+    # print("_display_filtered_downloads appelée")
     self._refreshing_downloads = True
     
     # Vider le container actuel
@@ -1086,6 +1095,8 @@ def _build_extended_search_cache(self, filepath):
     # Combiner tout en minuscules pour la recherche
     search_text = " ".join(search_text_parts).lower()
     
+    # print(f"Cache étendu pour {filepath}: {search_text}")
+    
     # Mettre en cache
     self.extended_search_cache[filepath] = search_text
     
@@ -1114,6 +1125,8 @@ def _perform_library_search(self):
         # Diviser le terme de recherche en mots individuels
         search_words = search_term.split()
         
+        
+        
         # Filtrer les fichiers selon le terme de recherche (recherche étendue)
         filtered_files = []
         for filepath in self.all_downloaded_files:
@@ -1121,10 +1134,35 @@ def _perform_library_search(self):
             extended_search_text = self._build_extended_search_cache(filepath)
             
             # Vérifier si tous les mots de recherche sont présents dans le texte étendu
-            all_words_found = all(word in extended_search_text for word in search_words)
+            def test(word, extended_search_text):
+                ok = False
+                
+                if word in extended_search_text:
+                    ok = True
+                
+                # print('aaa ', extended_search_text.split())
+                
+                for word_ in extended_search_text.split():
+                    
+                    if levenshtein_distance(word, word_) <= 1:
+                        ok = True
+                
+                return ok
+                
+                
+            all_words_found = all(test(word, extended_search_text)  for word in search_words)
             
             if all_words_found:
                 filtered_files.append(filepath)
+        
+        # print('avant')
+        
+        # filtered_files = self.LocalSearch.search_optimized(search_term)
+        # filtered_files = self.LocalSearch.search(search_term)
+        # print('après')
+        
+        
+        
         
         self._display_filtered_downloads(filtered_files)
         
@@ -1133,6 +1171,29 @@ def _perform_library_search(self):
             search_duration = time.time() - self.library_search_start_time
             self.last_search_time = search_duration
             self._update_stats_bar()
+
+def levenshtein_distance(s1, s2):
+    """
+    Calcule la distance de Levenshtein entre deux chaînes
+    (nombre minimum d'opérations pour transformer s1 en s2)
+    """
+    if len(s1) < len(s2):
+        return levenshtein_distance(s2, s1)
+    
+    if len(s2) == 0:
+        return len(s1)
+    
+    previous_row = list(range(len(s2) + 1))
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+    
+    return previous_row[-1]
 
 def _clear_library_search(self):
     """Efface la recherche et affiche tous les fichiers"""

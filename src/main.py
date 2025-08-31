@@ -49,6 +49,7 @@ import loader
 import search_tab.sliding_panel
 import subtitles
 import auto_updater
+import utils.local_search
 
 
 try:
@@ -118,8 +119,8 @@ class MusicPlayer:
         self._status_after_id = self.root.after(delay_ms, do_update)
     
     def init(self):
-        self.current_version = "0.0.2"
-        self.root.title("Pipi Player")
+        self.current_version = "0.0.3"
+        self.root.title("PP Player")
         self.root.geometry(GEOMETRY)
         # Fixer la taille mais permettre le déplacement
         self.root.resizable(False, False)
@@ -152,6 +153,8 @@ class MusicPlayer:
         self.FileTracker = file_tracker.FileTracker(self)
         self.MainPlaylist = search_tab.main_playlist.MainPlaylist(self)
         self.Subtitles = subtitles.Subtitles(self)
+        self.all_downloaded_files = []
+        self.LocalSearch = utils.local_search.LocalSearch(self.all_downloaded_files)
         
         
         # self.Player = player.Player(self)
@@ -178,10 +181,7 @@ class MusicPlayer:
 
         pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=4096)
 
-        # Récupérer les données audio pour visualisation
-        # samples = pygame.sndarray.array(pygame.mixer.music)
-        self.waveform_data = None
-        self.waveform_data_raw = None
+
 
         # Variables
         self.main_playlist = []
@@ -247,6 +247,7 @@ class MusicPlayer:
             # 'extract_flat': True,
             # 'simulate': True,
             # 'skip_download': True,
+            'update': True
         }
         # Fournir explicitement l'emplacement de ffmpeg à yt_dlp si disponible
         if self.ffmpeg_dir:
@@ -285,7 +286,6 @@ class MusicPlayer:
         self.base_position = 0
         self.update_suspended = False  # True si les mises à jour sont suspendues
 
-        self.show_waveform_current = False
 
         # Variables pour les modes de lecture
         self.random_mode = False
@@ -1567,9 +1567,9 @@ class MusicPlayer:
         """Recrée la thumbnail_frame si elle a été détruite"""
         return search_tab.results._recreate_thumbnail_frame(self)
 
-    def _display_search_results(self, results, scroll_position=None):
+    def _display_search_results_after_artist_page(self, results, scroll_position=None):
         """Affiche les résultats de recherche sauvegardés après restauration"""
-        return search_tab.results._display_search_results(self, results, scroll_position)
+        return search_tab.results._display_search_results_after_artist_page(self, results, scroll_position)
 
     def _restore_scroll_position(self, scroll_position):
         """Restaure la position de scroll de manière sécurisée"""
@@ -1909,9 +1909,9 @@ class MusicPlayer:
         """Affiche un menu contextuel pour sélectionner les playlists"""
         return tools.show_selection_menu(self, event)
 
-    def _show_single_file_menu(self, event, filepath):
+    def _show_single_file_menu(self, event, filepath, item=None, container=None):
         """Affiche un menu contextuel pour un seul fichier"""
-        return tools._show_single_file_menu(self, event, filepath)
+        return tools._show_single_file_menu(self, event, filepath, container=container, item=item)
 
     def _safe_add_to_main_playlist(self, filepath):
         """Version sécurisée de add_to_main_playlist"""
@@ -1921,17 +1921,17 @@ class MusicPlayer:
         """Version sécurisée de _add_to_queue_first"""
         return tools._safe_add_to_queue_first(self, filepath)
 
-    def _safe_add_to_queue_first_from_result(self, item):
+    def _safe_add_to_queue_first_from_result(self, item, callback=None):
         """Version sécurisée de _add_to_queue_first_from_result"""
-        return tools._safe_add_to_queue_first_from_result(self, item)
+        return tools._safe_add_to_queue_first_from_result(self, item, callback)
 
     def _safe_add_to_queue(self, filepath):
         """Version sécurisée de _add_to_queue"""
         return tools._safe_add_to_queue(self, filepath)
 
-    def _safe_add_to_queue_from_result(self, item):
+    def _safe_add_to_queue_from_result(self, item, callback=None):
         """Version sécurisée de _add_to_queue_first_from_result"""
-        return tools._safe_add_to_queue_from_result(self, item)
+        return tools._safe_add_to_queue_from_result(self, item, callback)
     
     def _safe_add_to_main_playlist_from_result(self, video):
         """Version sécurisée de _add_to_main_playlist_from_result"""
@@ -2250,8 +2250,8 @@ class MusicPlayer:
         return services.downloading._download_youtube_thumbnail(self, video_info, filepath)
 
 
-    def download_selected_youtube(self, event=None, add_to_playlist=True):
-        return services.downloading.download_selected_youtube(self, event, add_to_playlist)
+    def download_selected_youtube(self, event=None, add_to_playlist=True, callback=None):
+        return services.downloading.download_selected_youtube(self, event, add_to_playlist, callback)
 
     def _download_youtube_thread(self, url, add_to_playlist=True, callback=None):
         return tools._download_youtube_thread(self, url, add_to_playlist, callback)
@@ -2292,14 +2292,6 @@ class MusicPlayer:
         """Met à jour l'apparence des résultats en fonction de l'état de téléchargement"""
         return search_tab.results._update_search_results_ui(self)
 
-    def generate_waveform_preview(self, filepath):
-        """Génère les données audio brutes pour la waveform (sans sous-échantillonnage)"""
-        return control.generate_waveform_preview(self, filepath)
-
-    def get_adaptive_waveform_data(self, canvas_width=None):
-        """Génère des données waveform adaptées à la durée de la musique"""
-        return control.get_adaptive_waveform_data(self, canvas_width)
-
     def play_pause(self):
         return control.play_pause(self)
 
@@ -2319,12 +2311,6 @@ class MusicPlayer:
     def prev_track_manual(self):
         """Passe à la chanson précédente (changement manuel par bouton)"""
         return control.prev_track(self)
-
-    def show_waveform_on_clicked(self):
-        return control.show_waveform_on_clicked(self)
-
-    def draw_waveform_around(self, time_sec, window_sec=5):
-        return control.draw_waveform_around(self, time_sec, window_sec)
 
     def set_volume(self, val):
         return tools.set_volume(self, val)
@@ -2347,9 +2333,6 @@ class MusicPlayer:
     def on_progress_release(self, event):
         return control.on_progress_release(self, event)
 
-    def on_waveform_canvas_resize(self, event):
-        return control.on_waveform_canvas_resize(self, event)
-
     def on_song_change(self):
         self.Subtitles.loaded_subtitles = None
 
@@ -2371,7 +2354,7 @@ class MusicPlayer:
             # print('OOOOOO')
             # Vérifier si l'application est fermée
             if hasattr(self, '_app_destroyed') and self._app_destroyed:
-                # print('BREAK1')
+                print('BREAK1')
                 # break
                 stop = True
             
@@ -2379,7 +2362,7 @@ class MusicPlayer:
             
             # Vérifier si pygame mixer est initialisé
             if not pygame.mixer.get_init():
-                # print('BREAK2')
+                print('BREAK2')
                 # break
                 stop = True
             # print('AAA', flush=True)
@@ -2419,13 +2402,10 @@ class MusicPlayer:
                             text=time.strftime('%M:%S', time.gmtime(self.current_time))
                         )
 
-                        if self.show_waveform_current:
-                            self.draw_waveform_around(self.current_time)
-                        else:
-                            self.waveform_canvas.delete("all")
-                    except (tk.TclError, AttributeError):
+                    except (tk.TclError, AttributeError) as e:
                         # Interface détruite, arrêter le thread
                         # break
+                        print("DEBUG: update_time musique lancée > Interface détruite, arrêter le thread: ", str(e))
                         stop = True
                     
             # Réduire les appels à update_idletasks pendant le déplacement
@@ -2435,6 +2415,7 @@ class MusicPlayer:
                 except (tk.TclError, AttributeError):
                     # Interface détruite, arrêter le thread
                     # break
+                    print("DEBUG: update_time musique non lancée > Interface détruite, arrêter le thread")
                     stop = True
                 
         except (pygame.error, AttributeError) as e:
@@ -2444,7 +2425,7 @@ class MusicPlayer:
         except Exception as e:
             # Autres erreurs, continuer mais afficher l'erreur
             print(f"Erreur dans update_time: {e}")
-            
+        
         # time.sleep(sleep_time)
         if not stop:
             self.root.after(sleep_time, self.update_time)
@@ -2488,9 +2469,9 @@ class MusicPlayer:
         return self.artist_tab_manager.return_to_search()
     def on_closing(self):
         return inputs.on_closing(self)
-    def save_youtube_url_metadata(self, filepath, youtube_url=None, upload_date=None):
+    def save_youtube_url_metadata(self, filepath, youtube_url=None, upload_date=None, full_title=None, force_title=False):
         """Sauvegarde les métadonnées YouTube étendues pour un fichier téléchargé"""
-        return tools.save_youtube_url_metadata(self, filepath, youtube_url, upload_date)
+        return tools.save_youtube_url_metadata(self, filepath, youtube_url, upload_date, full_title, force_title)
 
     def get_youtube_url_from_metadata(self, filepath):
         """Récupère l'URL YouTube originale pour un fichier téléchargé"""

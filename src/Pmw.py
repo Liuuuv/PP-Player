@@ -3439,7 +3439,7 @@ class Group( MegaWidget ):
                 ('collapsedheight',     6,      INITOPT),
                 ('collapsedwidth', 20, INITOPT),
             ('ring_borderwidth', 2,         None),
-            ('ring_relief',      'groove',  None),
+            ('ring_relief',      'flat',  None),
             ('tagindent',        10,        INITOPT),
         )
         self.defineoptions(kw, optiondefs)

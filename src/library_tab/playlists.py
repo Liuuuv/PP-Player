@@ -1,5 +1,6 @@
 import sys
 import os
+from urllib.parse import urlparse, parse_qs
 
 # Ajouter le répertoire parent au path
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -275,8 +276,7 @@ class Playlists:
                 thumbnail_label.grid(row=row, column=col, sticky='nsew', padx=2, pady=2)
                 thumbnail_label.grid_propagate(False)  # Maintenir la taille fixe
                 
-                # Ajouter l'événement de clic simple sur chaque miniature
-                thumbnail_label.bind("<Button-1>", lambda e: on_playlist_click())
+                
                 
                 # Charger la miniature si la chanson existe
                 if i < len(songs):
@@ -367,21 +367,212 @@ class Playlists:
             def on_playlist_click():
                 self._show_playlist_content_in_tab(playlist_name)
             
+            def on_playlist_right_click(event):
+                self.show_playlist_card_menu(event, playlist_name)
+            
             # Double-clic pour supprimer
             delete_btn.bind("<Double-1>", lambda e, name=playlist_name: self.music_player._delete_playlist_dialog(name))
             
             # Bindings pour tous les éléments cliquables (sauf l'artiste qui a son propre binding)
             widgets_to_bind = [buttons_frame, count_label, title_label, thumbnail_label, thumbnails_frame, card_frame]
-
+            
+            # title_label.bind("<Button-1>", lambda e: on_playlist_click())
+            
             for widget in widgets_to_bind:
-                title_label.bind("<Button-1>", lambda e: on_playlist_click())
+                widget.bind("<Button-1>", lambda e: on_playlist_click())
+                widget.bind("<Button-3>", lambda e: on_playlist_right_click(e))
+                
                 # Ajouter les événements de survol
                 widget.bind("<Enter>", on_enter)
                 widget.bind("<Leave>", on_leave)
-            
+
             
         except Exception as e:
             print(f"Erreur affichage playlist card: {e}")
+    
+    def show_playlist_card_menu(self, event, playlist_name):
+        
+        menu = tk.Menu(self.music_player.root, tearoff=0, bg='#3d3d3d', fg='white', 
+                    activebackground='#4a8fe7', activeforeground='white')
+    
+        menu.add_command(
+            label="Export playlist",
+            command=lambda name=playlist_name: self.create_export_playlist_dialog(name)
+        )
+        menu.add_separator()
+        
+        # Afficher le menu à la position de la souris
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+    
+    def create_export_playlist_dialog(self, playlist_name):
+        """Dialogue d'export de playlist vers une chaîne/JSON avec options de compression"""
+        dialog = tk.Toplevel(self.music_player.root)
+        dialog.title("Export playlist")
+        dialog.geometry("360x260")
+        dialog.configure(bg='#2d2d2d')
+        dialog.resizable(False, False)
+
+        # Centrer la fenêtre
+        dialog.transient(self.music_player.root)
+        dialog.grab_set()
+
+        # Titre
+        title = tk.Label(dialog, text=f"Exporter: {playlist_name}", bg='#2d2d2d', fg='white', font=('TkDefaultFont', 12, 'bold'))
+        title.pack(pady=(12, 6))
+
+        # Options de compression (exclusives, avec BooleanVar)
+        options_frame = tk.Frame(dialog, bg='#2d2d2d')
+        options_frame.pack(padx=14, pady=(6, 10), anchor='w', fill=tk.X)
+
+        label = tk.Label(options_frame, text="Compression:", bg='#2d2d2d', fg='white', font=('TkDefaultFont', 10))
+        label.pack(anchor='w', pady=(0, 6))
+
+        var_none = tk.BooleanVar(value=True)
+        var_8   = tk.BooleanVar(value=False)
+        var_16  = tk.BooleanVar(value=False)
+
+        def enforce_exclusive(changed_var):
+            # Garder une seule case cochée à la fois, et toujours au moins une
+            vars_list = [var_none, var_8, var_16]
+            if changed_var.get():
+                for v in vars_list:
+                    if v is not changed_var:
+                        v.set(False)
+            # Si toutes sont décochées, réactiver "No compression"
+            if not any(v.get() for v in vars_list):
+                var_none.set(True)
+
+        cb_none = tk.Checkbutton(options_frame, text="No compression", variable=var_none,
+                                 command=lambda: enforce_exclusive(var_none), bg='#2d2d2d', fg='white',
+                                 activebackground='#2d2d2d', selectcolor='#2d2d2d', anchor='w')
+        cb_8   = tk.Checkbutton(options_frame, text="8 bits (~ -30% characters)", variable=var_8,
+                                 command=lambda: enforce_exclusive(var_8), bg='#2d2d2d', fg='white',
+                                 activebackground='#2d2d2d', selectcolor='#2d2d2d', anchor='w')
+        cb_16  = tk.Checkbutton(options_frame, text="16 bits (~ -65% characters)", variable=var_16,
+                                 command=lambda: enforce_exclusive(var_16), bg='#2d2d2d', fg='white',
+                                 activebackground='#2d2d2d', selectcolor='#2d2d2d', anchor='w')
+
+        cb_none.pack(anchor='w')
+        cb_8.pack(anchor='w', pady=(4, 0))
+        cb_16.pack(anchor='w', pady=(4, 0))
+
+        # Actions
+        button_frame = tk.Frame(dialog, bg='#2d2d2d')
+        button_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=14, pady=12)
+
+        def cancel():
+            dialog.destroy()
+
+        def export_to_string():
+            try:
+                import json
+                # Récupérer les musiques de la playlist
+                songs = self.music_player.playlists.get(playlist_name, [])
+                if songs is None:
+                    songs = []
+
+                # Collecter les URLs YouTube depuis les métadonnées
+                ids = []
+                missing = []
+                for path in songs:
+                    url = tools.get_youtube_url_from_metadata(self.music_player, path)
+                    if url:
+                        id = self.get_id_youtube_url(url)
+                        ids.append(id)
+                    else:
+                        # Nom lisible
+                        filename = os.path.basename(path)
+                        title = os.path.splitext(filename)[0]
+                        missing.append(title)
+
+                # Si des musiques n'ont pas de lien, demander confirmation
+                if missing:
+                    msg = (
+                        "Certaines musiques n'ont pas de lien YouTube:\n\n"
+                        + "\n".join(f"- {name}" for name in missing[:15])
+                    )
+                    if len(missing) > 15:
+                        msg += f"\n... (+{len(missing)-15} autres)"
+                    msg += "\n\nContinuer l'export avec les liens disponibles ?"
+
+                    proceed = messagebox.askyesno("Liens manquants", msg, parent=dialog)
+                    if not proceed:
+                        return  # Revenir au dialog
+
+                # Déterminer le type de compression sélectionné (placeholder si besoin plus tard)
+                if var_16.get():
+                    compression = '16bit'
+                elif var_8.get():
+                    compression = '8bit'
+                else:
+                    compression = 'none'
+                
+                if compression == 'none':
+                    final_string = "".join(ids)
+                
+
+                # Créer le fichier JSON dans downloads_folder
+                os.makedirs(self.music_player.downloads_folder, exist_ok=True)
+                # Nom de fichier sûr
+                safe_name = "".join(c for c in playlist_name if c.isalnum() or c in ('-', '_', ' ')).strip().replace(' ', '_')
+                out_path = os.path.join(self.music_player.downloads_folder, f"playlist_export_{safe_name}.json")
+
+                # Ecrire seulement la liste d'URLs (conforme à la demande)
+                with open(out_path, 'w', encoding='utf-8') as f:
+                    # json.dump(urls, f, ensure_ascii=False, indent=2)
+                    f.write(final_string)
+
+                self.music_player.status_bar.config(text=f"Exporté: {len(ids)} lien(s) → {os.path.basename(out_path)}")
+                dialog.destroy()
+            except Exception as e:
+                print(f"Erreur export playlist: {e}")
+                messagebox.showerror("Erreur", f"Erreur lors de l'export: {e}", parent=dialog)
+
+        export_btn = tk.Button(button_frame, text="Export to string", command=export_to_string,
+                               bg="#4a8fe7", fg="white", activebackground="#5a9fd8",
+                               relief="flat", bd=0, padx=20, pady=6, takefocus=0)
+        export_btn.pack(side=tk.RIGHT)
+
+        cancel_btn = tk.Button(button_frame, text="Annuler", command=cancel,
+                               bg="#666666", fg="white", activebackground="#777777",
+                               relief="flat", bd=0, padx=16, pady=6, takefocus=0)
+        cancel_btn.pack(side=tk.RIGHT, padx=(0, 8))
+
+        dialog.bind('<Escape>', lambda e: cancel())
+    
+    def get_id_youtube_url(self, url):
+        """Récupère l'id de l'url youtube"""
+        if not url:
+            return url
+        
+        try:
+            # Parser l'URL
+            parsed = urlparse(url)
+            
+            # Vérifier si c'est une URL YouTube
+            if 'youtube.com' in parsed.netloc or 'youtu.be' in parsed.netloc:
+                # Extraire l'ID de la vidéo
+                if 'youtu.be' in parsed.netloc:
+                    # Format court: https://youtu.be/VIDEO_ID
+                    video_id = parsed.path.lstrip('/')
+                else:
+                    # Format long: https://www.youtube.com/watch?v=VIDEO_ID
+                    query_params = parse_qs(parsed.query)
+                    video_id = query_params.get('v', [None])[0]
+
+                if video_id:
+                    return video_id
+                else:
+                    return ""
+            
+            # Si ce n'est pas YouTube, retourner l'URL originale
+            return ""
+        except Exception:
+            # En cas d'erreur, retourner vide
+            return ""
 
     def _display_playlists(self):
         """Affiche toutes les playlists en grille 4x4"""

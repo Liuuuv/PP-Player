@@ -48,6 +48,7 @@ class MainPlaylist:
                     print("Le container n'est pas accessible. Ne pas ajouter l'élément.")
                     return
                 song_index = placement
+                
                 filename = os.path.basename(filepath)
                 
                 # Vérifier si c'est la chanson en cours de lecture (seulement pour les fichiers locaux)
@@ -90,6 +91,8 @@ class MainPlaylist:
                 else:
                     current_song_index = len(self.music_player.main_playlist) - 1  # Index de la chanson actuelle (dernière ajoutée)
                 
+                item_frame.song_index = song_index
+                
                 # Vérifier si cette position spécifique fait partie de la queue
                 is_in_queue = (hasattr(self.music_player, 'queue_items') and current_song_index in self.music_player.queue_items)
                 item_frame.is_in_queue = is_in_queue
@@ -105,14 +108,18 @@ class MainPlaylist:
                 item_frame.rowconfigure(0, minsize=50, weight=0)     # Hauteur fixe
                 
                 # Trait vertical queue (colonne 0) - seulement si la musique est dans la queue
+                # if is_in_queue:
+                queue_indicator = tk.Frame(
+                    item_frame,
+                    bg=bg_color,  # Trait noir
+                    width=QUEUE_LINE_WIDTH
+                )
+                queue_indicator.grid(row=0, column=0, sticky='ns', padx=QUEUE_LINE_PADX, pady=QUEUE_LINE_PADY)
+                queue_indicator.grid_propagate(False)
+                item_frame.queue_indicator = queue_indicator
+                
                 if is_in_queue:
-                    queue_indicator = tk.Frame(
-                        item_frame,
-                        bg='black',  # Trait noir
-                        width=QUEUE_LINE_WIDTH
-                    )
-                    queue_indicator.grid(row=0, column=0, sticky='ns', padx=QUEUE_LINE_PADX, pady=QUEUE_LINE_PADY)
-                    queue_indicator.grid_propagate(False)
+                    self.music_player.show_queue_indicator(item_frame)
                 
                 # Numéro de la chanson (colonne 1)
                 number_label = tk.Label(
@@ -153,9 +160,23 @@ class MainPlaylist:
                 text_frame.grid(row=0, column=3, sticky='nsew', padx=(0, 2), pady=4)
                 text_frame.columnconfigure(0, weight=1)
                 
-                # Titre principal A OPTIMISER
-                truncated_title = self.music_player._truncate_text_for_display(filename, max_width_pixels=MAIN_PLAYLIST_TITLE_MAX_WIDTH, font_family='TkDefaultFont', font_size=9)
-                # truncated_title = filename
+                # Titre principal
+                metadatas = self.music_player.get_youtube_metadata(item_frame.filepath)
+                if metadatas is None:
+                    self.music_player.save_youtube_url_metadata(item_frame.filepath)
+                
+                metadatas = self.music_player.get_youtube_metadata(item_frame.filepath)
+                if metadatas.get('main_playlist_truncated_title') is None:
+                    self.music_player.save_youtube_url_metadata(item_frame.filepath)
+                
+                metadatas = self.music_player.get_youtube_metadata(item_frame.filepath)
+                truncated_title = metadatas.get('main_playlist_truncated_title')
+                if metadatas.get('full_title') is None:
+                    self.music_player.save_youtube_url_metadata(item_frame.filepath)
+                
+                full_title = self.music_player.get_youtube_metadata(item_frame.filepath).get('full_title')
+                
+                # truncated_title = self.music_player._truncate_text_for_display(filename, max_width_pixels=MAIN_PLAYLIST_TITLE_MAX_WIDTH, font_family='TkDefaultFont', font_size=9)
                 title_label = tk.Label(
                     text_frame,
                     text=truncated_title,
@@ -171,7 +192,7 @@ class MainPlaylist:
                 title_label.pause_counter = MAIN_PLAYLIST_TITLE_ANIMATION_STARTUP  # Compteur pour la pause entre les cycles
                 title_label.max_width = MAIN_PLAYLIST_TITLE_MAX_WIDTH  # Largeur maximale du titre
                 title_label.animation_active = False  # Animation en cours
-                title_label.full_text = title_label.cget('text')  # Texte complet du titre
+                title_label.full_text = full_title  # Texte complet du titre
                 title_label.pause_cycles = MAIN_PLAYLIST_TITLE_ANIMATION_PAUSE
                 
                 # Métadonnées (artiste • album • date)
@@ -206,10 +227,10 @@ class MainPlaylist:
                 artist_label.pause_cycles = MAIN_PLAYLIST_ARTIST_ANIMATION_PAUSE
                 
                 # Fonction pour gérer le clic sur l'artiste
-                def on_artist_click(event, artist_name, file_path=filepath):
+                def on_artist_click(event, file_path=filepath):
                     # Essayer d'obtenir les métadonnées YouTube pour récupérer l'URL de la chaîne
                     video_data = {}
-                    artist, _ = self._get_audio_metadata(filepath)
+                    artist, _ = self.music_player._get_audio_metadata(filepath)
                     try:
                         if not artist:
                             return
@@ -228,14 +249,15 @@ class MainPlaylist:
                     if 'channel_url' not in video_data:
                         import urllib.parse
                         # Nettoyer le nom de l'artiste pour l'URL
-                        clean_artist = artist_name.replace(' ', '').replace('　', '').replace('/', '')
+                        clean_artist = artist.replace(' ', '').replace('　', '').replace('/', '')
                         encoded_artist = urllib.parse.quote(clean_artist, safe='')
                         video_data['channel_url'] = f"https://www.youtube.com/@{encoded_artist}"
                     
-                    self.music_player._show_artist_content(artist_name, video_data)
+                    self.music_player._save_current_search_state()
+                    self.music_player._show_artist_content(artist, video_data)
                 
                 # Bind du clic sur l'artiste
-                # artist_label.bind("<Button-1>", on_artist_click)
+                artist_label.bind("<Button-1>", on_artist_click)
                 
                 # Créer le reste des métadonnées (album • date)
                 other_metadata_label = None
@@ -301,35 +323,17 @@ class MainPlaylist:
                 
                 
                 # Durée (colonne 2 + col_offset)
-                duration_text = self.music_player._get_audio_duration(filepath)
                 duration_label = tk.Label(
                     item_frame,
-                    text=duration_text,
+                    text='--:--',
                     bg=bg_color,
                     fg='#cccccc',
                     font=('TkDefaultFont', 8),
                     anchor='center'
                 )
                 duration_label.grid(row=0, column=4, sticky='ns', padx=(0, 10), pady=8)
+                duration_label.filepath = filepath
 
-                # Bouton de suppression (colonne 3 + col_offset)
-                # delete_btn = tk.Button(
-                #     item_frame,
-                #     image=self.music_player.icons['delete'],
-                #     bg='#3d3d3d',
-                #     fg='white',
-                #     activebackground='#4a4a4a',
-                #     relief='flat',
-                #     bd=0,
-                #     width=self.music_player.icons['delete'].width(),  # Utiliser la largeur de l'image
-                #     height=self.music_player.icons['delete'].height(),  # Utiliser la hauteur de l'image
-                #     font=('TkDefaultFont', 8),
-                #     takefocus=0
-                # )
-                # delete_btn.grid(row=0, column=5, sticky='ns', padx=(0, 10), pady=8)
-                # delete_btn.bind("<Double-1>", lambda event, f=filepath, frame=item_frame, idx=current_song_index: self._remove_from_main_playlist(f, frame, event, idx))
-                # tooltip.create_tooltip(delete_btn, "Supprimer de la playlist\nDouble-clic pour retirer cette chanson de la playlist")
-                
                 item_frame.song_index = current_song_index  # Stocker l'index réel
                 
                 # Stocker les références pour le chargement différé des métadonnées
@@ -417,7 +421,7 @@ class MainPlaylist:
                         self.music_player.show_selection_menu(event)
                     else:
                         # Comportement normal : ouvrir le menu contextuel pour un seul fichier
-                        self.music_player._show_single_file_menu(event, filepath)
+                        self.music_player._show_single_file_menu(event, filepath, container=self.music_player.main_playlist_container, item=item_frame)
                 
                 item_frame.is_hovered = False
                 item_frame.hover_check_id = None
@@ -521,7 +525,7 @@ class MainPlaylist:
                 self.music_player.drag_drop_handler.setup_drag_drop(
                     item_frame, 
                     file_path=filepath, 
-                    item_type="playlist_item"
+                    item_type="file"
                 )
                 
                 # Tooltip pour expliquer les interactions
@@ -552,7 +556,7 @@ class MainPlaylist:
     def _display_main_playlist(self, files_to_display, preserve_scroll=False):
         """Affiche la main playlist"""
         # Marquer qu'on est en train de faire un refresh pour éviter la boucle infinie
-        print("_display_main_playlist appelée")
+        # print("_display_main_playlist appelée")
         
         files_to_display = self.music_player.main_playlist.copy()
         
@@ -680,7 +684,7 @@ class MainPlaylist:
             index: Index de l'élément à sélectionner (alternatif à item_frame)
             auto_scroll: Si True, fait défiler automatiquement vers l'élément (défaut: True)
         """
-        print("select_playlist_item appelée")
+        # print("select_playlist_item appelée")
         # Protection contre les appels multiples rapides
         if not hasattr(self.music_player, '_last_select_time'):
             self.music_player._last_select_time = 0
@@ -713,13 +717,13 @@ class MainPlaylist:
         
         if index in self.music_player.main_playlist_visible_widgets:
             item_frame = self.music_player.main_playlist_visible_widgets[index]
-        else:
-            self.load_missing_items(index)
-            item_frame = self.music_player.main_playlist_visible_widgets[index]
             
-            files_to_display = [item.filepath for item in self.music_player.main_playlist_visible_widgets.values()]
-            self.music_player._start_thumbnail_loading(files_to_display, self.music_player.main_playlist_container)
-
+        else:
+            if self.load_missing_items(index): # True si on a ajouté des éléments
+                files_to_display = [item.filepath for item in self.music_player.main_playlist_visible_widgets.values()]
+                self.music_player._start_thumbnail_loading(files_to_display, self.music_player.main_playlist_container)
+            item_frame = self.music_player.main_playlist_visible_widgets[index]
+        
         # Sélectionner l'élément courant si fourni
         if item_frame:
             item_frame.update_idletasks()
@@ -727,6 +731,7 @@ class MainPlaylist:
                 if item_frame.winfo_exists():
                     item_frame.selected = True
                     self.music_player._set_item_colors(item_frame, COLOR_SELECTED)  # Couleur de surbrillance (bleu)
+                    
                     
                     # Faire défiler avec animation pour que l'élément soit visible (seulement si auto_scroll=True)
                     if auto_scroll:
@@ -740,7 +745,6 @@ class MainPlaylist:
                                     
                                     item_y = item_frame.winfo_y()
                                     target_position = item_y / container_height
-                                    
                                     self._smooth_scroll_to_position(target_position, is_manual=is_manual, callback=self._refresh_main_playlist_display)
                                     
                                 else:
@@ -764,31 +768,53 @@ class MainPlaylist:
     def load_missing_items(self, index, callback=None):
         """Charge les éléments manquants de la playlist si besoin"""
         
-        
-        scroll_top, scroll_bottom = self.music_player.main_playlist_canvas.yview()
-        top_y = self.music_player.main_playlist_container.winfo_height() * scroll_top
-        top_index = int(top_y // (MAIN_PLAYLIST_MAX_ITEM_HEIGHT + 2 * MAIN_PLAYLIST_PADY))
-        
-        index_offset = int(self.music_player.main_playlist_canvas.winfo_height() / (MAIN_PLAYLIST_MAX_ITEM_HEIGHT  + 2 *MAIN_PLAYLIST_PADY)) + MAIN_PLAYLIST_BOTTOM_ITEM_BUFFERING # pour qu'une fois qu'on a scroll, on ait toujours plus qu'une musique affichée
-        
-        # print("scroll_top top_y", scroll_top, top_y)
-        # print('top current', top_index, index)
-        
-        start_index = min(top_index, index)
-        end_index = max(top_index, index)
-        
-        end_index = min(len(self.music_player.main_playlist), end_index + index_offset)
-        
-        # print('start end indexes', start_index, end_index)
-        
-        for idx in range(start_index, end_index + 1):
-            if not idx in self.music_player.main_playlist_visible_widgets:
-                item = self._add_main_playlist_item(self.music_player.main_playlist_all_widgets[idx], placement=idx)
-                self.music_player.main_playlist_visible_widgets[idx] = item
-            # print('IDX LOADED', idx)
-        
-        if callback:
-            callback()
+        try:
+            scroll_top, scroll_bottom = self.music_player.main_playlist_canvas.yview()
+            top_y = self.music_player.main_playlist_container.winfo_height() * scroll_top
+            top_index = int(top_y // (MAIN_PLAYLIST_MAX_ITEM_HEIGHT + 2 * MAIN_PLAYLIST_PADY))
+            
+            index_offset = int(self.music_player.main_playlist_canvas.winfo_height() / (MAIN_PLAYLIST_MAX_ITEM_HEIGHT  + 2 *MAIN_PLAYLIST_PADY)) + MAIN_PLAYLIST_BOTTOM_ITEM_BUFFERING # pour qu'une fois qu'on a scroll, on ait toujours plus qu'une musique affichée
+            
+            # print("scroll_top top_y", scroll_top, top_y)
+            # print('top current', top_index, index)
+            
+            start_index = min(top_index, index)
+            end_index = max(top_index, index)
+            
+            end_index = min(len(self.music_player.main_playlist) - 1, end_index + index_offset)
+            
+            # print('start end indexes', start_index, end_index)
+            
+            if end_index == start_index:
+                return False
+            
+            if end_index - start_index > MAX_SCROLL_LOADING_SONGS:
+                for idx in [start_index, end_index]:
+                    if not idx in self.music_player.main_playlist_visible_widgets:
+                        if not idx in self.music_player.main_playlist_all_widgets:
+                            print('ID ', idx, 'pas dans self.music_player.main_playlist_all_widgets')
+                        
+                        item = self._add_main_playlist_item(self.music_player.main_playlist_all_widgets[idx], placement=idx)
+                        self.music_player.main_playlist_visible_widgets[idx] = item
+                    # print('IDX LOADED', idx)
+                return False
+            
+            for idx in range(start_index, end_index + 1):
+                if not idx in self.music_player.main_playlist_visible_widgets:
+                    if not idx in self.music_player.main_playlist_all_widgets:
+                        print('ID ', idx, 'pas dans self.music_player.main_playlist_all_widgets')
+                    
+                    item = self._add_main_playlist_item(self.music_player.main_playlist_all_widgets[idx], placement=idx)
+                    self.music_player.main_playlist_visible_widgets[idx] = item
+                # print('IDX LOADED', idx)
+            
+            if callback:
+                callback()
+            
+            return True
+            
+        except Exception as e:
+            print(f"DEBUG: Erreur lors du chargement des éléments manquants de la playlist: {e}")
 
     def _remove_from_main_playlist(self, filepath, frame, event=None, song_index=None):
         """Supprime un élément de la main playlist"""
@@ -878,7 +904,7 @@ class MainPlaylist:
 
     def select_current_song_smart(self, auto_scroll=True, force_reload=False, is_manual=False):
         """Auto-scroll intelligent : Compatible ancien et nouveau système"""
-        print("select_current_song_smart appelé")
+        # print("select_current_song_smart appelé")
         try:
             self.select_playlist_item(index=self.music_player.current_index, auto_scroll=auto_scroll)
                 
@@ -929,6 +955,7 @@ class MainPlaylist:
         try:
             # Vérifier que le canvas existe encore avant de commencer
             if not (hasattr(self.music_player, 'main_playlist_canvas') and self.music_player.main_playlist_canvas.winfo_exists()):
+                print("_smooth_scroll_to_position, non1")
                 return
                 
             # Annuler toute animation en cours
@@ -947,6 +974,7 @@ class MainPlaylist:
             try:
                 # Vérifier que le canvas existe encore
                 if not (hasattr(self.music_player, 'main_playlist_canvas') and self.music_player.main_playlist_canvas.winfo_exists()):
+                    print("_smooth_scroll_to_position, non2")
                     return
                 current_top, current_bottom = self.music_player.main_playlist_canvas.yview()
                 start_position = current_top
@@ -965,7 +993,8 @@ class MainPlaylist:
                 return
             
             # Si on est déjà à la bonne position, ne rien faire
-            if abs(start_position - target_position) < 0.001:
+            # if abs(start_position - target_position) < 0.001:
+            if start_position == target_position:
                 return
             
             

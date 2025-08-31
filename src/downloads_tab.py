@@ -351,7 +351,7 @@ def _update_progress_overlay_delayed(self, download_item):
             bg_color = '#2e7d32'  # Vert plus visible pour terminé
         elif download_item.error:
             relwidth = 0.0  # 0% si erreur
-            bg_color = COLOR_ERROR  # Rouge plus visible pour erreur
+            bg_color = COLOR_ERROR
         else:
             relwidth = progress_value / 100.0  # Pourcentage en décimal
             bg_color = '#1b5e20'  # Vert plus visible pour en cours

@@ -268,11 +268,10 @@ def show_cache_menu(self):
 
 
 
-# def _show_result_context_menu(self, filepath, event, youtube_item):
-def _show_result_context_menu(self, item, event):
-    """Version du menu fichier qui supporte les vidéos YouTube"""
+def _show_result_context_menu(self, video, frame):
+    """Menu pour les vidéos YouTube"""
     # # Créer un menu contextuel identique à celui des fichiers
-    self._current_youtube_item = item
+    self._current_youtube_item = video
     
     # Créer le menu contextuel
     context_menu = tk.Menu(self.root, tearoff=0, bg='white', fg='black', 
@@ -287,43 +286,41 @@ def _show_result_context_menu(self, item, event):
     # Options pour la queue et la main playlist
     context_menu.add_command(
         label="📄 Ajouter à la liste de lecture",
-        command=lambda video=item: self._safe_add_to_main_playlist_from_result(video)
+        command=lambda v=video: self._safe_add_to_main_playlist_from_result(v)
     )
     context_menu.add_command(
         label="⏭️ Lire ensuite",
-        command=lambda i=item: self._safe_add_to_queue_first_from_result(i)
+        command=lambda v=video: self._safe_add_to_queue_first_from_result(v)
     )
     context_menu.add_command(
         label="⏰ Lire bientôt", 
-        command=lambda i=item: self._safe_add_to_queue_from_result(i)
+        command=lambda v=video: self._safe_add_to_queue_from_result(v)
     )
     context_menu.add_separator()
     
     # Ajouter les playlists existantes
+    playlist_menu = tk.Menu(context_menu, tearoff=0)
     for playlist_name in self.playlists.keys():
         if playlist_name != "Main Playlist":
-            context_menu.add_command(
+            playlist_menu.add_command(
                 label=f"➕ Ajouter à '{playlist_name}'",
-                command=lambda video=item: self._add_to_playlist_from_result(video, playlist_name)
+                command=lambda v=video: self._add_to_playlist_from_result(v, playlist_name)
             )
 
-    context_menu.add_separator()
+    playlist_menu.add_separator()
 
     # Option pour créer une nouvelle playlist
-    context_menu.add_command(
+    playlist_menu.add_command(
         label="📝 Créer nouvelle playlist...",
-        command=lambda video=item: self._safe_create_new_playlist_dialog(video.get('url', ''), True)
+        command=lambda v=video: self._safe_create_new_playlist_dialog(v.get('url', ''), True)
     )
     
-    # Options de fichier
-    # context_menu.add_command(
-    #     label="📂 Ouvrir le dossier",
-    #     command=lambda: self._open_file_location_with_youtube_support(filepath, youtube_item)
-    # )
+    context_menu.add_cascade(label="📁 Add to...", menu=playlist_menu)
+    
 
     context_menu.add_command(
         label="🔗 Ouvrir sur YouTube",
-        command=lambda video=item: self._open_on_youtube_from_result(video)
+        command=lambda v=video: self._open_on_youtube_from_result(v)
     )
 
     context_menu.add_separator()
@@ -331,7 +328,7 @@ def _show_result_context_menu(self, item, event):
     # Option de suppression/téléchargement
     context_menu.add_command(
         label="⬇️ Télécharger",
-        command=lambda: self._download_youtube_video(item, add_to_main_playlist=False),
+        command=lambda v=video: self._download_youtube_video(v, add_to_main_playlist=False),
     )
     # else:
     #     menu.add_command(
@@ -341,84 +338,88 @@ def _show_result_context_menu(self, item, event):
     #     )
     
     # Afficher le menu à la position de la souris ou de l'événement
+    
+    
+        
+    
+    
+    
     try:
-        if event:
-            context_menu.post(event.x_root, event.y_root)
-        else:
-            context_menu.post(self.root.winfo_pointerx(), self.root.winfo_pointery())
-    except:
+        context_menu.post(self.root.winfo_pointerx(), self.root.winfo_pointery())
+    except Exception as e:
         # Fallback
         context_menu.post(100, 100)
+        print(f"Erreur lors de l'affichage du menu contextuel: {e}")
 
-def _show_original_file_context_menu(self, filepath, event=None):
-    """Menu contextuel original pour les fichiers locaux"""
-    # Créer un menu contextuel
-    menu = tk.Menu(self.root, tearoff=0, bg='#3d3d3d', fg='white', 
-                  activebackground='#4a8fe7', activeforeground='white')
+# def _show_original_file_context_menu(self, filepath, event=None):
+#     """Menu contextuel original pour les fichiers locaux"""
+#     # Créer un menu contextuel
+#     menu = tk.Menu(self.root, tearoff=0, bg='#3d3d3d', fg='white', 
+#                   activebackground='#4a8fe7', activeforeground='white')
     
-    # Titre avec le nom du fichier (tronqué)
-    filename = os.path.basename(filepath)
-    if len(filename) > 30:
-        filename = filename[:27] + "..."
-    menu.add_command(label=f"📁 {filename}", state='disabled')
-    menu.add_separator()
+#     # Titre avec le nom du fichier (tronqué)
+#     filename = os.path.basename(filepath)
+#     if len(filename) > 30:
+#         filename = filename[:27] + "..."
+#     menu.add_command(label=f"📁 {filename}", state='disabled')
+#     menu.add_separator()
     
-    # Ajouter les playlists existantes
-    for playlist_name in self.playlists.keys():
-        menu.add_command(
-            label=f"➕ Ajouter à '{playlist_name}'",
-            command=lambda name=playlist_name: self._add_to_specific_playlist(filepath, name)
-        )
+#     # Ajouter les playlists existantes
+#     for playlist_name in self.playlists.keys():
+#         menu.add_command(
+#             label=f"➕ Ajouter à '{playlist_name}'",
+#             command=lambda name=playlist_name: self._add_to_specific_playlist(filepath, name)
+#         )
     
-    menu.add_separator()
+#     menu.add_separator()
     
-    # Option pour créer une nouvelle playlist
-    menu.add_command(
-        label="📝 Créer nouvelle playlist...",
-        command=lambda: self._create_new_playlist_dialog(filepath)
-    )
+#     # Option pour créer une nouvelle playlist
+#     menu.add_command(
+#         label="📝 Créer nouvelle playlist...",
+#         command=lambda: self._create_new_playlist_dialog(filepath)
+#     )
     
-    menu.add_separator()
+#     menu.add_separator()
     
-    # Options de fichier
-    menu.add_command(
-        label="📂 Ouvrir le dossier",
-        command=lambda: self._open_file_location(filepath)
-    )
+#     # Options de fichier
+#     menu.add_command(
+#         label="📂 Ouvrir le dossier",
+#         command=lambda: self._open_file_location(filepath)
+#     )
     
-    menu.add_command(
-        label="🔗 Ouvrir sur YouTube",
-        command=lambda: self._open_on_youtube(filepath)
-    )
+#     menu.add_command(
+#         label="🔗 Ouvrir sur YouTube",
+#         command=lambda: self._open_on_youtube(filepath)
+#     )
     
-    menu.add_separator()
+#     menu.add_separator()
     
-    # Option de suppression (en rouge)
-    menu.add_command(
-        label="🗑️ Supprimer définitivement",
-        command=lambda: self._delete_file_permanently(filepath),
-        foreground='#ff4444'
-    )
+#     # Option de suppression (en rouge)
+#     menu.add_command(
+#         label="🗑️ Supprimer définitivement",
+#         command=lambda: self._delete_file_permanently(filepath),
+#         foreground='#ff4444'
+#     )
     
-    # Afficher le menu à la position de la souris ou de l'événement
-    try:
-        if event:
-            menu.post(event.x_root, event.y_root)
-        else:
-            menu.post(self.root.winfo_pointerx(), self.root.winfo_pointery())
-    except:
-        # Fallback
-        menu.post(100, 100)
+#     # Afficher le menu à la position de la souris ou de l'événement
+#     try:
+#         if event:
+#             menu.post(event.x_root, event.y_root)
+#         else:
+#             menu.post(self.root.winfo_pointerx(), self.root.winfo_pointery())
+#     except:
+#         # Fallback
+#         menu.post(100, 100)
 
 def _show_youtube_playlist_menu(self, video, frame):
     """Affiche un menu déroulant pour choisir la playlist pour une vidéo YouTube (ancienne version)"""
     # Rediriger vers le menu unifié
-    self._show_result_context_menu(video, item_type="youtube")
+    self._show_result_context_menu(video, frame)
 
-def show_file_context_menu(self, filepath, event=None):
-    """Affiche un menu contextuel pour un fichier avec options de playlist et suppression"""
-    # Rediriger vers le menu unifié
-    self._show_result_context_menu(filepath, event)
+# def show_file_context_menu(self, filepath, event=None):
+#     """Affiche un menu contextuel pour un fichier avec options de playlist et suppression"""
+#     # Rediriger vers le menu unifié
+#     self._show_result_context_menu(filepath, event)
 
 def _add_youtube_to_playlist_unified(self, video, playlist_name):
     """Ajoute une vidéo YouTube à une playlist (télécharge d'abord si nécessaire)"""

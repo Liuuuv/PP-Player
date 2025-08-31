@@ -463,8 +463,9 @@ def _on_filter_change(self):
 
 def _on_youtube_canvas_configure(self, event):
     """Vérifie si on doit charger plus de résultats quand le canvas change"""
-    if self._should_load_more_results():
-        self._load_more_search_results()
+    pass
+    # if self._should_load_more_results():
+    #     self._load_more_search_results()
 
 def _start_new_search(self):
     """Démarre une nouvelle recherche après avoir annulé la précédente"""
@@ -663,6 +664,7 @@ def _perform_initial_search(self, query):
         self.current_search_thread = None
         
 def _save_current_search_state(self):
+        print("_save_current_search_state appelée")
         """Sauvegarde l'état actuel des résultats de recherche dans le cache"""
         search_state = {
             'scroll_position': None,
@@ -681,8 +683,10 @@ def _save_current_search_state(self):
         if hasattr(self, 'youtube_entry') and self.youtube_entry.winfo_exists():
             search_state['search_query'] = self.youtube_entry.get().strip()
         
-        if search_state['search_query']:
-            return
+        # print("search_state:", search_state)
+        
+        # if search_state['search_query']:
+        #     return
         
         # Sauvegarder les résultats de recherche actuels
         if hasattr(self, 'all_search_results'):
@@ -1216,46 +1220,66 @@ def _return_to_search(self):
         if hasattr(self, '_reset_playlist_content_state'):
             self._reset_playlist_content_state()
         
-        # Supprimer le notebook artiste et la croix
-        if hasattr(self, 'artist_notebook'):
-            if self.artist_notebook.winfo_exists():
-                print("DEBUG: artist_notebook existe, destruction...")
-                self.artist_notebook.destroy()
-                print("DEBUG: artist_notebook détruit")
-            else:
-                print("DEBUG: artist_notebook n'existe plus")
-            delattr(self, 'artist_notebook')
-            print("DEBUG: attribut artist_notebook supprimé")
+        # # Supprimer le notebook artiste et la croix
+        # if hasattr(self, 'artist_notebook'):
+        #     if self.artist_notebook.winfo_exists():
+        #         print("DEBUG: artist_notebook existe, destruction...")
+        #         self.artist_notebook.destroy()
+        #         print("DEBUG: artist_notebook détruit")
+        #     else:
+        #         print("DEBUG: artist_notebook n'existe plus")
+        #     delattr(self, 'artist_notebook')
+        #     print("DEBUG: attribut artist_notebook supprimé")
 
         
-        # Supprimer la croix si elle existe
-        if hasattr(self, 'artist_close_btn'):
-            try:
-                if self.artist_close_btn.winfo_exists():
-                    print("DEBUG: artist_close_btn existe, destruction...")
-                    self.artist_close_btn.destroy()
-                    print("DEBUG: artist_close_btn détruit")
-                else:
-                    print("DEBUG: artist_close_btn n'existe plus")
-                delattr(self, 'artist_close_btn')
-                print("DEBUG: attribut artist_close_btn supprimé")
-            except Exception as e:
-                print(f"DEBUG: Erreur suppression artist_close_btn: {e}")
+        # # Supprimer la croix si elle existe
+        # if hasattr(self, 'artist_close_btn'):
+        #     try:
+        #         if self.artist_close_btn.winfo_exists():
+        #             print("DEBUG: artist_close_btn existe, destruction...")
+        #             self.artist_close_btn.destroy()
+        #             print("DEBUG: artist_close_btn détruit")
+        #         else:
+        #             print("DEBUG: artist_close_btn n'existe plus")
+        #         delattr(self, 'artist_close_btn')
+        #         print("DEBUG: attribut artist_close_btn supprimé")
+        #     except Exception as e:
+        #         print(f"DEBUG: Erreur suppression artist_close_btn: {e}")
         
-        # Supprimer le bouton retour playlist si il existe
-        print("DEBUG: Suppression du bouton retour playlist...")
-        if hasattr(self, 'artist_tab_back_btn') and self.artist_tab_back_btn:
+        # # Supprimer le bouton retour playlist si il existe
+        # print("DEBUG: Suppression du bouton retour playlist...")
+        # if hasattr(self, 'artist_tab_back_btn') and self.artist_tab_back_btn:
+        #     try:
+        #         if self.artist_tab_back_btn.winfo_exists():
+        #             print("DEBUG: artist_tab_back_btn existe, destruction...")
+        #             self.artist_tab_back_btn.destroy()
+        #             print("DEBUG: artist_tab_back_btn détruit")
+        #         else:
+        #             print("DEBUG: artist_tab_back_btn n'existe plus")
+        #         self.artist_tab_back_btn = None
+        #         print("DEBUG: attribut artist_tab_back_btn remis à None")
+        #     except Exception as e:
+        #         print(f"DEBUG: Erreur suppression artist_tab_back_btn: {e}")
+        
+        # # Supprimer le label de l'artiste si il existe
+        # print("DEBUG: Suppression du label de l'artiste...")
+        # if hasattr(self, 'artist_name_label') and self.artist_name_label:
+        #     try:
+        #         if self.artist_name_label.winfo_exists():
+        #             self.artist_name_label.destroy()
+        #         self.artist_name_label = None
+        #     except Exception as e:
+        #         print(f"DEBUG: Erreur suppression artist_tab_back_btn: {e}")
+        
+        if hasattr(self, 'artist_main_container') and self.artist_main_container:
             try:
-                if self.artist_tab_back_btn.winfo_exists():
-                    print("DEBUG: artist_tab_back_btn existe, destruction...")
-                    self.artist_tab_back_btn.destroy()
-                    print("DEBUG: artist_tab_back_btn détruit")
-                else:
-                    print("DEBUG: artist_tab_back_btn n'existe plus")
-                self.artist_tab_back_btn = None
-                print("DEBUG: attribut artist_tab_back_btn remis à None")
+                if self.artist_main_container.winfo_exists():
+                    self.artist_main_container.destroy()
+                self.artist_main_container = None
             except Exception as e:
                 print(f"DEBUG: Erreur suppression artist_tab_back_btn: {e}")
+        # self.artist_main_container
+        
         
         # Debug: Lister tous les widgets présents dans youtube_results_frame APRÈS suppression des widgets artiste
         if hasattr(self, 'youtube_results_frame'):
@@ -1281,27 +1305,29 @@ def _return_to_search(self):
                 print(f"DEBUG: Erreur lors du listage des widgets après suppression: {e}")
         
         # CORRECTION: Nettoyer tous les frames enfants non essentiels de youtube_results_frame
-        print("DEBUG: Nettoyage des frames enfants non essentiels...")
-        if hasattr(self, 'youtube_results_frame'):
-            try:
-                children = list(self.youtube_results_frame.winfo_children())
-                for child in children:
-                    try:
-                        # Garder seulement les widgets essentiels
-                        if (child == getattr(self, 'thumbnail_frame', None) or
-                            child == getattr(self, 'youtube_canvas', None) or
-                            child == getattr(self, 'scrollbar', None)):
-                            print(f"DEBUG: Conservation du widget essentiel: {child.__class__.__name__}")
-                            continue
+        # print("DEBUG: Nettoyage des frames enfants non essentiels...")
+        # if hasattr(self, 'youtube_results_frame'):
+        #     try:
+        #         children = list(self.youtube_results_frame.winfo_children())
+        #         for child in children:
+        #             try:
+        #                 # Garder seulement les widgets essentiels
+        #                 if (child == getattr(self, 'thumbnail_frame', None) or
+        #                     child == getattr(self, 'youtube_canvas', None) or
+        #                     child == getattr(self, 'scrollbar', None) or
+        #                     child == getattr(self, 'thumbnail_image', None) or
+        #                     child == getattr(self, 'youtube_results_frame', None)):
+        #                     print(f"DEBUG: Conservation du widget essentiel: {child.__class__.__name__}")
+        #                     continue
                         
-                        # Supprimer tous les autres frames (main_container et autres)
-                        print(f"DEBUG: Suppression du widget non essentiel: {child.__class__.__name__} (name: {child.winfo_name()})")
-                        child.destroy()
+        #                 # Supprimer tous les autres frames (main_container et autres)
+        #                 print(f"DEBUG: Suppression du widget non essentiel: {child.__class__.__name__} (name: {child.winfo_name()})")
+        #                 child.destroy()
                         
-                    except Exception as e:
-                        print(f"DEBUG: Erreur lors de la suppression d'un widget: {e}")
-            except Exception as e:
-                print(f"DEBUG: Erreur lors du nettoyage des frames: {e}")
+        #             except Exception as e:
+        #                 print(f"DEBUG: Erreur lors de la suppression d'un widget: {e}")
+        #     except Exception as e:
+        #         print(f"DEBUG: Erreur lors du nettoyage des frames: {e}")
         
         # Debug: Lister les widgets APRÈS nettoyage complet
         if hasattr(self, 'youtube_results_frame'):
@@ -1353,10 +1379,10 @@ def _return_to_search(self):
                 scroll_position = self.saved_search_state.get('scroll_position')
                 
                 # Réafficher les résultats avec la position de scroll
-                self.root.after(50, lambda: self._display_search_results(saved_results, scroll_position))
+                self.root.after(50, lambda: self._display_search_results_after_artist_page(saved_results, scroll_position))
             
             # Note: La restauration des widgets (scrollbar, canvas, thumbnail_frame) 
-            # et de la position de scroll est maintenant gérée par _display_search_results() pour éviter les conflits
+            # et de la position de scroll est maintenant gérée par _display_search_results_after_artist_page() pour éviter les conflits
             
             # Nettoyer l'état sauvegardé
             delattr(self, 'saved_search_state')
@@ -1631,9 +1657,11 @@ def _add_search_result(self, video, index):
                                 print(f"DEBUG: Clic sur artiste: {artist_name}")
                                 print(f"DEBUG: Video data keys: {list(video_data.keys())}")
                                 # Sauvegarder l'état de la recherche avant d'ouvrir l'artist_tab
-                                self._save_current_search_state()
+                                # self._save_current_search_state()
                                 # Ouvrir l'artist_tab directement
+                                _save_current_search_state(self)
                                 self._show_artist_content(artist_name, video_data)
+                                
                                 self.status_bar.config(text=f"Ouverture de l'onglet artiste pour {artist_name}")
                             except Exception as e:
                                 print(f"DEBUG: Erreur ouverture artist_tab: {e}")
@@ -1701,6 +1729,19 @@ def _add_search_result(self, video, index):
                 result_frame.drag_item_type = "youtube"
                 result_frame.drag_video_data = video
             
+            def on_download_start():
+                print('on_download_start')
+                result_frame.is_downloading = True
+                self._set_item_colors(result_frame, COLOR_DOWNLOAD)
+            
+            def on_download_end():
+                print('on_download_end')
+                result_frame.is_downloading = False
+                self._set_item_colors(result_frame, COLOR_BACKGROUND)
+                
+            result_frame.on_download_start = on_download_start
+            result_frame.on_download_end = on_download_end
+            
             # Événements de clic pour la sélection multiple
             def on_result_click(event, frame=result_frame):
                 if is_channel:
@@ -1725,7 +1766,7 @@ def _add_search_result(self, video, index):
                 else:
                     if is_channel:
                         # Pour les chaînes, sauvegarder l'état et ouvrir l'artist_tab
-                        self._save_current_search_state()
+                        _save_current_search_state(self)
                         artist_name = frame.video_data.get('title', 'Artiste inconnu')
                         self._show_artist_content(artist_name, frame.video_data)
                         self.status_bar.config(text=f"Affichage du contenu de {artist_name}")
@@ -1850,18 +1891,32 @@ def _on_result_click(self, frame, add_to_playlist=True):
             
             # Changer l'apparence pour indiquer le téléchargement
             # self._reset_frame_appearance(frame, COLOR_DOWNLOAD)
-            self._set_item_colors(frame, COLOR_DOWNLOAD)
+            # self._set_item_colors(frame, COLOR_DOWNLOAD)
+            # if hasattr(frame, 'is_downloading'):
+            #     frame.is_downloading = True
 
             self.search_list = [frame.video_data]  # Pour la compatibilité avec download_selected_youtube
             frame.video_data['search_frame'] = frame
             try:
-                self.download_selected_youtube(None, add_to_playlist)
+                def callback(filepath):
+                    if hasattr(frame, 'on_download_end'):
+                        frame.on_download_end()
+                
+                if hasattr(frame, 'on_download_start'):
+                    frame.on_download_start()
+                else:
+                    print('hasattr(frame, on_download_start): False')
+                
+                self.download_selected_youtube(None, add_to_playlist, callback=callback)
             except Exception as e:
                 # En cas d'erreur, remettre l'apparence normale
                 frame.config(bg='#ffcc00')  # Jaune pour erreur
                 frame.title_label.config(bg='#ffcc00', fg='#333333')
                 frame.duration_label.config(bg='#ffcc00', fg='#666666')
                 frame.thumbnail_label.config(bg='#ffcc00')
+                if hasattr(frame, 'is_downloading'):
+                    frame.is_downloading = False
+                print(f"Erreur lors du téléchargement: {e}")
 
 def _on_result_right_click(self, event, frame):
         """Gère le clic droit sur un résultat pour afficher le menu des playlists"""
@@ -2030,10 +2085,11 @@ def _update_results_counter(self):
     except Exception as e:
         print(f"Erreur lors de la mise à jour du compteur: {e}")
 
-def _display_search_results(self, results, scroll_position=None):
+def _display_search_results_after_artist_page(self, results, scroll_position=None):
     """Affiche les résultats de recherche sauvegardés après restauration - utilise les mêmes mécanismes qu'une recherche normale"""
     try:
-        print(f"DEBUG: _display_search_results appelée avec {len(results)} résultats")
+        print(f"DEBUG: _display_search_results_after_artist_page appelée avec {len(results)} résultats")
+        self.is_loading_more = True
         
         # Restaurer complètement l'état de recherche
         self.all_search_results = results
@@ -2073,11 +2129,12 @@ def _display_search_results(self, results, scroll_position=None):
             # Attendre que tous les résultats soient ajoutés ET que la scrollregion soit mise à jour
             scroll_delay = total_delay + 50
             self.root.after(scroll_delay, lambda: self._restore_scroll_position(scroll_position))
+            # self.root.after(500, lambda: _save_current_search_state(self))
         
         print(f"DEBUG: Restauration de {num_results} résultats programmée via _display_batch_results")
         
     except Exception as e:
-        print(f"DEBUG: Erreur dans _display_search_results: {e}")
+        print(f"DEBUG: Erreur dans _display_search_results_after_artist_page: {e}")
         # En cas d'erreur, au moins afficher le statut
         self._safe_status_update(f"Erreur lors de la restauration: {e}")
 
@@ -2142,6 +2199,7 @@ def _restore_scroll_position(self, scroll_position):
             
             # Appliquer la position de scroll
             self.youtube_canvas.yview_moveto(scroll_top)
+            self.is_loading_more = False
             print("DEBUG: Position de scroll restaurée avec succès")
         else:
             print("DEBUG: Canvas non disponible pour restaurer le scroll")

@@ -51,6 +51,7 @@ def _download_youtube_selection(self, youtube_urls, target_playlist):
                 }],
                 'quiet': True,
                 'no_warnings': True,
+                'update': True
             }
             
             # Fournir ffmpeg à yt_dlp si l'app l'a détecté
@@ -201,6 +202,7 @@ def _download_and_add_to_playlist_thread(self, video, frame, playlist_name):
             'quiet': True,
             'no_warnings': True,
             'progress_hooks': [self._download_progress_hook],
+            'update': True
         }
 
         # Fournir ffmpeg à yt_dlp si l'app l'a détecté
@@ -241,7 +243,7 @@ def _download_and_add_to_playlist_thread(self, video, frame, playlist_name):
         # Réinitialiser le titre de téléchargement
         self.current_download_title = ""
 
-def download_selected_youtube(self, event=None, add_to_playlist=True):
+def download_selected_youtube(self, event=None, add_to_playlist=True, callback=None):
     if not self.search_list:
         return
     
@@ -256,7 +258,9 @@ def download_selected_youtube(self, event=None, add_to_playlist=True):
     # Créer un thread pour le téléchargement
     download_thread = threading.Thread(
         target=self._download_youtube_thread,
-        args=(url, add_to_playlist),  # Passer l'URL et le flag add_to_playlist
+        args=(url, add_to_playlist, callback),  # Passer l'URL et le flag add_to_playlist
         daemon=True
     )
     download_thread.start()
+    
+    

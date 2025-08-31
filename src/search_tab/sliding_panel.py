@@ -23,7 +23,7 @@ class SlidingPanel:
         self.animating = False
         self.panel_visible = False
         self.target_width = width  # Utiliser la largeur passée en paramètre ou 400 max
-        self.animation_speed = 10
+        self.animation_speed = 15
         self.sensitivity = 50  # Largeur de la zone sensible sur le côté droit de l'image
         self.initialized = False  # Flag pour savoir si le panel a été initialisé
         
@@ -291,7 +291,7 @@ class SlidingPanel:
         
         def animation_step():
             nonlocal current_width
-            
+            delay = 50
             if showing:
                 # Animation d'ouverture
                 current_width += self.animation_speed
@@ -299,7 +299,7 @@ class SlidingPanel:
                     current_width = target_width
                     self.animating = False
                 else:
-                    self.root.after(10, animation_step)
+                    self.root.after(delay, animation_step)
             else:
                 # Animation de fermeture
                 current_width -= self.animation_speed
@@ -310,7 +310,7 @@ class SlidingPanel:
                     # Cache complètement le panneau après animation
                     self.sliding_panel.place_forget()
                 else:
-                    self.root.after(10, animation_step)
+                    self.root.after(delay, animation_step)
             
             # Calcule la position X pour que le panneau reste aligné à droite du frame parent
             self.frame.update_idletasks()  # S'assurer que les dimensions sont à jour

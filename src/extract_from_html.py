@@ -8,7 +8,7 @@ import json
 from urllib.parse import urlparse, parse_qs
 
 def clean_youtube_url(url):
-    """Nettoie une URL YouTube pour ne garder que l'ID de la vidéo"""
+    """Nettoie une URL YouTube pour ne garder que le bon lien de la vidéo"""
     if not url:
         return url
     

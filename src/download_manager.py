@@ -67,6 +67,7 @@ def download_youtube_video(app, url, title=None, video_data=None, callback_on_co
                 ydl_opts = {
                     'quiet': True,
                     'no_warnings': True,
+                    'update': True
                 }
                 
                 with YoutubeDL(ydl_opts) as ydl:
@@ -90,7 +91,7 @@ def download_youtube_video(app, url, title=None, video_data=None, callback_on_co
                         break
                 
                 # Sauvegarder l'URL YouTube même pour les fichiers existants
-                app.save_youtube_url_metadata(existing_file, url)
+                app.save_youtube_url_metadata(existing_file, youtube_url=url)
 
                 app.root.after(0, lambda: app._add_downloaded_file(existing_file, thumbnail_path, title_, url, False))
                 if not bulk_mode:
@@ -174,6 +175,7 @@ def download_youtube_video(app, url, title=None, video_data=None, callback_on_co
                 },
                 'ignoreerrors': False,  # Pour le téléchargement, on veut les erreurs
                 'socket_timeout': 30,
+                'update': True
             }
             
             # Fournir ffmpeg à yt_dlp si l'app l'a détecté
@@ -239,7 +241,7 @@ def download_youtube_video(app, url, title=None, video_data=None, callback_on_co
                     # Sauvegarder les métadonnées
                     upload_date = video_data_.get('upload_date') if video_data_ else None
                     app.root.after(0, lambda path=filepath, u=url, date=upload_date:
-                        app.save_youtube_url_metadata(path, u, date))
+                        app.save_youtube_url_metadata(path, youtube_url=u, upload_date=date))
                     
                     # Appeler le callback si fourni
                     if callback_on_complete:
@@ -273,7 +275,7 @@ def download_youtube_video(app, url, title=None, video_data=None, callback_on_co
                 
                 # Sauvegarder l'URL YouTube originale avec la date de publication
                 upload_date = info.get('upload_date') if info else None
-                app.save_youtube_url_metadata(final_path, url, upload_date)
+                app.save_youtube_url_metadata(final_path, youtube_url=url, upload_date=upload_date)
                 
                 # Extraire et sauvegarder les métadonnées d'artiste et d'album
                 app._extract_and_save_metadata(info, final_path)

@@ -2,12 +2,14 @@ from __init__ import *
 import download_manager
 from ui_menus import _handle_pending_file_moves, _handle_pending_file_deletions
 import extract_from_html
+import extract_from_text
 import json
 import threading
 import time
 from simple_logger import get_logger
 from simple_logs_viewer import SimpleLogsViewer  # Viewer unique
 from urllib.parse import urlparse, parse_qs
+import yt_dlp
 
 def clean_youtube_url(url):
     """Nettoie une URL YouTube pour ne garder que l'ID de la vidéo"""
@@ -399,8 +401,9 @@ class ImportDialog:
         # Variables
         self.detected_type = tk.StringVar(value="Détection automatique")
         self.html_file_path = None
+        self.text_file_path = None
         self.max_duration = tk.IntVar(value=600)
-        self.is_html_mode = False
+        self.mode = ""
         
         # Initialiser le logger simplifié
         self.logger = get_logger(self.music_player.downloads_folder)
@@ -556,8 +559,8 @@ class ImportDialog:
         
         self.html_select_btn = tk.Button(
             html_button_frame,
-            text="📁 Sélectionner un fichier HTML",
-            command=self.select_html_file,
+            text="📁 Select a file (.html, .htm, .txt, .json)",
+            command=self.select_file,
             bg='#4a8fe7',
             fg='white',
             font=("Arial", 9),
@@ -575,19 +578,23 @@ class ImportDialog:
 
     
 
-    def select_html_file(self):
+    def select_file(self):
         """Ouvre un dialog pour sélectionner un fichier HTML"""
         file_path = filedialog.askopenfilename(
             title="Sélectionner un fichier HTML",
-            filetypes=[("Fichiers HTML", "*.html *.htm"), ("Tous les fichiers", "*.*")]
+            filetypes=[("text file", "*.txt *.json"), ("HTML file", "*.html *.htm"), ("All files", "*.*")]
         )
         if file_path and file_path.lower().endswith(('.html', '.htm')):
             self.load_html_file(file_path)
+        elif file_path and file_path.lower().endswith(('.txt', '.json')):
+            self.load_text_file(file_path)
+        else:
+            messagebox.showerror("Please select a file with one of the following extensions: .html, .htm, .txt, .json")
     
     def load_html_file(self, file_path):
         """Charge un fichier HTML et passe en mode HTML"""
         self.html_file_path = file_path
-        self.is_html_mode = True
+        self.mode = "html"
         
         # Masquer le frame URL et afficher le frame HTML
         self.url_frame.pack_forget()
@@ -598,6 +605,22 @@ class ImportDialog:
         self.html_file_label.config(text=f"Fichier: {filename}")
         self.detected_type.set("Fichier HTML détecté")
         self.status_label.config(text=f"Fichier HTML chargé: {filename}")
+    
+    def load_text_file(self, file_path):
+        """Charge un fichier HTML et passe en mode HTML"""
+        self.text_file_path = file_path
+        self.mode = "text"
+        
+        # Masquer le frame URL et afficher le frame HTML
+        self.url_frame.pack_forget()
+        self.html_frame.pack(pady=10, padx=20, fill='x')
+        
+        # Mettre à jour l'affichage
+        filename = os.path.basename(file_path)
+        self.html_file_label.config(text=f"Fichier: {filename}")
+        self.detected_type.set(f"Fichier {self.mode} détecté")
+        self.status_label.config(text=f"Fichier {self.mode} chargé: {filename}")
+        
     
     def clean_youtube_url(self, url):
         """Nettoie l'URL YouTube en supprimant music. si présent"""
@@ -628,7 +651,7 @@ class ImportDialog:
         self.detected_type.set(detected)
         
     def start_download(self):
-        if self.is_html_mode:
+        if self.mode == "html":
             # Mode HTML
             if not self.html_file_path:
                 messagebox.showerror("Erreur", "Aucun fichier HTML sélectionné")
@@ -641,6 +664,19 @@ class ImportDialog:
             
             # Traiter le fichier HTML
             self._process_html_file(self.html_file_path, max_duration)
+        elif self.mode == "text":
+            # Mode text
+            if not self.text_file_path:
+                messagebox.showerror("No text file selected.")
+                return
+            
+            max_duration = self.max_duration.get()
+            
+            # Fermer la boîte de dialogue
+            self.dialog.destroy()
+            
+            # Traiter le fichier text
+            self._process_text_file(self.text_file_path, max_duration)
         else:
             # Mode URL classique
             url = self.url_entry.get().strip()
@@ -769,6 +805,106 @@ class ImportDialog:
         # Lancer le traitement dans un thread
         threading.Thread(target=process_in_thread, daemon=True).start()
     
+    def _process_text_file(self, text_file_path, max_duration):
+        """Traite un fichier text pour extraire et télécharger les vidéos YouTube"""
+        def process_in_thread():
+            try:
+                self.music_player.schedule_status("Extraction des liens YouTube depuis le fichier text...", 400)
+                
+                # Extraire les liens depuis le fichier text
+                youtube_links = extract_from_text.extract_youtube_links_from_text(text_file_path)
+                print('youtube_links', youtube_links)
+                
+                if not youtube_links:
+                    self.music_player.schedule_status("Aucun lien YouTube trouvé dans le fichier text", 400)
+                    return
+                
+                print(f"Trouvé {len(youtube_links)} liens YouTube.")
+                print("🔄 Mise à jour de la barre de statut...")
+                total = len(youtube_links)
+                self.music_player.schedule_status(f"📋 Trouvé {total} liens YouTube. Préparation du traitement...", 500)
+                
+                print("🔄 Récupération de la taille des paquets...")
+                # Récupérer la taille des paquets depuis l'interface
+                try:
+                    batch_size = int(self.batch_size.get())
+                    if batch_size <= 0:
+                        batch_size = 10
+                    print(f"✅ Taille des paquets: {batch_size}")
+                except Exception as e:
+                    print(f"⚠️ Erreur récupération batch_size: {e}")
+                    batch_size = 10
+                
+                print("🔄 Initialisation du logger...")
+                # Démarrer une session de logs (optionnel)
+                session_id = None
+                try:
+                    # Essayer d'initialiser le logger dans un thread séparé avec timeout
+                    import threading
+                    import queue
+                    
+                    result_queue = queue.Queue()
+                    
+                    def init_logger():
+                        try:
+                            sid = self.logger.start_session(text_file_path, youtube_links)
+                            result_queue.put(('success', sid))
+                        except Exception as e:
+                            result_queue.put(('error', str(e)))
+                    
+                    # Lancer dans un thread
+                    thread = threading.Thread(target=init_logger, daemon=True)
+                    thread.start()
+                    
+                    # Attendre avec timeout
+                    try:
+                        result_type, result_value = result_queue.get(timeout=2.0)
+                        if result_type == 'success':
+                            session_id = result_value
+                            print(f"✅ Session créée: {session_id}")
+                        else:
+                            print(f"⚠️ Erreur logger: {result_value}, on continue sans logs")
+                    except queue.Empty:
+                        print("⚠️ Timeout logger, on continue sans logs")
+                        
+                except Exception as e:
+                    print(f"⚠️ Erreur initialisation logger: {e}, on continue sans logs")
+                
+                # Configurer le logger seulement s'il est initialisé
+                if session_id:
+                    try:
+                        self.logger.set_total(len(youtube_links))
+                        print("✅ Total links défini")
+                    except Exception as e:
+                        print(f"❌ Erreur set_total_links: {e}")
+                    
+                    try:
+                        # Plus besoin de set_pending_urls dans le système simplifié
+                        print("✅ URLs en attente définies")
+                    except Exception as e:
+                        print(f"❌ Erreur set_pending_urls: {e}")
+                else:
+                    print("⚠️ Logger non initialisé, pas de logs pour cette session")
+                
+                print(f"Démarrage du traitement par vagues de {batch_size} liens à la fois...")
+                if session_id:
+                    self.logger.log("INFO", f"Configuration: {len(youtube_links)} liens, vagues de {batch_size}, durée max: {max_duration}s")
+                
+                print("🔄 Lancement de la fonction _process_videos_in_waves_sequential...")
+                
+                # Traitement par vagues : vérifier X liens → télécharger → vérifier X suivants → télécharger...
+                self._process_videos_in_waves_sequential(youtube_links, max_duration, batch_size, text_file_path, session_id)
+                
+                print("✅ Fonction _process_videos_in_waves_sequential lancée")
+                
+            except Exception as e:
+                error_msg = f"Erreur lors du traitement du fichier HTML: {str(e)}"
+                print(error_msg)
+                self.music_player.schedule_status(error_msg, 400)
+        
+        # Lancer le traitement dans un thread
+        threading.Thread(target=process_in_thread, daemon=True).start()
+    
     def _save_skipped_videos_json(self, skipped_videos, html_file_path):
         """Sauvegarde les vidéos non téléchargées dans un fichier JSON"""
         try:
@@ -792,7 +928,7 @@ class ImportDialog:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             
             print(f"Fichier JSON créé: {json_file_path}")
-            self.log("INFO", f"Fichier JSON créé: {json_file_path}")
+            self.logger.log("INFO", f"Fichier JSON créé: {json_file_path}")
             self.music_player.schedule_status(f"Fichier JSON créé avec {len(skipped_videos)} vidéos non téléchargées", 400)
             
         except Exception as e:
@@ -818,6 +954,7 @@ class ImportDialog:
                     'extract_flat': False,  # Extraire les informations complètes
                     'quiet': True,
                     'no_warnings': True,
+                    'update': True
                 }
                 
                 with YoutubeDL(ydl_opts) as ydl:
@@ -873,7 +1010,7 @@ class ImportDialog:
                 
                 if existing_file:
                     # Le fichier existe, juste sauvegarder l'URL
-                    self.music_player.save_youtube_url_metadata(existing_file, video_url)
+                    self.music_player.save_youtube_url_metadata(existing_file, youtube_url=video_url)
                     self.music_player.root.after(0, lambda: self.music_player.status_bar.config(
                         text=f"Fichier existant trouvé ({index+1}/{len(entries)}): {video_title}"
                     ))
@@ -1020,13 +1157,14 @@ class ImportDialog:
                                     }
                                 },
                                 'ignoreerrors': True,
+                                'update': True
                             }
                             
                             with YoutubeDL(ydl_opts) as ydl:
                                 info = ydl.extract_info(url, download=False)
                                 
                                 if not info:
-                                    reason = 'Impossible d\'extraire les informations (vidéo privée/supprimée?)'
+                                    reason = 'Impossible d\'extraire les informations'
                                     print(f"⚠️ Ignoré: {url[:80]} - {reason}")
                                     skipped_videos_wave.append({
                                         'title': url,
@@ -1076,24 +1214,38 @@ class ImportDialog:
                                 if session_id:
                                     self.logger.log("INFO", f"✅ Vidéo valide: {title} ({duration}s)")
                             
-                        except Exception as e:
-                            error_msg = str(e)
-                            print(f"Erreur lors de la vérification de {url}: {e}")
+                        except yt_dlp.utils.DownloadError as e:
+                            # Analyser le message d'erreur pour plus de détails
+                            reason = str(e)
+                            # if "Private video" in error_str:
+                            #     reason = "Vidéo privée"
+                            # elif "Video unavailable" in error_str:
+                            #     reason = "Vidéo indisponible"
+                            # elif "This video has been removed" in error_str:
+                            #     reason = "Vidéo supprimée"
+                            # elif "Sign in to confirm your age" in error_str:
+                            #     reason = "Restriction d'âge - Connexion requise"
+                            # elif "not available in your country" in error_str:
+                            #     reason = "Non disponible dans votre pays"
+                            # elif "Copyright" in error_str:
+                            #     reason = "Problème de copyright"
+                            # else:
+                            #     reason = f'Erreur de téléchargement: {error_str}'
                             
-                            # Catégoriser les erreurs
-                            if "403" in error_msg or "Forbidden" in error_msg:
-                                reason = "Erreur 403 - Accès interdit (vidéo restreinte ou protection YouTube)"
-                            elif "404" in error_msg or "not available" in error_msg:
-                                reason = "Vidéo non disponible (supprimée ou privée)"
-                            elif "format" in error_msg.lower():
-                                reason = "Format non disponible (vidéo peut être restreinte)"
-                            elif "private" in error_msg.lower():
-                                reason = "Vidéo privée"
-                            elif "deleted" in error_msg.lower():
-                                reason = "Vidéo supprimée"
-                            else:
-                                reason = f'Erreur technique: {error_msg[:100]}...' if len(error_msg) > 100 else f'Erreur: {error_msg}'
+                            print(f"❌ Erreur: {url[:80]} - {reason}")
+                            skipped_videos_wave.append({
+                                'title': url if 'title' not in locals() else title,
+                                'url': url,
+                                'duration': duration if 'duration' in locals() else None,
+                                'reason': reason
+                            })
+                            if session_id:
+                                self.logger.log_processed(url, url, 'error', reason)
+                            continue
                             
+                        except yt_dlp.utils.ExtractorError as e:
+                            reason = f'Erreur lors de l\'extraction: {str(e)}'
+                            print(f"❌ Erreur: {url[:80]} - {reason}")
                             skipped_videos_wave.append({
                                 'title': url,
                                 'url': url,
@@ -1101,7 +1253,22 @@ class ImportDialog:
                                 'reason': reason
                             })
                             if session_id:
-                                self.logger.log_processed(url, url, 'failed', reason)
+                                self.logger.log_processed(url, url, 'error', reason)
+                            continue
+                            
+                        except Exception as e:
+                            # Capturer le type d'erreur spécifique
+                            error_type = type(e).__name__
+                            reason = f'Erreur {error_type}: {str(e)}'
+                            print(f"❌ Erreur: {url[:80]} - {reason}")
+                            skipped_videos_wave.append({
+                                'title': url,
+                                'url': url,
+                                'duration': None,
+                                'reason': reason
+                            })
+                            if session_id:
+                                self.logger.log_processed(url, url, 'error', reason)
                             continue
                     
                     # Ajouter les vidéos ignorées de cette vague au total

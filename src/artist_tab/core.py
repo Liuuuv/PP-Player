@@ -159,6 +159,7 @@ def _add_artist_playlist_result(self, playlist, index, container, target_tab="so
             print(f"Erreur lors de l'ajout de la playlist artiste: {e}")
 
 def _display_artist_interface(self, artist_name, video_data=None):
+    print("_display_artist_interface appelée NON")
     """Affiche l'interface d'artiste de manière instantanée"""
     try:
         # Annuler toute recherche en cours pour éviter les conflits
@@ -295,6 +296,7 @@ def _find_artist_channel_id(self):
 def _show_artist_content(self, artist_name, video_data):
     """Affiche le contenu d'un artiste dans la zone de recherche YouTube - Version optimisée non-bloquante"""
     try:
+        self._clear_results()
         # Vérifier si on est déjà en mode artiste avec le même artiste
         if self.artist_mode and self.current_artist_name == artist_name:
             # Si on est déjà sur la page de cet artiste, basculer vers l'onglet recherche
@@ -345,7 +347,7 @@ def _show_artist_content(self, artist_name, video_data):
             self.current_artist_channel_url = f"https://www.youtube.com/@{encoded_artist_name}"
         
         # Sauvegarder l'état actuel des résultats
-        self._save_current_search_state()
+        # self._save_current_search_state()
         
         # S'assurer que la zone YouTube est visible
         # self._show_search_results()
@@ -470,16 +472,16 @@ def _reset_playlist_content_state(self, tab_name=None):
     # except:
     #     pass
 
-def _save_current_search_state(self):
-    """Sauvegarde l'état actuel des résultats de recherche"""
-    try:
-        # Sauvegarder le contenu actuel de la zone de recherche
-        if hasattr(self, 'youtube_results_frame'):
-            self.original_search_content = []
-            for widget in self.youtube_results_frame.winfo_children():
-                self.original_search_content.append(widget)
-    except:
-        pass
+# def _save_current_search_state(self):
+#     """Sauvegarde l'état actuel des résultats de recherche"""
+#     try:
+#         # Sauvegarder le contenu actuel de la zone de recherche
+#         if hasattr(self, 'youtube_results_frame'):
+#             self.original_search_content = []
+#             for widget in self.youtube_results_frame.winfo_children():
+#                 self.original_search_content.append(widget)
+#     except:
+#         pass
 
 def _show_search_results(self):
     """S'assure que la zone de recherche YouTube est visible"""
@@ -508,12 +510,12 @@ def _return_to_search(self):
         # Remettre l'état du contenu de playlist à zéro
         _reset_playlist_content_state(self)
         
-        # Nettoyer la zone YouTube
-        for widget in self.youtube_results_frame.winfo_children():
-            try:
-                widget.destroy()
-            except:
-                pass
+        # # Nettoyer la zone YouTube
+        # for widget in self.youtube_results_frame.winfo_children():
+        #     try:
+        #         widget.destroy()
+        #     except:
+        #         pass
         
         # Restaurer l'affichage de recherche normal
         if hasattr(self, 'original_search_content') and self.original_search_content:
@@ -858,6 +860,7 @@ def _update_loading_messages(self):
 
 def _create_artist_tabs(self):
         """Crée les onglets Musiques et Sorties dans la zone YouTube"""
+        print('_create_artist_tabs appelée')
         
         # Si on était déjà en mode artiste, détruire l'ancien notebook pour éviter la duplication
         if hasattr(self, 'artist_notebook') and self.artist_notebook:
@@ -870,12 +873,12 @@ def _create_artist_tabs(self):
                 pass
         
         # Nettoyer tout le contenu de youtube_results_frame de manière ultra-optimisée
-        try:
-            # Méthode plus rapide : détruire tous les enfants d'un coup
-            for widget in self.youtube_results_frame.winfo_children():
-                widget.destroy()
-        except:
-            pass
+        # try:
+        #     # Méthode plus rapide : détruire tous les enfants d'un coup
+        #     for widget in self.youtube_results_frame.winfo_children():
+        #         widget.destroy()
+        # except:
+        #     pass
         
         # Cacher le canvas et la scrollbar des résultats
         if hasattr(self, 'youtube_canvas') and self.youtube_canvas is not None:
@@ -1012,6 +1015,8 @@ def _create_artist_tabs(self):
             font=('TkDefaultFont', 10)
         )
         self.playlists_loading.pack(expand=True)
+        
+        self.artist_main_container = main_container
 
 def _on_channel_id_found(self, channel_id):
     """Appelé quand l'ID de la chaîne a été trouvé - lance les recherches de contenu"""
@@ -1133,6 +1138,20 @@ def _add_artist_result(self, video, index, container):
             )
             result_frame.pack(fill="x", padx=3, pady=1)  # Espacement réduit
             
+            result_frame.is_downloading = False
+            def on_download_start():
+                print('on_download_start')
+                result_frame.is_downloading = True
+                self._set_item_colors(result_frame, COLOR_DOWNLOAD)
+            
+            def on_download_end():
+                print('on_download_end')
+                result_frame.is_downloading = False
+                self._set_item_colors(result_frame, COLOR_BACKGROUND)
+                
+            result_frame.on_download_start = on_download_start
+            result_frame.on_download_end = on_download_end
+            
             # Configuration de la grille (plus compact avec 2 lignes pour titre+date/durée)
             result_frame.columnconfigure(0, minsize=60, weight=0)  # Miniature plus petite
             result_frame.columnconfigure(1, weight=1)              # Titre et date/durée
@@ -1201,6 +1220,13 @@ def _add_artist_result(self, video, index, container):
             # Événements de clic pour la sélection multiple (comme dans _add_search_result)
             def on_result_click(event, frame=result_frame):
                 # Initialiser le drag pour les vidéos
+                
+                # # Configuration du drag-and-drop
+                # self.drag_drop_handler.setup_drag_drop(
+                #     result_frame, 
+                #     video_data=video, 
+                #     item_type="youtube"
+                # )
                 self.drag_drop_handler.setup_drag_start(event, frame)
                 
                 # Vérifier si Shift est enfoncé pour la sélection multiple
@@ -1255,7 +1281,7 @@ def _add_artist_result(self, video, index, container):
                     leave_color = '#ff8c00'
                 elif hasattr(result_frame, 'is_downloading') and result_frame.is_downloading:
                     # Revenir au rouge de téléchargement
-                    leave_color = result_frame.download_color
+                    leave_color = COLOR_DOWNLOAD
                 else:
                     # Couleur normale
                     leave_color = '#4a4a4a'
@@ -1390,6 +1416,8 @@ def _load_artist_thumbnail(self, video, thumbnail_label):
 
 def _load_playlist_count(self, playlist, count_label):
         """Charge le nombre de vidéos d'une playlist en arrière-plan avec pool de threads optimisé"""
+        if not count_label.winfo_exists():
+            return
         # Utiliser un pool de threads partagé pour éviter de créer trop de threads
         if not hasattr(self, '_playlist_executor'):
             import concurrent.futures
@@ -1464,6 +1492,9 @@ def _load_playlist_count(self, playlist, count_label):
                         self.root.after(0, update_error)
                     except (tk.TclError, AttributeError):
                         pass
+            except tk.TclError:
+                # Widget détruit, osef
+                pass
         
         # Utiliser le pool de threads au lieu de créer un nouveau thread
         self._playlist_executor.submit(load_count)
@@ -1801,3 +1832,6 @@ def _show_artist_playlist_menu(self, event, frame):
         # Utiliser la fonction existante pour afficher le menu des playlists
         import ui_menus
         ui_menus._show_youtube_playlist_menu(self, video, frame)
+    
+    
+    

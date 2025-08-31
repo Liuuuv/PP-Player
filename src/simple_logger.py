@@ -277,9 +277,11 @@ class SimpleLogger:
     def get_resumable_sessions(self):
         """Récupère les sessions qui peuvent être reprises"""
         sessions = []
+        print("infooosdsd ", self.logs_dir)
         try:
             files = [f for f in os.listdir(self.logs_dir) if f.endswith('.json')]
             for file in files:
+                print("file ", file)
                 file_path = os.path.join(self.logs_dir, file)
                 try:
                     with open(file_path, 'r', encoding='utf-8') as f:

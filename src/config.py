@@ -22,10 +22,10 @@ COLOR_SELECTED_HOVERED = None
 COLOR_BACKGROUND = '#4a4a4a'
 COLOR_BACKGROUND_HOVERED = None
 COLOR_BACKGROUND_HIGHLIGHT = '#5a5a5a'
-COLOR_ERROR = "#ffc72d"  # Couleur d'erreur orange-jaune utilisée partout
-COLOR_DOWNLOAD = '#ff6666'
+COLOR_ERROR = "#7f7a54"  # Couleur d'erreur orange-jaune utilisée partout
+COLOR_DOWNLOAD = "#CA6767"
 COLOR_MULTISELECTION = '#ff8c00'
-COLOR_MULTISELECTION_HOVERED = None
+# COLOR_MULTISELECTION_HOVERED = None
 
 # autour de la carte principale (réduit pour 4 playlists par ligne)
 CARD_FRAME_PADX = 5
@@ -36,6 +36,9 @@ DISPLAY_PLAYLIST_PADY = 2
 
 MAIN_PLAYLIST_PADX = 5
 MAIN_PLAYLIST_PADY = 2
+
+
+MAX_SCROLL_LOADING_SONGS = 50
 
 
 # Paramètres de recherche déplacés vers search_tab/config.py

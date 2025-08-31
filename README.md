@@ -1,5 +1,7 @@
 # music_player
 
+Updates are available directly in the app (settings > updates). Only need to download the app once :)
+
 The project in the releases was built using pyinstaller, that's why your PC might fight the .exe file suspicious.
 If you're not confident about it, you can build the file by yourself :
 

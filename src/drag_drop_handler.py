@@ -15,8 +15,9 @@ class DragDropHandler:
             frame: Le frame tkinter à configurer
             file_path: Chemin du fichier (pour les fichiers locaux)
             video_data: Données vidéo (pour les résultats YouTube)
-            item_type: Type d'élément ("file", "youtube", "playlist_item")
+            item_type: Type d'élément ("file", "youtube")
         """
+        # print("drag_drop_handler.py: Configuring drag-and-drop for frame:", frame, file_path, item_type)
         # Variables pour le drag
         frame.drag_start_x = 0
         frame.drag_start_y = 0
@@ -93,10 +94,23 @@ class DragDropHandler:
             # Si on a dragué suffisamment vers la droite (plus de 100 pixels)
             if dx > 100:
                 # Ajouter à la playlist selon le type d'élément
-                self._add_to_queue_last_dragged_item(frame)
+                if frame.drag_item_type == 'file':
+                    self._add_to_queue_first_dragged_item(frame)
+                elif frame.drag_item_type == 'youtube':
+                    def callback():
+                        if hasattr(frame, 'on_download_end'):
+                            frame.on_download_end()
+                        else:
+                            print('hasattr(frame, on_download_end): False')
+                    
+                    if hasattr(frame, 'on_download_start'):
+                        frame.on_download_start()
+                    self.music_player._safe_add_to_queue_first_from_result(frame.video_data, callback=callback)
+                else:
+                    print('drag_drop_handler.py: Unknown item type:', frame.drag_item_type)
                 self.music_player._update_saved_downloads_queue()
                 # Vérifier si c'est la chanson en cours de lecture
-                if (len(self.music_player.main_playlist) > 0 and 
+                if (frame.drag_item_type == 'file' and len(self.music_player.main_playlist) > 0 and 
                     hasattr(self.music_player, 'current_index') and
                     self.music_player.current_index < len(self.music_player.main_playlist) and 
                     self.music_player.main_playlist[self.music_player.current_index] == frame.filepath):
@@ -104,9 +118,22 @@ class DragDropHandler:
             # Si on a dragué suffisamment vers la gauche (moins de -100 pixels)
             elif dx < -100:
                 # Placer en premier dans la queue selon le type d'élément
-                self._add_to_queue_first_dragged_item(frame)
+                if frame.drag_item_type == 'file':
+                    self._add_to_queue_last_dragged_item(frame)
+                elif frame.drag_item_type == 'youtube':
+                    def callback():
+                        if hasattr(frame, 'on_download_end'):
+                            frame.on_download_end()
+                        else:
+                            print('hasattr(frame, on_download_end): False')
+                    
+                    if hasattr(frame, 'on_download_start'):
+                        frame.on_download_start()
+                    self.music_player._safe_add_to_queue_from_result(frame.video_data, callback=callback)
+                else:
+                    print('drag_drop_handler.py: Unknown item type:', frame.drag_item_type)
                 self.music_player._update_saved_downloads_queue()
-                if (len(self.music_player.main_playlist) > 0 and 
+                if (frame.drag_item_type == 'file' and len(self.music_player.main_playlist) > 0 and 
                     hasattr(self.music_player, 'current_index') and
                     self.music_player.current_index < len(self.music_player.main_playlist) and 
                     self.music_player.main_playlist[self.music_player.current_index] == frame.filepath):
@@ -119,6 +146,8 @@ class DragDropHandler:
         # Désactiver le drag après le relâchement
         if hasattr(frame, 'drag_enabled'):
             frame.drag_enabled = False
+        
+        
     
     def _start_visual_drag(self, frame):
         """Démarre l'effet visuel de drag"""
@@ -189,9 +218,9 @@ class DragDropHandler:
             elif frame.drag_item_type == "youtube":
                 # Résultat YouTube
                 self._add_youtube_to_playlist(frame.drag_video_data, frame)
-            elif frame.drag_item_type == "playlist_item":
-                # Élément de playlist (copier vers main playlist)
-                self._add_playlist_item_to_main(frame.drag_file_path)
+            # elif frame.drag_item_type == "playlist_item":
+            #     # Élément de playlist (copier vers main playlist)
+            #     self._add_playlist_item_to_main(frame.drag_file_path)
             
         except Exception as e:
             self.music_player.status_bar.config(text=f"Erreur: {str(e)}")
@@ -284,7 +313,7 @@ class DragDropHandler:
                 
                 # Mettre à jour l'affichage de la playlist
                 if hasattr(self.music_player.MainPlaylist, '_refresh_main_playlist_display'):
-                    print('Mettre à jour l\'affichage de la playlist...')
+                    # print('Mettre à jour l\'affichage de la playlist...')
                     self.music_player.MainPlaylist._refresh_main_playlist_display()
                 
                 # Mettre à jour l'affichage visuel des téléchargements (barre noire) sans recharger
@@ -350,9 +379,9 @@ class DragDropHandler:
             elif frame.drag_item_type == "youtube":
                 # Résultat YouTube - télécharger d'abord puis lire
                 self._play_after_current_youtube(frame.drag_video_data, frame)
-            elif frame.drag_item_type == "playlist_item":
-                # Élément de playlist
-                self._play_after_current_file(frame.drag_file_path)
+            # elif frame.drag_item_type == "playlist_item":
+            #     # Élément de playlist
+            #     self._play_after_current_file(frame.drag_file_path)
             
         except Exception as e:
             self.music_player.status_bar.config(text=f"Erreur: {str(e)}")
@@ -404,9 +433,9 @@ class DragDropHandler:
             elif frame.drag_item_type == "youtube":
                 # Résultat YouTube - télécharger d'abord puis placer en premier dans la queue
                 self._add_to_queue_first_youtube(frame.drag_video_data, frame)
-            elif frame.drag_item_type == "playlist_item":
-                # Élément de playlist
-                self._add_to_queue_first_file(frame.drag_file_path)
+            # elif frame.drag_item_type == "playlist_item":
+            #     # Élément de playlist
+            #     self._add_to_queue_first_file(frame.drag_file_path)
             
         except Exception as e:
             self.music_player.status_bar.config(text=f"Erreur: {str(e)}")
@@ -458,7 +487,6 @@ class DragDropHandler:
     
     def _add_to_queue_first(self, file_path):
         """Place un fichier en premier dans la queue (juste après la chanson en cours)"""
-        print(f"_add_to_queue_first {file_path}...")
         if not file_path:
             return
             
@@ -524,8 +552,9 @@ class DragDropHandler:
             self.music_player.queue_items.add(final_index)
             
             # Mettre à jour l'affichage de la playlist
-            if hasattr(self.music_player, '_refresh_main_playlist_display'):
-                self.music_player._refresh_main_playlist_display()
+            if hasattr(self.music_player.MainPlaylist, '_refresh_main_playlist_display'):
+                # print('Mettre à jour l\'affichage de la playlist...')
+                self.music_player.MainPlaylist._refresh_main_playlist_display()
             
             # Mettre à jour l'affichage visuel des téléchargements (barre noire) sans recharger
             if hasattr(self.music_player, '_update_downloads_queue_visual'):
