@@ -13,7 +13,7 @@ Updates are available directly in the app (settings > updates). You only need to
 <img width="795" height="725" alt="subtitles" src="https://github.com/user-attachments/assets/edacbec5-cf78-4fd4-90ba-3b3407ed5490" />
 
 ## Build
-The project in the releases was built using pyinstaller, that's why your PC might fight the .exe file suspicious.
+The project in the releases was built using pyinstaller, that's why your PC might find the .exe file suspicious.
 If you're not confident about it, you can build the file by yourself :
 
 ### How to build the project:
