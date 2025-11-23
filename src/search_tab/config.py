@@ -108,7 +108,7 @@ PERFORMANCE_CONFIG = {
     'search_pool_size': 2,             # Taille du pool pour les recherches
     'debounce_search_ms': 500,         # Délai de debounce pour la recherche automatique
     'cleanup_interval_minutes': 10,    # Intervalle de nettoyage du cache
-    'max_concurrent_downloads': 3      # Téléchargements simultanés maximum
+    'max_concurrent_downloads': 3      # Downloads simultanés maximum
 }
 
 # Timeouts et retry

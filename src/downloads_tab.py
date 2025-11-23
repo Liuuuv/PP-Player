@@ -641,7 +641,7 @@ def toggle_downloads_pause(self):
             current_download.status = "En pause"
             self.update_download_item_appearance(current_download)
         
-        self.status_bar.config(text="Téléchargements mis en pause")
+        self.status_bar.config(text="Downloads mis en pause")
     else:
         # Reprendre
         self.downloads_pause_btn.configure(
@@ -655,7 +655,7 @@ def toggle_downloads_pause(self):
             current_download.status = "Téléchargement..."
             self.update_download_item_appearance(current_download)
         
-        self.status_bar.config(text="Téléchargements repris")
+        self.status_bar.config(text="Downloads repris")
 
 def scroll_to_current_download(self):
     """Scroll automatiquement vers le téléchargement en cours avec animation ease in out"""

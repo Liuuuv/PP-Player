@@ -1,4 +1,4 @@
-# music_player
+# PP-Player
 
 Updates are available directly in the app (settings > updates). Only need to download the app once :)
 

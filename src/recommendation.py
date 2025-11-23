@@ -283,7 +283,7 @@ class RecommendationSystem:
                 # Marquer le traitement comme terminé
                 self.is_processing = False
             else:
-                # Téléchargements en cours
+                # Downloads en cours
                 message = f"Recommandations: {self.recommendation_downloads_completed}/{self.recommendation_downloads_total}"
                 self.main_app.root.after(0, lambda msg=message:
                     self.main_app.status_bar.config(text=msg))

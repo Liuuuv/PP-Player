@@ -345,19 +345,19 @@ class Setup:
         self.music_player.search_tab = ttk.Frame(self.music_player.notebook)
         self.music_player.notebook.add(self.music_player.search_tab, text="Search")
         
-        # Frame pour l'onglet Bibliothèque
+        # Frame pour l'onglet Library
         self.music_player.library_tab = ttk.Frame(self.music_player.notebook)
-        self.music_player.notebook.add(self.music_player.library_tab, text="Bibliothèque")
+        self.music_player.notebook.add(self.music_player.library_tab, text="Library")
         
         # Contenu de l'onglet Recherche (identique à votre ancienne UI)
         self.music_player.setup_search_tab()
         
         
         
-        # Contenu de l'onglet Téléchargements
+        # Contenu de l'onglet Downloads
         self.setup_downloads_tab()
         
-        # Contenu de l'onglet Bibliothèque (pour l'instant vide)
+        # Contenu de l'onglet Library (pour l'instant vide)
         self.music_player.setup_library_tab()
         # self.music_player._update_visible_items()
         
@@ -413,7 +413,7 @@ class Setup:
         """Configure l'onglet de téléchargement"""
         # Créer l'onglet
         self.music_player.downloads_tab = ttk.Frame(self.music_player.notebook)
-        self.music_player.notebook.add(self.music_player.downloads_tab, text="Téléchargements")
+        self.music_player.notebook.add(self.music_player.downloads_tab, text="Downloads")
         
         # Initialiser le gestionnaire de téléchargements
         if not hasattr(self.music_player, 'download_manager'):
@@ -430,7 +430,7 @@ class Setup:
         # Titre
         title_label = tk.Label(
             header_frame,
-            text="Téléchargements",
+            text="Downloads",
             font=("Arial", 16, "bold"),
             bg='#2d2d2d',
             fg='white'
@@ -1235,7 +1235,7 @@ def setup_search_tab(self):
     # Titre de la liste de lecture
     playlist_title_label = tk.Label(
         playlist_header_frame,
-        text="Liste de lecture",
+        text="Up next",
         bg='#2d2d2d',
         fg='white',
         font=('TkDefaultFont', 12, 'bold')
@@ -1468,7 +1468,7 @@ def setup_search_tab(self):
     
 
 def setup_library_tab(self):
-    """Configure le contenu de l'onglet Bibliothèque avec onglets verticaux"""
+    """Configure le contenu de l'onglet Library avec onglets verticaux"""
     # Frame principal horizontal
     main_library_frame = ttk.Frame(self.library_tab)
     main_library_frame.pack(fill=tk.BOTH, expand=True)
@@ -1490,10 +1490,10 @@ def setup_library_tab(self):
     # Créer les boutons d'onglets verticaux
     self.library_tab_buttons = {}
     
-    # Onglet "Téléchargées"
+    # Onglet "Downloaded"
     self.downloads_btn = tk.Button(
         vertical_tabs_frame,
-        text="Téléchargées " + f"({self.num_downloaded_files})",
+        text="Downloaded " + f"({self.num_downloaded_files})",
         command=lambda: self.switch_library_tab("téléchargées"),
         bg="#4a8fe7",
         fg="white",

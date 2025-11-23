@@ -124,7 +124,7 @@ class SlidingPanel:
         move_left_button = ctk.CTkButton(self.content_panel,
                 image=self.icons["move_left"],
                 cursor='hand2',
-                # command=self.show_infos_menu,
+                command=self.move_thumbnail_left,
                 fg_color=COLOR_APP_BG,
                 hover_color=COLOR_APP_BG_HOVER,
                 width=32,
@@ -132,6 +132,9 @@ class SlidingPanel:
                 text=""
         )
         move_left_button.pack(pady=10, padx=2)
+        
+        move_right_button.bind("<ButtonPress-3>", lambda e: self.reset_thumbnail_offset())
+        move_left_button.bind("<ButtonPress-3>", lambda e: self.reset_thumbnail_offset())
     
     
     def setup_event_bindings(self):
@@ -424,7 +427,34 @@ class SlidingPanel:
     def move_thumbnail_right(self):
         current_song_path = self.music_player.main_playlist[self.music_player.current_index]
         current_song_path_rel = os.path.relpath(current_song_path, self.music_player.downloads_folder)
-        # self.music_player.thumbnail_offsets[current_song_path_rel] = min(1, self.music_player.thumbnail_offsets[current_song_path_rel] + 0.1)
+        if not current_song_path_rel in self.music_player.thumbnail_offsets:
+            self.music_player.thumbnail_offsets[current_song_path_rel] = 0
+        
+        self.music_player.thumbnail_offsets[current_song_path_rel] = max(-1, self.music_player.thumbnail_offsets[current_song_path_rel] - 0.05)
         
         
-        # self.music_player._show_current_song_thumbnail()
+        self.music_player._show_current_song_thumbnail()
+    
+    
+    def move_thumbnail_left(self):
+        current_song_path = self.music_player.main_playlist[self.music_player.current_index]
+        current_song_path_rel = os.path.relpath(current_song_path, self.music_player.downloads_folder)
+        if not current_song_path_rel in self.music_player.thumbnail_offsets:
+            self.music_player.thumbnail_offsets[current_song_path_rel] = 0
+        
+        self.music_player.thumbnail_offsets[current_song_path_rel] = min(1, self.music_player.thumbnail_offsets[current_song_path_rel] + 0.05)
+        
+        
+        self.music_player._show_current_song_thumbnail()
+    
+    def reset_thumbnail_offset(self):
+        current_song_path = self.music_player.main_playlist[self.music_player.current_index]
+        current_song_path_rel = os.path.relpath(current_song_path, self.music_player.downloads_folder)
+        if not current_song_path_rel in self.music_player.thumbnail_offsets:
+            self.music_player.thumbnail_offsets[current_song_path_rel] = 0
+        
+        self.music_player.thumbnail_offsets[current_song_path_rel] = 0
+        
+        
+        self.music_player._show_current_song_thumbnail()
+    

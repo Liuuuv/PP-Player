@@ -119,7 +119,7 @@ class MusicPlayer:
         self._status_after_id = self.root.after(delay_ms, do_update)
     
     def init(self):
-        self.current_version = "0.0.3"
+        self.current_version = "0.0.4"
         self.root.title("PP Player")
         self.root.geometry(GEOMETRY)
         # Fixer la taille mais permettre le déplacement
@@ -141,7 +141,7 @@ class MusicPlayer:
         self.AutoUpdater = auto_updater.AutoUpdater(
             current_version=self.current_version,
             parent=self.root,
-            config_files_to_preserve=["download_path.txt"],
+            config_files_to_preserve=["downloads_path.txt"],
             folders_to_preserve=["logs", "downloads"],
             exclude_from_update=["logs", "downloads"]
         )

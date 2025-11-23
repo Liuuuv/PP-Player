@@ -3,42 +3,12 @@ v0.0.3
 
 New features:
 - You can now export playlist to a text file with optionnal compression (up to 62.5% less characters).
-- Added a button in the insert url dialog so you can copy the url to the clipboard.
+- You can now move thumbnails shown to the right horizontally.
+
 
 Changes:
-- Made that you can paste any YouTube url in the url changer (right click + insert url) and it will keep the good one. Example: https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RDdQw4w9WgXcQ&start_radio=1&pp=ygUXbmV2ZXIgZ29ubmEgZ2l2ZSB5b3UgdXCgBwHSBwkJsgkBhyohjO8%3D -> https://www.youtube.com/watch?v=dQw4w9WgXcQ)
-- Removed the waveform feature.
-- Changed the style of the buttons in the upper right corner and the copy to clipboard button. (groove -> flat)
-- Move the copy to clipboard bottom. (below the status bar -> to the left of the status bar)
-- Changed the error color (less yellow-ish).
-- The reason for an error in the logs is now more detailed.
-- Changed the local search algorithm, it now shows more results (one letter flexibility).
-- Lowered the speed and frame rate of the sliding panel (of the large thumbnail).
-- Added more fallbacks for potential errors.
-- Optimized even more the loading of song items.
-- Changed the hover cursor for lots of icons.
-- Remove the possibility to remove a song from the main playlist if you aren't directly in it.
-- The auto-scroll won't load in-between item songs if more than 50 need to be loaded.
-- Deactivated the "add song file" and "recommendation" buttons.
 
 Fixed issues:
-- Made the logs less laggy when downloading a lot of songs.
-- Fixed an issue where you can't download a song from Youtube because the app thinks it is already downloaded.
-- Fixed an issue where the artist page doesn't show up if you clic on an artist's name in the main playlist.
-- Fixed an issue where the title wasn't shown completly during the hover animation. (library>downloads, main playlist, playlist contents)
-- Fixed an issue where the large thumbnail wasn't showing anymore if you opened an artist's page.
-- Fixed an issue where the YouTube results were not showing properly after opening an artist's page.
-- Fixed an issue where the right click wouldn't be working in an artist's page.
-- Fixed an issue where the click+drag wouldn't be working in an artist's page.
-- Fixed an issue where the color of a song item wouldn't be correct if you hover it in an artist's page.
-- Fixed an issue where if you have multiple instances of a song display in the same list, only the first one would be completly loaded.
-- Fixed an issue where the clic+drag commands were inverted.
-- Fixed an issue where the queue indicator wasn't showing anymore (unless refresh) if you hover the song item
-- Fixed an issue where if you remove a song from the main playlist that is in the queue, the place in the queue would be tranfered to another song.
-- Fixed an error that can occurs when auto-scrolling to the current song.
-- Fixed an issue where the auto-scroll doesn't work sometimes (e.g. for two consecutive songs for a +1600 songs main playlist).
+- Fixed an issue where the "not_dowloaded_import..." files were visibles in the log window.
 
 Known issues:
-- Some YouTube videos can encounter the following error: "Got error: X bytes read, Y more expected." (really rare, maybe due to the format)
-- 2 videos with closed titles and not usual characters can be seen as the same.
-- The first local search can be really slow.

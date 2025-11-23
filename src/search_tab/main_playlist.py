@@ -1101,7 +1101,7 @@ class MainPlaylist:
             self.music_player._last_select_time = 0
         
         # Mettre à jour l'affichage
-        self.music_player.status_bar.config(text="Liste de lecture vidée")
+        self.music_player.status_bar.config(text="Up next vidée")
         
         # Réinitialiser l'affichage de la chanson actuelle
         if hasattr(self.music_player, 'song_label'):

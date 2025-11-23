@@ -235,7 +235,7 @@ class SimpleLogger:
         """Récupère les sessions récentes"""
         sessions = []
         try:
-            files = [f for f in os.listdir(self.logs_dir) if f.endswith('.json')]
+            files = [f for f in os.listdir(self.logs_dir) if f.startswith('import_') and f.endswith('.json')]
             files.sort(reverse=True)  # Plus récent en premier
             
             for file in files[:limit]:
@@ -277,9 +277,8 @@ class SimpleLogger:
     def get_resumable_sessions(self):
         """Récupère les sessions qui peuvent être reprises"""
         sessions = []
-        print("infooosdsd ", self.logs_dir)
         try:
-            files = [f for f in os.listdir(self.logs_dir) if f.endswith('.json')]
+            files = [f for f in os.listdir(self.logs_dir) if f.startswith('import_') and f.endswith('.json')]
             for file in files:
                 print("file ", file)
                 file_path = os.path.join(self.logs_dir, file)

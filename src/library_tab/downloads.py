@@ -478,7 +478,7 @@ def _show_no_results_message(self):
 def _update_downloads_button(self):
     """Met à jour le texte du bouton téléchargées avec le nombre actuel"""
     if hasattr(self, 'downloads_btn'):
-        self.downloads_btn.configure(text="Téléchargées " + f"({self.num_downloaded_files})")
+        self.downloads_btn.configure(text="Downloaded " + f"({self.num_downloaded_files})")
         
 # def _display_files_batch(self, files_to_display, start_index, batch_size=20):
 #     """Affiche les fichiers par batch pour éviter de bloquer l'interface (ancienne version)"""
@@ -607,7 +607,7 @@ def _refresh_downloads_library(self, preserve_scroll=False):
             if new_files != old_files:
                 # Vérifier si on est dans l'onglet bibliothèque et sous-onglet téléchargées
                 current_tab = self.notebook.tab(self.notebook.select(), "text")
-                if (current_tab == "Bibliothèque" and 
+                if (current_tab == "Library" and 
                     hasattr(self, 'current_library_tab') and 
                     self.current_library_tab == "téléchargées" and
                     hasattr(self, 'downloads_container')):
@@ -942,7 +942,7 @@ def play_all_downloads_ordered(self):
     
     # Réactiver les boutons et mettre à jour le statut final
     self.root.after(150, lambda: self._enable_play_buttons())
-    self.root.after(200, lambda: self.status_bar.config(text=f"Lecture démarrée - {len(self.all_downloaded_files)} musiques chargées"))
+    self.root.after(200, lambda: self.status_bar.config(text=f"{len(self.all_downloaded_files)} songs loaded"))
     
 def play_all_downloads_shuffle(self):
     """Joue toutes les musiques téléchargées en mode aléatoire"""
@@ -980,7 +980,7 @@ def play_all_downloads_shuffle(self):
     
     # Réactiver les boutons et mettre à jour le statut final
     self.root.after(150, lambda: self._enable_play_buttons())
-    self.root.after(200, lambda: self.status_bar.config(text=f"Lecture démarrée - {len(self.all_downloaded_files)} musiques chargées"))
+    self.root.after(200, lambda: self.status_bar.config(text=f"{len(self.all_downloaded_files)} songs loaded"))
 
 
 
