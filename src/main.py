@@ -54,10 +54,10 @@ import utils.local_search
 
 try:
     from apply_optimizations import apply_all_optimizations
+
     OPTIMIZATIONS_AVAILABLE = True
 except ImportError:
     OPTIMIZATIONS_AVAILABLE = False
-
 
 
 from __init__ import *
@@ -65,7 +65,7 @@ from clear_current_selection import (
     clear_all_current_song_selections,
     clear_current_song_selection,
     clear_current_song_selection_in_downloads,
-    clear_current_song_selection_in_playlists
+    clear_current_song_selection_in_playlists,
 )
 from artist_tab_manager import init_artist_tab_manager
 from cache_cleaner import (
@@ -74,12 +74,13 @@ from cache_cleaner import (
     _clear_thumbnail_cache,
     _clear_playlist_content_cache,
     _clear_duration_cache,
-    _clear_all_caches
+    _clear_all_caches,
 )
 
 # Import du système IA
 try:
     from ai_menu_system import setup_ai_menu_system
+
     AI_MENU_AVAILABLE = True
     print("🤖 Système de menu IA disponible")
 except ImportError as e:
@@ -89,6 +90,7 @@ except ImportError as e:
 # Configuration SSL globale
 try:
     import ssl_config
+
     print("🔒 Configuration SSL robuste chargée")
 except ImportError:
     print("⚠️ Configuration SSL non disponible")
@@ -97,55 +99,54 @@ except ImportError:
 class MusicPlayer:
     def __init__(self, root):
         self.root = root
-    
+
     def schedule_status(self, text, delay_ms=400):
         """Planifie une mise à jour de la barre de statut avec debounce."""
         # Annule une mise à jour précédente si elle existe
-        if hasattr(self, '_status_after_id') and self._status_after_id:
+        if hasattr(self, "_status_after_id") and self._status_after_id:
             try:
                 self.root.after_cancel(self._status_after_id)
             except Exception:
                 pass
             self._status_after_id = None
-        
+
         def do_update():
             try:
-                if hasattr(self, 'status_bar') and self.status_bar:
+                if hasattr(self, "status_bar") and self.status_bar:
                     self.status_bar.config(text=text)
             finally:
                 self._status_after_id = None
-        
+
         # Programme la mise à jour
         self._status_after_id = self.root.after(delay_ms, do_update)
-    
+
     def init(self):
         self.current_version = "0.0.4"
         self.root.title("PP Player")
         self.root.geometry(GEOMETRY)
         # Fixer la taille mais permettre le déplacement
         self.root.resizable(False, False)
-        self.root.configure(bg='#2d2d2d')
+        self.root.configure(bg="#2d2d2d")
         root.option_add("*Button.takeFocus", 0)
         root.option_add("*TNotebook.Tab.takeFocus", 0)
         root.option_add("*TNotebook.takeFocus", 0)
-        
+
         # self.root_path = os.path.dirname(__file__) # /music_player
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, "frozen", False):
             # Exécution avec PyInstaller
             self.root_path = os.path.dirname(sys.executable)
         else:
             # Exécution normale
             self.root_path = os.path.dirname(__file__)
-        
-        
+
         self.AutoUpdater = auto_updater.AutoUpdater(
             current_version=self.current_version,
             parent=self.root,
             config_files_to_preserve=["downloads_path.txt"],
             folders_to_preserve=["logs", "downloads"],
-            exclude_from_update=["logs", "downloads"]
+            exclude_from_update=["logs", "downloads"],
         )
-        
+
         self.FileServices = file_services.FileServices(self)
         self.Loader = loader.Loader(self)
         self.Setup = setup.Setup(self)
@@ -155,33 +156,37 @@ class MusicPlayer:
         self.Subtitles = subtitles.Subtitles(self)
         self.all_downloaded_files = []
         self.LocalSearch = utils.local_search.LocalSearch(self.all_downloaded_files)
-        
-        
+
         # self.Player = player.Player(self)
         # self.SearchTab = search_tab.SearchTab(self)
         # self.LibraryTab = library_tab.LibraryTab(self)
         # self.ArtistTabManager = artist_tab.core.ArtistTabManager(self)
-        
-        
+
         # self.RecommendationSystem = recommendation.RecommendationSystem(self)
         # self.SimpleLogger = simple_logger.get_logger(os.getcwd())
         # self.LoggerWindow = simple_logs_viewer.SimpleLogsViewer(None, self.SimpleLogger, music_player=self)
         # self.CacheCleaner = cache_cleaner.CacheCleaner(self)
 
-        
-        ctk.set_appearance_mode('dark')
-        
-        set_color("COLOR_SELECTED_HOVERED", self._lighten_color(COLOR_SELECTED, HOVER_LIGHT_PERCENTAGE))
-        set_color("COLOR_BACKGROUND_HOVERED", self._lighten_color(COLOR_BACKGROUND, HOVER_LIGHT_PERCENTAGE))
-        set_color("COLOR_MULTISELECTION_HOVERED", self._lighten_color(COLOR_MULTISELECTION, HOVER_LIGHT_PERCENTAGE))
+        ctk.set_appearance_mode("dark")
+
+        set_color(
+            "COLOR_SELECTED_HOVERED",
+            self._lighten_color(COLOR_SELECTED, HOVER_LIGHT_PERCENTAGE),
+        )
+        set_color(
+            "COLOR_BACKGROUND_HOVERED",
+            self._lighten_color(COLOR_BACKGROUND, HOVER_LIGHT_PERCENTAGE),
+        )
+        set_color(
+            "COLOR_MULTISELECTION_HOVERED",
+            self._lighten_color(COLOR_MULTISELECTION, HOVER_LIGHT_PERCENTAGE),
+        )
         self.get_color = get_color
-        
+
         # Initialisation pygame
         pygame.mixer.init()
 
         pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=4096)
-
-
 
         # Variables
         self.main_playlist = []
@@ -189,16 +194,16 @@ class MusicPlayer:
         self.paused = True
         self.volume = 0.2
         self.volume_offset = 0  # Offset de volume en pourcentage (-100 à +100)
-        
+
         self.scroll_timeout = None
-        
+
         # Charger le dossier de téléchargements personnalisé s'il existe
         self.downloads_folder = self._load_downloads_path()
-        
-        # print("self.downloads_folder:", self.downloads_folder)       
-        
+
+        # print("self.downloads_folder:", self.downloads_folder)
+
         # Déterminer le répertoire de base selon si on est en mode développement ou exécutable
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, "frozen", False):
             # Mode exécutable - le dossier de l'exécutable
             base_dir = os.path.dirname(sys.executable)
         else:
@@ -206,17 +211,17 @@ class MusicPlayer:
             base_dir = os.path.dirname(os.path.abspath(__file__))
 
         candidate_dirs = [
-            os.path.join(base_dir, 'ffmpeg'),           # À côté de l'exécutable
-            base_dir,                                   # Même dossier que l'exécutable
-            os.path.join(base_dir, '_internal', 'ffmpeg'),  # Dans _internal/ffmpeg
-            os.path.join(base_dir, '_internal'),        # Directement dans _internal
-            os.path.join(os.path.dirname(base_dir), 'ffmpeg')  # Dans le dossier parent
+            os.path.join(base_dir, "ffmpeg"),  # À côté de l'exécutable
+            base_dir,  # Même dossier que l'exécutable
+            os.path.join(base_dir, "_internal", "ffmpeg"),  # Dans _internal/ffmpeg
+            os.path.join(base_dir, "_internal"),  # Directement dans _internal
+            os.path.join(os.path.dirname(base_dir), "ffmpeg"),  # Dans le dossier parent
         ]
 
         ffmpeg_dir = None
         for d in candidate_dirs:
-            ffmpeg_exe = os.path.join(d, 'ffmpeg.exe')
-            ffprobe_exe = os.path.join(d, 'ffprobe.exe')
+            ffmpeg_exe = os.path.join(d, "ffmpeg")
+            ffprobe_exe = os.path.join(d, "ffprobe")
             if os.path.exists(ffmpeg_exe) and os.path.exists(ffprobe_exe):
                 ffmpeg_dir = d
                 break
@@ -224,35 +229,36 @@ class MusicPlayer:
         # Ajouter au PATH pour yt_dlp si trouvé
         # if ffmpeg_dir and ffmpeg_dir not in os.environ.get('PATH', ''):
         #     os.environ['PATH'] = ffmpeg_dir + os.pathsep + os.environ.get('PATH', '')
-        
+
         self.ffmpeg_dir = ffmpeg_dir
-        
-        
+
         print("ffmpeg_dir:", self.ffmpeg_dir)
-        
+
         self.ydl_opts = {
-            'format': 'bestaudio/best',
-            'noplaylist': True,
-            'quiet': True,
-            'no_warnings': True,
-            'outtmpl': os.path.join(self.downloads_folder, '%(title)s.%(ext)s'),
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            }],
+            "format": "bestaudio/best",
+            "noplaylist": True,
+            "quiet": True,
+            "no_warnings": True,
+            "outtmpl": os.path.join(self.downloads_folder, "%(title)s.%(ext)s"),
+            "postprocessors": [
+                {
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                    "preferredquality": "192",
+                }
+            ],
             # Ajout pour le streaming progressif
-            'external_downloader': 'ffmpeg',
+            "external_downloader": "ffmpeg",
             # Optimisations pour la recherche
             # 'extract_flat': True,
             # 'simulate': True,
             # 'skip_download': True,
-            'update': True
+            "update": True,
         }
         # Fournir explicitement l'emplacement de ffmpeg à yt_dlp si disponible
         if self.ffmpeg_dir:
-            self.ydl_opts['ffmpeg_location'] = self.ffmpeg_dir
-        
+            self.ydl_opts["ffmpeg_location"] = self.ffmpeg_dir
+
         self.is_searching = False
         self.current_search_query = ""
         self.search_results_count = 0
@@ -267,25 +273,24 @@ class MusicPlayer:
 
         # Variables pour le lazy loading YouTube
         self.initial_search_count = 10  # Nombre de résultats pour la recherche initiale
-        self.lazy_load_increment = 10   # Nombre de résultats à charger à chaque fois
-        self.has_more_results = False   # True s'il y a potentiellement plus de résultats
+        self.lazy_load_increment = 10  # Nombre de résultats à charger à chaque fois
+        self.has_more_results = False  # True s'il y a potentiellement plus de résultats
         self.total_available_results = 0  # Nombre total de résultats disponibles
 
         self.num_downloaded_files = 0
-        
+
         # Variables pour la sélection multiple
         self.selected_items = set()  # Set des chemins de fichiers sélectionnés
         self.selected_items_order = []  # Liste ordonnée des chemins de fichiers sélectionnés (pour maintenir l'ordre de clic)
         self.selection_frames = {}  # Dictionnaire {filepath: frame} pour retrouver les frames
         self.shift_selection_active = False  # True quand on est en mode sélection Shift
-        
+
         self.song_length = 0
         self.current_time = 0
 
         self.user_dragging = False
         self.base_position = 0
         self.update_suspended = False  # True si les mises à jour sont suspendues
-
 
         # Variables pour les modes de lecture
         self.random_mode = False
@@ -295,7 +300,9 @@ class MusicPlayer:
         self.volume_offsets = {}  # Dictionnaire {filepath: offset_volume}
         self.thumbnail_offsets = {}
         self.config_file = os.path.join(self.downloads_folder, "player_config.json")
-        self.initializing = True  # Flag pour éviter de sauvegarder pendant l'initialisation
+        self.initializing = (
+            True  # Flag pour éviter de sauvegarder pendant l'initialisation
+        )
 
         # Variable pour le périphérique audio actuel
         self.current_audio_device = None  # Nom du périphérique audio actuel
@@ -326,44 +333,58 @@ class MusicPlayer:
         # self.update_thread = threading.Thread(target=self.update_time, daemon=True)
         # self.update_thread.start()
 
-        self.current_downloads = set()  # Pour suivre les URLs en cours de téléchargement
-        self.current_download_title = ""  # Pour stocker le titre en cours de téléchargement
+        self.current_downloads = (
+            set()
+        )  # Pour suivre les URLs en cours de téléchargement
+        self.current_download_title = (
+            ""  # Pour stocker le titre en cours de téléchargement
+        )
         self.pending_playlist_additions = {}  # Dictionnaire {url: [liste_playlists]} pour les ajouts en attente
         self.pending_queue_additions = {}  # Dictionnaire {url: True} pour les ajouts à la queue en attente
         self.pending_play_after_current = {}  # Dictionnaire {url: True} pour les "play after current" en attente
         self.pending_queue_first_additions = {}  # Dictionnaire {url: True} pour les ajouts en premier dans la queue en attente
-        self.queue_items = set()  # Set des indices (positions) qui font partie de la queue
-        self.resize_timer = None  # Pour éviter de redessiner trop souvent pendant le redimensionnement
+        self.queue_items = (
+            set()
+        )  # Set des indices (positions) qui font partie de la queue
+        self.resize_timer = (
+            None  # Pour éviter de redessiner trop souvent pendant le redimensionnement
+        )
 
         # Variables pour le chargement des miniatures
-        self.thumbnail_loading_timer_id = None  # ID du timer de chargement des miniatures
+        self.thumbnail_loading_timer_id = (
+            None  # ID du timer de chargement des miniatures
+        )
 
         # Variables pour l'optimisation de la recherche
         self.search_timer = None  # Timer pour le debounce de la recherche
-        self.search_delay = 300  # Délai de base en millisecondes avant de lancer la recherche
+        self.search_delay = (
+            300  # Délai de base en millisecondes avant de lancer la recherche
+        )
         self.normalized_filenames = {}  # Cache des noms de fichiers normalisés
         self.extended_search_cache = {}  # Cache étendu incluant artiste et album pour la recherche
-        
+
         # Cache pour optimiser les performances
         self.widget_cache = {}  # Cache des widgets réutilisables
         self.thumbnail_cache = {}  # Cache des miniatures chargées
 
         # Variables pour mesurer le temps de recherche
         self.search_start_time = None  # Temps de début de recherche
-        self.library_search_start_time = None  # Temps de début de recherche bibliothèque
+        self.library_search_start_time = (
+            None  # Temps de début de recherche bibliothèque
+        )
 
         # Variables pour les statistiques
         self.last_search_time = 0.0  # Dernier temps de recherche
 
         # Variables pour les statistiques détaillées
         self.stats = {
-            'songs_played': 0,  # Nombre de musiques lues (70% ou plus)
-            'total_listening_time': 0.0,  # Temps total d'écoute en secondes
-            'searches_count': 0,  # Nombre de recherches effectuées
-            'current_song_start_time': None,  # Temps de début de la chanson actuelle
-            'current_song_listened_time': 0.0,  # Temps écouté de la chanson actuelle
-            'current_song_duration': 0.0,  # Durée de la chanson actuelle
-            'played_songs': set()  # Set des chansons déjà comptées comme lues
+            "songs_played": 0,  # Nombre de musiques lues (70% ou plus)
+            "total_listening_time": 0.0,  # Temps total d'écoute en secondes
+            "searches_count": 0,  # Nombre de recherches effectuées
+            "current_song_start_time": None,  # Temps de début de la chanson actuelle
+            "current_song_listened_time": 0.0,  # Temps écouté de la chanson actuelle
+            "current_song_duration": 0.0,  # Durée de la chanson actuelle
+            "played_songs": set(),  # Set des chansons déjà comptées comme lues
         }
 
         # Variables pour gérer les callbacks différés de manière sécurisée
@@ -377,7 +398,9 @@ class MusicPlayer:
         # Faire pointer self.main_playlist vers la main playlist pour compatibilité
         self.main_playlist = self.playlists[self.current_playlist_name]
         self.current_viewing_playlist = None  # Playlist actuellement visualisée
-        self.main_playlist_from_playlist = False  # True si la main playlist provient d'une playlist
+        self.main_playlist_from_playlist = (
+            False  # True si la main playlist provient d'une playlist
+        )
         # self._last_window_start = None  # Index du début de la fenêtre
         # self._last_window_end = None  # Index de la fin de la fenêtre
 
@@ -390,7 +413,9 @@ class MusicPlayer:
 
         # Variables pour l'auto-scroll
         self.auto_scroll_enabled = False  # True si l'auto-scroll est activé
-        self.manual_scroll_detected = False  # True si l'utilisateur a scrollé manuellement
+        self.manual_scroll_detected = (
+            False  # True si l'utilisateur a scrollé manuellement
+        )
 
         # Variables pour l'animation du titre
         self.title_animation_active = False  # True si l'animation du titre est en cours
@@ -398,9 +423,11 @@ class MusicPlayer:
         self.title_full_text = ""  # Texte complet du titre
         self.title_scroll_position = 0  # Position actuelle du défilement
         self.title_pause_counter = 0  # Compteur pour la pause entre les cycles
-        
+
         # Variables pour l'animation du nom d'artiste
-        self.artist_name_animation_active = False  # True si l'animation du nom d'artiste est en cours
+        self.artist_name_animation_active = (
+            False  # True si l'animation du nom d'artiste est en cours
+        )
         self.artist_name_animation_id = None  # ID du timer d'animation du nom d'artiste
         self.artist_name_full_text = ""  # Texte complet du nom d'artiste
         self.artist_name_scroll_position = 0  # Position actuelle du défilement
@@ -423,7 +450,9 @@ class MusicPlayer:
         self.original_search_content = None  # Contenu original de l'onglet recherche
         self.artist_videos_thread = None  # Thread de recherche des vidéos d'artiste
         self.artist_releases_thread = None  # Thread de recherche des sorties d'artiste
-        self.artist_playlists_thread = None  # Thread de recherche des playlists d'artiste
+        self.artist_playlists_thread = (
+            None  # Thread de recherche des playlists d'artiste
+        )
         self.artist_search_cancelled = False  # Flag pour annuler les recherches artiste
 
         # Variables pour le cache des contenus artiste
@@ -432,29 +461,32 @@ class MusicPlayer:
 
         # Variables pour la gestion du bouton retour unique dans les onglets artiste
         self.artist_tab_back_btn = None  # Bouton retour unique
-        self.artist_tab_active_sorties = False  # True si du contenu de playlist est affiché dans Sorties
-        self.artist_tab_active_playlists = False  # True si du contenu de playlist est affiché dans Playlists
+        self.artist_tab_active_sorties = (
+            False  # True si du contenu de playlist est affiché dans Sorties
+        )
+        self.artist_tab_active_playlists = (
+            False  # True si du contenu de playlist est affiché dans Playlists
+        )
 
         # Variables pour le système de recommandations
         self.recommendation_enabled = False  # True si les recommandations sont activées
         self.recommendation_mode = "sparse"  # "sparse" ou "add"
         self.last_recommendation_mode = "sparse"  # Dernier mode utilisé pour l'aperçu
-        
+
         # Variables pour les likes et favorites
         self.liked_songs = set()  # Set des chansons likées
         self.favorite_songs = set()  # Set des chansons favorites
 
         self.all_widgets = {}
         self.visible_widgets = {}
-        self.main_playlist_all_widgets ={}
+        self.main_playlist_all_widgets = {}
         self.main_playlist_visible_widgets = {}
-        
+
         self.Setup.setup()
-        
+
         # Initialiser le gestionnaire de fichiers
         self.FileTracker.init_file_tracker()
 
-        
         self.MainPlaylist._setup_dynamic_scroll()
 
         # Initialiser le périphérique audio actuel si pas encore défini
@@ -463,7 +495,7 @@ class MusicPlayer:
 
         # Compter les fichiers téléchargés au démarrage
         self.FileServices._count_downloaded_files()
-        
+
         # Optimisations pour le déplacement de fenêtre
         self.setup_window_move_optimization()
 
@@ -471,22 +503,23 @@ class MusicPlayer:
         self.repo_owner = "Liuuuv"
         self.repo_name = "PP-Player"
         self.current_version = "0.0.1"  # Version actuelle de l'app
-                
+
         # self.colorize_ttk_frames(root)
-    
+
     def check_for_updates_in_background(self):
         """Vérifie les mises à jour en arrière-plan"""
         try:
             # Chemin vers le script d'update
             update_script = os.path.join(os.path.dirname(__file__), "auto_update.py")
-            
+
             if os.path.exists(update_script):
                 # Lancer en arrière-plan sans bloquer l'application
-                subprocess.Popen([sys.executable, update_script, "--check"], 
-                            creationflags=subprocess.CREATE_NO_WINDOW)
+                subprocess.Popen(
+                    [sys.executable, update_script, "--check"],
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                )
         except:
             pass
-
 
     def setup_ai_system(self):
         """Configure le système d'IA"""
@@ -494,10 +527,10 @@ class MusicPlayer:
             try:
                 self.ai_menu_system = setup_ai_menu_system(self)
                 print("🤖 Système de menu IA configuré avec succès")
-                
+
                 # Créer le bouton IA après l'initialisation du système
                 self.create_ai_button_after_init()
-                
+
             except Exception as e:
                 print(f"⚠️ Erreur configuration menu IA: {e}")
                 self.ai_menu_system = None
@@ -506,19 +539,22 @@ class MusicPlayer:
 
     def create_ai_button_after_init(self):
         """Crée le bouton IA après l'initialisation du système IA"""
-        if hasattr(self, 'ai_menu_system') and self.ai_menu_system:
+        if hasattr(self, "ai_menu_system") and self.ai_menu_system:
             try:
                 # Trouver le frame des boutons en cherchant le bouton auto_scroll
                 def find_buttons_frame(widget):
                     """Trouve le frame des boutons récursivement"""
                     try:
                         for child in widget.winfo_children():
-                            if hasattr(child, 'winfo_children'):
+                            if hasattr(child, "winfo_children"):
                                 # Vérifier si ce widget contient le bouton auto_scroll
                                 for grandchild in child.winfo_children():
-                                    if hasattr(self, 'auto_scroll_btn') and grandchild == self.auto_scroll_btn:
+                                    if (
+                                        hasattr(self, "auto_scroll_btn")
+                                        and grandchild == self.auto_scroll_btn
+                                    ):
                                         return child
-                                
+
                                 # Chercher récursivement
                                 result = find_buttons_frame(child)
                                 if result:
@@ -526,27 +562,27 @@ class MusicPlayer:
                     except:
                         pass
                     return None
-                
+
                 buttons_frame = find_buttons_frame(self.root)
-                
+
                 # Utiliser le bouton IA déjà créé dans setup.py
-                if hasattr(self, 'ai_button'):
+                if hasattr(self, "ai_button"):
                     # Configurer le bouton existant avec le système de menu IA
                     self.ai_button.config(command=self.ai_menu_system.show_ai_menu)
-                    
+
                     # Mettre à jour l'apparence selon l'état
                     self.ai_menu_system.ai_button = self.ai_button
                     self.ai_menu_system.update_button_appearance()
-                    
+
                     # Créer le menu contextuel
                     self.ai_menu_system.create_context_menu()
-                    
+
                     print("🤖 Bouton IA configuré avec succès")
                     return True
                 else:
                     print("⚠️ Bouton IA non trouvé dans l'interface")
                     return False
-                    
+
             except Exception as e:
                 print(f"⚠️ Erreur création bouton IA: {e}")
                 return False
@@ -557,10 +593,10 @@ class MusicPlayer:
     def setup_window_move_optimization(self):
         """Configure les optimisations pour le déplacement de fenêtre"""
         # Détecter le début du déplacement de fenêtre
-        self.root.bind('<Button-1>', self._on_window_click)
-        self.root.bind('<B1-Motion>', self._on_window_drag)
-        self.root.bind('<ButtonRelease-1>', self._on_window_release)
-        
+        self.root.bind("<Button-1>", self._on_window_click)
+        self.root.bind("<B1-Motion>", self._on_window_drag)
+        self.root.bind("<ButtonRelease-1>", self._on_window_release)
+
         # Surveiller les changements de position de fenêtre
         self.last_window_position = (self.root.winfo_x(), self.root.winfo_y())
         self._monitor_window_position()
@@ -590,28 +626,28 @@ class MusicPlayer:
     def _monitor_window_position(self):
         """Surveille les changements de position de fenêtre"""
         try:
-            if hasattr(self, '_app_destroyed') and self._app_destroyed:
+            if hasattr(self, "_app_destroyed") and self._app_destroyed:
                 return
-                
+
             current_pos = (self.root.winfo_x(), self.root.winfo_y())
-            
+
             if self.last_window_position != current_pos:
                 # La fenêtre a bougé
                 if not self.window_moving:
                     self.window_moving = True
                     self.update_suspended = True
-                
+
                 self.last_window_position = current_pos
-                
+
                 # Programmer la fin du déplacement après un délai
-                if hasattr(self, 'window_move_timer'):
+                if hasattr(self, "window_move_timer"):
                     self.root.after_cancel(self.window_move_timer)
-                
+
                 self.window_move_timer = self.root.after(200, self._end_window_move)
-            
+
             # Continuer la surveillance
             self.root.after(50, self._monitor_window_position)
-            
+
         except (tk.TclError, AttributeError):
             # Interface détruite
             pass
@@ -623,15 +659,19 @@ class MusicPlayer:
 
     def safe_after(self, delay, callback):
         """Version sécurisée de self.root.after qui évite les erreurs de callbacks orphelins"""
-        if hasattr(self, '_app_destroyed') and self._app_destroyed:
+        if hasattr(self, "_app_destroyed") and self._app_destroyed:
             return None
 
         def safe_callback():
             try:
                 # Vérifications multiples pour éviter les erreurs
-                if (not hasattr(self, '_app_destroyed') or not self._app_destroyed and 
-                    hasattr(self, 'root') and self.root and 
-                    hasattr(self.root, 'winfo_exists')):
+                if (
+                    not hasattr(self, "_app_destroyed")
+                    or not self._app_destroyed
+                    and hasattr(self, "root")
+                    and self.root
+                    and hasattr(self.root, "winfo_exists")
+                ):
                     try:
                         if self.root.winfo_exists():
                             callback()
@@ -645,9 +685,9 @@ class MusicPlayer:
                     print(f"Erreur dans callback différé: {e}")
 
         try:
-            if hasattr(self, 'root') and self.root:
+            if hasattr(self, "root") and self.root:
                 callback_id = self.root.after(delay, safe_callback)
-                if hasattr(self, '_pending_callbacks'):
+                if hasattr(self, "_pending_callbacks"):
                     self._pending_callbacks.add(callback_id)
                 return callback_id
         except (tk.TclError, AttributeError):
@@ -656,9 +696,9 @@ class MusicPlayer:
 
     def cancel_pending_callbacks(self):
         """Annule tous les callbacks en attente"""
-        if not hasattr(self, '_pending_callbacks'):
+        if not hasattr(self, "_pending_callbacks"):
             return
-            
+
         for callback_id in list(self._pending_callbacks):
             try:
                 self.root.after_cancel(callback_id)
@@ -686,13 +726,12 @@ class MusicPlayer:
         """Remet à zéro l'état du contenu de playlist pour un onglet spécifique ou tous"""
         return self.artist_tab_manager._reset_playlist_content_state(tab_name)
 
-
     def on_closing(self):
         """Gère la fermeture propre de l'application"""
 
         # Sauvegarder les données IA avant la fermeture
         try:
-            if hasattr(self, 'ai_menu_system') and self.ai_menu_system:
+            if hasattr(self, "ai_menu_system") and self.ai_menu_system:
                 self.ai_menu_system.save_ai_data_on_exit()
         except Exception as e:
             print(f"⚠️ Erreur sauvegarde IA à la fermeture: {e}")
@@ -726,7 +765,9 @@ class MusicPlayer:
                 # Feedback visuel temporaire
                 original_text = status_text
                 self.status_bar.config(text="✓ Copié dans le presse-papier")
-                self.safe_after(1500, lambda: self.status_bar.config(text=original_text))
+                self.safe_after(
+                    1500, lambda: self.status_bar.config(text=original_text)
+                )
         except Exception as e:
             print(f"Erreur lors de la copie: {e}")
 
@@ -740,233 +781,249 @@ class MusicPlayer:
     def on_escape_pressed(self, event):
         """Gère l'appui sur la touche Échap"""
         return inputs.on_escape_pressed(self, event)
-    
+
     # Raccourcis clavier globaux
     def on_global_play_pause(self, event):
         """Raccourci global Ctrl+Alt+P pour play/pause"""
         return inputs.on_global_play_pause(self, event)
-    
+
     def on_global_next_track(self, event):
         """Raccourci global Ctrl+Alt+N pour chanson suivante"""
         return inputs.on_global_next_track(self, event)
-    
+
     def on_global_prev_track(self, event):
         """Raccourci global Ctrl+Alt+B pour chanson précédente"""
         return inputs.on_global_prev_track(self, event)
-    
+
     def on_global_volume_up(self, event):
         """Raccourci global Ctrl+Alt+Up pour augmenter le volume"""
         return inputs.on_global_volume_up(self, event)
-    
+
     def on_global_volume_down(self, event):
         """Raccourci global Ctrl+Alt+Down pour diminuer le volume"""
         return inputs.on_global_volume_down(self, event)
-    
+
     def on_global_volume_key_release(self, event):
         """Appelé quand les touches de volume sont relâchées"""
         return inputs.on_global_volume_key_release(self, event)
-    
+
     def on_global_seek_forward(self, event):
         """Raccourci global Ctrl+Alt+→ pour avancer de 5s"""
         return inputs.on_global_seek_forward(self, event)
-    
+
     def on_global_seek_backward(self, event):
         """Raccourci global Ctrl+Alt+← pour reculer de 5s"""
         return inputs.on_global_seek_backward(self, event)
-    
+
     def on_test_downloads(self, event):
         """Raccourci global Ctrl+Alt+T pour tester les téléchargements"""
         self.add_test_downloads()
         return "break"
-    
+
     def show_download_dialog(self):
         """Affiche une boîte de dialogue pour importer des musiques ou playlists"""
         return inputs.show_download_dialog(self)
-    
+
     def setup_import_context_menu(self):
         """Configure le menu contextuel pour le bouton d'import"""
         # Créer le menu contextuel
-        self.import_context_menu = tk.Menu(self.root, tearoff=0, bg='#3d3d3d', fg='white')
-        self.import_context_menu.add_command(
-            label="📋 Voir les logs",
-            command=self.show_import_logs
+        self.import_context_menu = tk.Menu(
+            self.root, tearoff=0, bg="#3d3d3d", fg="white"
         )
-        
+        self.import_context_menu.add_command(
+            label="📋 Voir les logs", command=self.show_import_logs
+        )
+
         # Bind du clic droit sur le bouton d'import
         self.import_button.bind("<Button-3>", self.show_import_context_menu)
-    
+
     def show_import_context_menu(self, event):
         """Affiche le menu contextuel du bouton d'import"""
         try:
             self.import_context_menu.tk_popup(event.x_root, event.y_root)
         finally:
             self.import_context_menu.grab_release()
-    
+
     def show_import_logs(self):
         """Affiche la fenêtre des logs d'importation"""
         from simple_logger import get_logger
         from simple_logs_viewer import SimpleLogsViewer
+
         logger = get_logger(self.downloads_folder)
         # Utiliser le viewer unique de logs
         logs_viewer = SimpleLogsViewer(self.root, logger, self)
         logs_viewer.show_window()
-    
-    
+
     def update_downloads_display(self):
         """Met à jour l'affichage des téléchargements"""
         return downloads_tab.update_downloads_display(self)
-    
+
     def remove_completed_download(self, url):
         """Supprime un téléchargement terminé de l'affichage"""
         return downloads_tab.remove_completed_download(self, url)
-    
+
     def add_download_to_tab(self, url, title, video_data=None, file_path=None):
         """Ajoute un téléchargement à l'onglet"""
-        return downloads_tab.add_download_to_tab(self, url, title, video_data, file_path)
-    
+        return downloads_tab.add_download_to_tab(
+            self, url, title, video_data, file_path
+        )
+
     def add_file_import_to_tab(self, file_path, title=None):
         """Ajoute un import de fichier à l'onglet téléchargements"""
         return downloads_tab.add_file_import_to_tab(self, file_path, title)
-    
+
     def _load_download_thumbnail_from_file(self, label, file_path):
         """Charge et affiche la miniature d'un fichier local"""
         return downloads_tab._load_download_thumbnail_from_file(self, label, file_path)
-    
+
     def toggle_downloads_pause(self):
         """Bascule entre pause et reprise des téléchargements"""
         return downloads_tab.toggle_downloads_pause(self)
-    
+
     def update_download_progress(self, url, progress, status=None):
         """Met à jour la progression d'un téléchargement"""
         return downloads_tab.update_download_progress(self, url, progress, status)
-    
+
     def simulate_download_progress(self, url):
         """Simule la progression d'un téléchargement (pour test)"""
         return downloads_tab.simulate_download_progress(self, url)
-    
+
     def create_download_item_widget(self, download_item):
         """Crée un widget d'élément de téléchargement dans le style des musiques téléchargées"""
         return downloads_tab.create_download_item_widget(self, download_item)
-    
+
     def update_download_item_appearance(self, download_item):
         """Met à jour l'apparence d'un élément de téléchargement selon son état"""
         return downloads_tab.update_download_item_appearance(self, download_item)
-    
+
     def handle_delete_download(self, download_item):
         """Gère la suppression/annulation d'un téléchargement selon son état"""
         return downloads_tab.handle_delete_download(self, download_item)
-    
+
     def cancel_active_download(self, download_item):
         """Annule un téléchargement actif"""
         return downloads_tab.cancel_active_download(self, download_item)
-    
+
     def update_progress_overlay(self, download_item):
         """Met à jour la barre de progression verte en arrière-plan"""
         return downloads_tab.update_progress_overlay(self, download_item)
-    
+
     def _update_progress_overlay_delayed(self, download_item):
         """Mise à jour différée de la barre de progression"""
         return downloads_tab._update_progress_overlay_delayed(self, download_item)
-    
+
     def _load_download_thumbnail_from_url(self, label, url):
         """Charge et affiche la miniature d'un téléchargement depuis une URL"""
         return downloads_tab._load_download_thumbnail_from_url(self, label, url)
-    
+
     def _update_thumbnail_label(self, label, photo):
         """Met à jour le label de miniature dans le thread principal"""
         return downloads_tab._update_thumbnail_label(self, label, photo)
-    
+
     def remove_download_item(self, download_item):
         """Supprime un élément de téléchargement de la liste"""
         return downloads_tab.remove_download_item(self, download_item)
-    
+
     def scroll_to_current_download(self):
         """Scroll automatiquement vers le téléchargement en cours avec animation ease in out"""
         return downloads_tab.scroll_to_current_download(self)
-    
+
     def animate_scroll_to_position(self, start_pos, end_pos, duration=500, steps=30):
         """Anime le scroll avec ease in out"""
-        return downloads_tab.animate_scroll_to_position(self, start_pos, end_pos, duration, steps)
-    
+        return downloads_tab.animate_scroll_to_position(
+            self, start_pos, end_pos, duration, steps
+        )
+
     def go_to_top(self, canvas):
         return tools.go_to_top(self, canvas)
-    
+
     def add_test_downloads(self):
         """Ajoute des téléchargements de test"""
         return downloads_tab.add_test_downloads(self)
-    
+
     def clean_completed_downloads(self):
         """Supprime tous les téléchargements terminés avec succès"""
         return downloads_tab.clean_completed_downloads(self)
 
-    
     def remove_deleted_file_from_playlists(self, filepath):
         """Supprime un fichier supprimé de toutes les playlists"""
         return file_tracker.remove_deleted_file_from_playlists(self, filepath)
-    
+
     def check_missing_files(self):
         """Vérifie et nettoie les fichiers manquants"""
         return file_tracker.check_missing_files(self)
-    
+
     def add_file_to_tracker(self, filepath, playlist_name):
         """Ajoute un fichier au tracker"""
         return file_tracker.add_file_to_tracker(self, filepath, playlist_name)
-    
+
     def remove_file_from_tracker(self, filepath, playlist_name):
         """Supprime un fichier du tracker"""
         return file_tracker.remove_file_from_tracker(self, filepath, playlist_name)
-    
+
     # Fonctions pour les menus contextuels
     def show_file_context_menu(self, filepath, event=None):
         """Affiche un menu contextuel pour un fichier"""
         return ui_menus.show_file_context_menu(self, filepath, event)
-    
 
-    
     def _add_youtube_to_playlist_unified(self, video, playlist_name):
         """Ajoute une vidéo YouTube à une playlist (télécharge d'abord si nécessaire)"""
         return ui_menus._add_youtube_to_playlist_unified(self, video, playlist_name)
-    
+
     def _create_new_playlist_dialog_youtube_unified(self, video):
         """Crée une nouvelle playlist et y ajoute la vidéo YouTube"""
         return ui_menus._create_new_playlist_dialog_youtube_unified(self, video)
-    
+
     def _download_youtube_video(self, video, add_to_main_playlist=False, callback=None):
         """Télécharge une vidéo YouTube"""
-        return ui_menus._download_youtube_video(self, video, add_to_main_playlist, callback)
+        return ui_menus._download_youtube_video(
+            self, video, add_to_main_playlist, callback
+        )
 
     def _open_youtube_url(self, url):
         """Ouvre une URL YouTube dans le navigateur"""
         return ui_menus._open_youtube_url(self, url)
-    
+
     def _open_downloads_folder(self):
         """Ouvre le dossier downloads"""
         return ui_menus._open_downloads_folder(self)
-    
-    def _add_to_specific_playlist_with_youtube_support(self, filepath, playlist_name, youtube_item=None):
+
+    def _add_to_specific_playlist_with_youtube_support(
+        self, filepath, playlist_name, youtube_item=None
+    ):
         """Ajoute un élément à une playlist spécifique (télécharge d'abord si YouTube)"""
-        return ui_menus._add_to_specific_playlist_with_youtube_support(self, filepath, playlist_name, youtube_item)
-    
-    def _create_new_playlist_dialog_with_youtube_support(self, filepath, youtube_item=None):
+        return ui_menus._add_to_specific_playlist_with_youtube_support(
+            self, filepath, playlist_name, youtube_item
+        )
+
+    def _create_new_playlist_dialog_with_youtube_support(
+        self, filepath, youtube_item=None
+    ):
         """Crée une nouvelle playlist et y ajoute l'élément (télécharge d'abord si YouTube)"""
-        return ui_menus._create_new_playlist_dialog_with_youtube_support(self, filepath, youtube_item)
-    
+        return ui_menus._create_new_playlist_dialog_with_youtube_support(
+            self, filepath, youtube_item
+        )
+
     def _open_file_location_with_youtube_support(self, filepath, youtube_item=None):
         """Ouvre le dossier contenant le fichier (downloads pour YouTube)"""
-        return ui_menus._open_file_location_with_youtube_support(self, filepath, youtube_item)
-    
+        return ui_menus._open_file_location_with_youtube_support(
+            self, filepath, youtube_item
+        )
+
     def _open_on_youtube_with_youtube_support(self, filepath, youtube_item=None):
         """Ouvre sur YouTube (URL directe pour YouTube, recherche pour fichier local)"""
-        return ui_menus._open_on_youtube_with_youtube_support(self, filepath, youtube_item)
-    
+        return ui_menus._open_on_youtube_with_youtube_support(
+            self, filepath, youtube_item
+        )
+
     def _download_and_add_to_playlist(self, youtube_item, playlist_name):
         """Télécharge une vidéo YouTube et l'ajoute à une playlist"""
         return ui_menus._download_and_add_to_playlist(self, youtube_item, playlist_name)
-    
+
     def _open_file_location(self, filepath):
         """Ouvre le dossier contenant le fichier"""
         return ui_menus._open_file_location(self, filepath)
-    
+
     def _open_on_youtube(self, filepath):
         """Ouvre la vidéo sur YouTube"""
         return ui_menus._open_on_youtube(self, filepath)
@@ -1009,11 +1066,10 @@ class MusicPlayer:
         """Met à jour la barre de statistiques avec le temps de recherche"""
         return search_tab.results._update_stats_bar(self)
 
-    
     def on_tab_changed(self, event):
         """Gère le changement d'onglet"""
         # Annuler la sélection multiple lors du changement d'onglet (différé pour éviter les conflits)
-        if hasattr(self, 'selected_items') and self.selected_items:
+        if hasattr(self, "selected_items") and self.selected_items:
             self.safe_after(50, self.clear_selection)
 
         selected_tab = self.notebook.tab(self.notebook.select(), "text")
@@ -1022,12 +1078,10 @@ class MusicPlayer:
             pass
         elif selected_tab == "Bibliothèque":
             # Laisser un délai pour que l'onglet se charge complètement avant les interactions
-            self.safe_after(100, lambda: setattr(self, '_library_tab_ready', True))
+            self.safe_after(100, lambda: setattr(self, "_library_tab_ready", True))
             if self.current_library_tab == "téléchargées":
                 self._check_and_update_downloads_queue()
-            
-            
-            
+
             # self.downloads_container.config(height=height, width=610)
 
     def setup_search_tab(self):
@@ -1036,7 +1090,9 @@ class MusicPlayer:
     def setup_library_tab(self):
         setup.setup_library_tab(self)
 
-    def colorize_ttk_frames(self, widget, colors=("red", "green", "blue", "yellow", "cyan", "magenta")):
+    def colorize_ttk_frames(
+        self, widget, colors=("red", "green", "blue", "yellow", "cyan", "magenta")
+    ):
         return tools.colorize_ttk_frames(self, widget, colors)
 
     def _on_youtube_canvas_configure(self, event):
@@ -1059,10 +1115,9 @@ class MusicPlayer:
         """Vérifie la position du scroll et charge plus si nécessaire"""
         return search_tab.results._check_scroll_position(self)
 
-
     def switch_library_tab(self, tab_name):
         """Change l'onglet actif dans la bibliothèque"""
-        print('switch_library_tab appelée')
+        print("switch_library_tab appelée")
         self.current_library_tab = tab_name
 
         # Mettre à jour l'apparence des boutons
@@ -1074,7 +1129,10 @@ class MusicPlayer:
 
         # Vider le contenu actuel
         try:
-            if hasattr(self, 'library_content_frame') and self.library_content_frame.winfo_exists():
+            if (
+                hasattr(self, "library_content_frame")
+                and self.library_content_frame.winfo_exists()
+            ):
                 for widget in self.library_content_frame.winfo_children():
                     try:
                         if widget.winfo_exists():
@@ -1095,10 +1153,10 @@ class MusicPlayer:
     def _check_and_update_downloads_queue(self):
         """Vérifie si la queue des musiques a changé et met à jour l'affichage si nécessaire"""
         try:
-            if not hasattr(self, 'queue_items'):
+            if not hasattr(self, "queue_items"):
                 return
             # Vérifier si on a une queue précédente sauvegardée
-            if not hasattr(self, '_last_downloads_queue'):
+            if not hasattr(self, "_last_downloads_queue"):
                 # Première fois, sauvegarder la queue actuelle
                 self._last_downloads_queue = self.queue_items.copy()
                 return
@@ -1107,21 +1165,23 @@ class MusicPlayer:
                 # La queue a changé, mettre à jour l'affichage
                 self._last_downloads_queue = self.queue_items.copy()
                 # Programmer la mise à jour après que le contenu soit affiché
-                if hasattr(self, 'safe_after'):
+                if hasattr(self, "safe_after"):
                     self.safe_after(100, self._update_downloads_queue_visual)
                 else:
                     self.root.after(100, self._update_downloads_queue_visual)
         except Exception as e:
-            print(f"Erreur lors de la vérification de la queue des téléchargements: {e}")
+            print(
+                f"Erreur lors de la vérification de la queue des téléchargements: {e}"
+            )
 
     def _update_saved_downloads_queue(self):
         """Met à jour la queue sauvegardée pour la détection de changements"""
         try:
-            if hasattr(self, 'queue_items') and self.queue_items:
+            if hasattr(self, "queue_items") and self.queue_items:
                 self._last_downloads_queue = self.queue_items.copy()
             else:
                 self._last_downloads_queue = set()
-            
+
         except Exception as e:
             print(f"Erreur lors de la mise à jour de la queue sauvegardée: {e}")
 
@@ -1131,12 +1191,13 @@ class MusicPlayer:
 
     def _load_playlist_thumbnail_large(self, filepath, label):
         """Charge une miniature carrée plus grande pour une chanson dans une playlist"""
-        return library_tab.playlists._load_playlist_thumbnail_large(self, filepath, label)
+        return library_tab.playlists._load_playlist_thumbnail_large(
+            self, filepath, label
+        )
 
     def _load_playlist_thumbnail(self, filepath, label):
         """Charge une miniature pour une chanson dans une playlist"""
         return library_tab.playlists._load_playlist_thumbnail(self, filepath, label)
-
 
     def save_playlists(self):
         """Sauvegarde les playlists dans un fichier JSON"""
@@ -1145,126 +1206,126 @@ class MusicPlayer:
     def save_config(self):
         """Sauvegarde la configuration (volume global et offsets de volume)"""
         return tools.save_config(self)
-    
+
     def show_errors_dialog(self):
         """Affiche une fenêtre avec les erreurs système"""
         dialog = tk.Toplevel(self.root)
         dialog.title("Erreurs Système")
         dialog.geometry("600x400")
-        dialog.configure(bg='#2d2d2d')
+        dialog.configure(bg="#2d2d2d")
         dialog.resizable(True, True)
-        
+
         # Centrer la fenêtre
         dialog.transient(self.root)
         dialog.grab_set()
-        
+
         # Frame principal
-        main_frame = tk.Frame(dialog, bg='#2d2d2d')
+        main_frame = tk.Frame(dialog, bg="#2d2d2d")
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
+
         # Titre
         title_label = tk.Label(
             main_frame,
             text="Erreurs Système Détectées",
-            bg='#2d2d2d',
-            fg='white',
-            font=('TkDefaultFont', 12, 'bold')
+            bg="#2d2d2d",
+            fg="white",
+            font=("TkDefaultFont", 12, "bold"),
         )
         title_label.pack(pady=(0, 10))
-        
+
         # Frame pour la liste des erreurs avec scrollbar
-        list_frame = tk.Frame(main_frame, bg='#2d2d2d')
+        list_frame = tk.Frame(main_frame, bg="#2d2d2d")
         list_frame.pack(fill=tk.BOTH, expand=True)
-        
+
         # Scrollbar et Listbox
-        scrollbar = tk.Scrollbar(list_frame, bg='#2d2d2d')
+        scrollbar = tk.Scrollbar(list_frame, bg="#2d2d2d")
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
+
         listbox = tk.Listbox(
             list_frame,
-            bg='#3d3d3d',
-            fg='white',
-            selectbackground='#4a8fe7',
+            bg="#3d3d3d",
+            fg="white",
+            selectbackground="#4a8fe7",
             yscrollcommand=scrollbar.set,
-            font=('Consolas', 9)
+            font=("Consolas", 9),
         )
         listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.config(command=listbox.yview)
-        
+
         # Ajouter les erreurs
         if not self.system_errors:
             listbox.insert(tk.END, "Aucune erreur détectée.")
         else:
             for i, error in enumerate(self.system_errors):
-                timestamp = time.strftime("%H:%M:%S", time.localtime(error['timestamp']))
+                timestamp = time.strftime(
+                    "%H:%M:%S", time.localtime(error["timestamp"])
+                )
                 error_text = f"[{timestamp}] {error['message']}"
                 listbox.insert(tk.END, error_text)
-        
+
         # Frame pour les boutons
-        button_frame = tk.Frame(main_frame, bg='#2d2d2d')
+        button_frame = tk.Frame(main_frame, bg="#2d2d2d")
         button_frame.pack(fill=tk.X, pady=(10, 0))
-        
+
         # Bouton Clear Errors
         clear_btn = tk.Button(
             button_frame,
             text="Effacer les erreurs",
             command=lambda: self._clear_errors(listbox),
-            bg='#d9534f',
-            fg='white',
-            activebackground='#c9302c',
+            bg="#d9534f",
+            fg="white",
+            activebackground="#c9302c",
             relief="flat",
             bd=0,
             padx=20,
-            pady=5
+            pady=5,
         )
         clear_btn.pack(side=tk.LEFT, padx=(0, 10))
-        
+
         # Bouton Close
         close_btn = tk.Button(
             button_frame,
             text="Fermer",
             command=dialog.destroy,
-            bg='#5bc0de',
-            fg='white',
-            activebackground='#46b8da',
+            bg="#5bc0de",
+            fg="white",
+            activebackground="#46b8da",
             relief="flat",
             bd=0,
             padx=20,
-            pady=5
+            pady=5,
         )
         close_btn.pack(side=tk.RIGHT)
-    
+
     def _clear_errors(self, listbox):
         """Efface toutes les erreurs système"""
         self.system_errors.clear()
         listbox.delete(0, tk.END)
         listbox.insert(tk.END, "Aucune erreur détectée.")
-    
-    
-    
+
     def _is_valid_music_path(self, path):
         """Vérifie si un chemin a un format valide pour un fichier musical"""
         import re
-        
+
         # Vérifier que le chemin n'est pas vide
         if not path or not path.strip():
             return False
-        
+
         # Vérifier qu'il y a une extension
-        if '.' not in path:
+        if "." not in path:
             return False
-        
+
         # Extraire le nom de fichier (sans le chemin)
         filename = os.path.basename(path)
-        
+
         # Vérifier le format: doit avoir un nom et une extension
-        if not re.match(r'^.+\..+$', filename):
+        if not re.match(r"^.+\..+$", filename):
             return False
-        
+
         # Vérifier que l'extension est valide pour un fichier audio
-        valid_extensions = ['.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac', '.wma']
+        valid_extensions = [".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac", ".wma"]
         file_extension = os.path.splitext(filename)[1].lower()
-        
+
         return file_extension in valid_extensions
 
     def _reload_playlists(self):
@@ -1275,7 +1336,6 @@ class MusicPlayer:
         """Dialogue pour renommer une playlist"""
         return library_tab.playlists._rename_playlist_dialog(self, old_name)
 
-
     def _delete_playlist_dialog(self, playlist_name):
         """Dialogue pour confirmer la suppression d'une playlist"""
         return library_tab.playlists._delete_playlist_dialog(self, playlist_name)
@@ -1284,14 +1344,15 @@ class MusicPlayer:
         """Affiche le contenu d'une playlist dans une fenêtre avec le même style que les téléchargements"""
         return library_tab.playlists._show_playlist_content_window(self, playlist_name)
 
-
     def _play_from_playlist(self, filepath, playlist_name):
         """Joue une musique depuis une playlist spécifique"""
         return player._play_from_playlist(self, filepath, playlist_name)
 
     def _remove_from_playlist(self, filepath, playlist_name, item_frame, event=None):
         """Supprime une musique d'une playlist spécifique"""
-        return library_tab.playlists._remove_from_playlist(self, filepath, playlist_name, item_frame, event)
+        return library_tab.playlists._remove_from_playlist(
+            self, filepath, playlist_name, item_frame, event
+        )
 
     def _show_playlist_content_dialog(self, playlist_name):
         """Ancienne méthode - gardée pour compatibilité"""
@@ -1323,11 +1384,20 @@ class MusicPlayer:
     def _add_playlist_song_item(self, filepath, playlist_name, song_index):
         """Ajoute un élément de musique de playlist avec le même visuel que les téléchargements"""
         # return library_tab.playlists._add_playlist_song_item(self, filepath, playlist_name, song_index)
-        return tools._add_song_item(self, filepath, self.playlist_content_container, playlist_name=playlist_name, song_index=song_index, placement=song_index)
+        return tools._add_song_item(
+            self,
+            filepath,
+            self.playlist_content_container,
+            playlist_name=playlist_name,
+            song_index=song_index,
+            placement=song_index,
+        )
 
     def _remove_from_playlist_view(self, filepath, playlist_name, event=None):
         """Supprime une musique de la playlist et rafraîchit l'affichage"""
-        return library_tab.playlists._remove_from_playlist_view(self, filepath, playlist_name, event)
+        return library_tab.playlists._remove_from_playlist_view(
+            self, filepath, playlist_name, event
+        )
 
     def _update_playlist_title(self, playlist_name):
         """Met à jour le titre de la playlist avec le nombre de chansons"""
@@ -1335,7 +1405,9 @@ class MusicPlayer:
 
     def _play_playlist_from_song(self, playlist_name, song_index):
         """Lance la playlist depuis une musique spécifique"""
-        return library_tab.playlists._play_playlist_from_song(self, playlist_name, song_index)
+        return library_tab.playlists._play_playlist_from_song(
+            self, playlist_name, song_index
+        )
 
     def load_downloaded_files(self):
         """Charge et affiche tous les fichiers du dossier downloads"""
@@ -1344,7 +1416,7 @@ class MusicPlayer:
     def play_all_downloads_ordered(self):
         """Joue toutes les musiques téléchargées dans l'ordre"""
         return library_tab.downloads.play_all_downloads_ordered(self)
-    
+
     def _update_visible_items(self):
         return library_tab.downloads._update_visible_items(self)
 
@@ -1356,17 +1428,19 @@ class MusicPlayer:
         """Désactive temporairement les boutons de lecture pour éviter les clics multiples"""
         try:
             # Trouver et désactiver les boutons de lecture dans l'onglet downloads
-            if hasattr(self, 'library_content_frame'):
+            if hasattr(self, "library_content_frame"):
                 for widget in self.library_content_frame.winfo_children():
                     if isinstance(widget, ttk.Frame):
                         for child in widget.winfo_children():
                             if isinstance(child, tk.Button):
                                 # Vérifier si c'est un bouton de lecture (par sa commande)
                                 try:
-                                    command = child.cget('command')
-                                    if (command == self.play_all_downloads_ordered or
-                                        command == self.play_all_downloads_shuffle):
-                                        child.config(state='disabled')
+                                    command = child.cget("command")
+                                    if (
+                                        command == self.play_all_downloads_ordered
+                                        or command == self.play_all_downloads_shuffle
+                                    ):
+                                        child.config(state="disabled")
                                 except:
                                     pass
         except Exception as e:
@@ -1376,17 +1450,19 @@ class MusicPlayer:
         """Réactive les boutons de lecture"""
         try:
             # Trouver et réactiver les boutons de lecture dans l'onglet downloads
-            if hasattr(self, 'library_content_frame'):
+            if hasattr(self, "library_content_frame"):
                 for widget in self.library_content_frame.winfo_children():
                     if isinstance(widget, ttk.Frame):
                         for child in widget.winfo_children():
                             if isinstance(child, tk.Button):
                                 # Vérifier si c'est un bouton de lecture (par sa commande)
                                 try:
-                                    command = child.cget('command')
-                                    if (command == self.play_all_downloads_ordered or
-                                        command == self.play_all_downloads_shuffle):
-                                        child.config(state='normal')
+                                    command = child.cget("command")
+                                    if (
+                                        command == self.play_all_downloads_ordered
+                                        or command == self.play_all_downloads_shuffle
+                                    ):
+                                        child.config(state="normal")
                                 except:
                                     pass
         except Exception as e:
@@ -1395,38 +1471,40 @@ class MusicPlayer:
     def _on_scroll_with_update(self, event):
         """Gère le scroll avec mise à jour du scroll infini"""
         return search_tab.main_playlist._on_scroll_with_update(self, event)
-    
-  
-    
-        
+
     def _on_progressive_scroll(self, event=None):
         """Gère le scroll progressif (redirige vers dynamic_scroll)"""
         return search_tab.main_playlist._on_dynamic_scroll(self, event)
-    
+
     def _adjust_scroll_after_unload(self, unload_count, previous_scroll_position):
         """Ajuste la position du scroll après déchargement d'éléments"""
-        return search_tab.main_playlist._adjust_scroll_after_unload(self, unload_count, previous_scroll_position)
-    
+        return search_tab.main_playlist._adjust_scroll_after_unload(
+            self, unload_count, previous_scroll_position
+        )
+
     def _reorder_playlist_items(self):
         """Réorganise tous les éléments de la playlist dans l'ordre correct"""
         return search_tab.main_playlist._reorder_playlist_items(self)
-    
+
     def _adjust_scroll_after_top_load(self, items_added):
         """Ajuste la position du scroll après chargement d'éléments au début"""
         return search_tab.main_playlist._adjust_scroll_after_top_load(self, items_added)
-    
+
     def _simple_scroll_adjustment_after_top_load(self, items_added):
         """Ajustement simple du scroll après chargement vers le haut"""
-        return search_tab.main_playlist._simple_scroll_adjustment_after_top_load(self, items_added)
-            
+        return search_tab.main_playlist._simple_scroll_adjustment_after_top_load(
+            self, items_added
+        )
+
     def _old_smart_load_system(self):
         """Ancien système fenêtré 10+1+10 (conservé pour compatibilité)"""
         return search_tab.main_playlist._old_smart_load_system(self)
-       
-    
+
     def _display_filtered_downloads(self, files_to_display, preserve_scroll=False):
         """Affiche une liste filtrée de fichiers téléchargés (optimisé)"""
-        return library_tab.downloads._display_filtered_downloads(self, files_to_display, preserve_scroll)
+        return library_tab.downloads._display_filtered_downloads(
+            self, files_to_display, preserve_scroll
+        )
 
     def _restore_search_binding(self):
         """Restaure le binding de recherche après un refresh"""
@@ -1447,24 +1525,48 @@ class MusicPlayer:
     def _add_song_item_empty(self, filepath, container):
         """Charge une chanson dans un item de playlist"""
         return tools._add_song_item_empty(self, filepath, container)
-    
-    def _load_song_item(self, item_frame, container, playlist_name=None, song_index=None):
+
+    def _load_song_item(
+        self, item_frame, container, playlist_name=None, song_index=None
+    ):
         """Charge une chanson dans un item de playlist"""
-        return tools._load_song_item(self, item_frame, container, playlist_name, song_index)
-    
-    def _unload_song_item(self, item_frame, container, playlist_name=None, song_index=None):
+        return tools._load_song_item(
+            self, item_frame, container, playlist_name, song_index
+        )
+
+    def _unload_song_item(
+        self, item_frame, container, playlist_name=None, song_index=None
+    ):
         """Charge une chanson dans un item de playlist"""
-        return tools._unload_song_item(self, item_frame, container, playlist_name, song_index)
+        return tools._unload_song_item(
+            self, item_frame, container, playlist_name, song_index
+        )
 
     def _add_download_item_fast(self, filepath):
         """Version rapide de _add_download_item qui charge les miniatures en différé"""
         # return library_tab.downloads._add_download_item_fast(self, filepath)
         return tools._add_song_item(self, filepath, self.downloads_container)
         # return tools._add_song_item_empty(self, filepath, self.downloads_container)
-    
-    def _add_song_item(self, filepath_or_video, container, playlist_name=None, song_index=None, item_type="downloads", placement:int=None):
+
+    def _add_song_item(
+        self,
+        filepath_or_video,
+        container,
+        playlist_name=None,
+        song_index=None,
+        item_type="downloads",
+        placement: int = None,
+    ):
         """Ajoute un élément à la playlist avec un style rectangle uniforme"""
-        return tools._add_song_item(self, filepath_or_video, container, playlist_name, song_index, item_type, placement)
+        return tools._add_song_item(
+            self,
+            filepath_or_video,
+            container,
+            playlist_name,
+            song_index,
+            item_type,
+            placement,
+        )
 
     def _start_thumbnail_loading(self, files_to_display, container):
         """Lance le chargement différé des miniatures et durées"""
@@ -1516,11 +1618,15 @@ class MusicPlayer:
 
     def _is_thumbnail_cache_valid(self, filepath, cache_path):
         """Vérifie si la miniature en cache est encore valide"""
-        return library_tab.downloads._is_thumbnail_cache_valid(self, filepath, cache_path)
+        return library_tab.downloads._is_thumbnail_cache_valid(
+            self, filepath, cache_path
+        )
 
     def _create_cached_thumbnail(self, filepath, cache_path):
         """Crée et sauvegarde une miniature en cache"""
-        return library_tab.downloads._create_cached_thumbnail(self, filepath, cache_path)
+        return library_tab.downloads._create_cached_thumbnail(
+            self, filepath, cache_path
+        )
 
     def _load_cached_thumbnail(self, filepath, label):
         """Charge une miniature depuis le cache ou la crée si nécessaire"""
@@ -1528,8 +1634,9 @@ class MusicPlayer:
 
     def _load_download_thumbnail_fallback(self, filepath, label):
         """Méthode de fallback pour charger les miniatures (ancienne méthode)"""
-        return library_tab.downloads._load_download_thumbnail_fallback(self, filepath, label)
-
+        return library_tab.downloads._load_download_thumbnail_fallback(
+            self, filepath, label
+        )
 
     def _get_adaptive_search_delay(self, query):
         """Calcule un délai de recherche adaptatif selon la longueur et le contenu de la requête"""
@@ -1569,7 +1676,9 @@ class MusicPlayer:
 
     def _display_search_results_after_artist_page(self, results, scroll_position=None):
         """Affiche les résultats de recherche sauvegardés après restauration"""
-        return search_tab.results._display_search_results_after_artist_page(self, results, scroll_position)
+        return search_tab.results._display_search_results_after_artist_page(
+            self, results, scroll_position
+        )
 
     def _restore_scroll_position(self, scroll_position):
         """Restaure la position de scroll de manière sécurisée"""
@@ -1593,13 +1702,15 @@ class MusicPlayer:
 
     def _cache_thumbnail(self, video_id, thumbnail_image):
         """Met en cache une miniature chargée"""
-        return search_tab.results._cache_thumbnail(self, video_id, thumbnail_image)    
+        return search_tab.results._cache_thumbnail(self, video_id, thumbnail_image)
+
     def _show_result_context_menu(self, item, event):
         """Affiche le menu contextuel pour un fichier avec support YouTube"""
         return ui_menus._show_result_context_menu(self, item, event)
-    
+
     def print_traceback(self):
         import traceback
+
         traceback.print_stack()
 
     def _play_after_current(self, filepath):
@@ -1609,24 +1720,40 @@ class MusicPlayer:
     def _load_large_thumbnail(self, filepath, label, h_offset=0):
         """Charge une grande miniature carrée pour l'affichage principal"""
         return tools._load_large_thumbnail(self, filepath, label, h_offset)
+
     def _load_download_thumbnail(self, filepath, label):
         """Charge la miniature pour un fichier téléchargé"""
         return tools._load_download_thumbnail(self, filepath, label)
-    def _truncate_text_for_display(self, text, max_width_pixels=200, max_lines=1, font_family='TkDefaultFont', font_size=9):
+
+    def _truncate_text_for_display(
+        self,
+        text,
+        max_width_pixels=200,
+        max_lines=1,
+        font_family="TkDefaultFont",
+        font_size=9,
+    ):
         """Tronque le texte pour l'affichage avec des '...' si nécessaire"""
-        return tools._truncate_text_for_display(self, text, max_width_pixels, max_lines, font_family, font_size)
+        return tools._truncate_text_for_display(
+            self, text, max_width_pixels, max_lines, font_family, font_size
+        )
+
     def _get_audio_duration(self, filepath):
         """Récupère la durée d'un fichier audio"""
         return tools._get_audio_duration(self, filepath)
+
     def _get_audio_metadata(self, filepath):
         """Récupère les métadonnées d'un fichier audio (artiste et album)"""
         return tools._get_audio_metadata(self, filepath)
+
     def _format_artist_album_info(self, artist, album, filepath=None):
         """Formate les informations d'artiste, d'album et de date pour l'affichage"""
         return tools._format_artist_album_info(self, artist, album, filepath)
+
     def _extract_and_save_metadata(self, info, filepath):
         """Extrait les métadonnées depuis les informations YouTube et les sauvegarde dans le fichier MP3"""
         return tools._extract_and_save_metadata(self, info, filepath)
+
     def clear_thumbnail_label(self):
         """Efface la grande miniature actuelle"""
         # Nettoyer la frame précédente
@@ -1652,29 +1779,31 @@ class MusicPlayer:
         # Label pour la miniature - collé au côté gauche
         if self.thumbnail_image.winfo_exists():
             print("clear_thumbnail_label EXISTE")
-            self.thumbnail_image.config(text="♪", image='')
+            self.thumbnail_image.config(text="♪", image="")
         else:
-            print('NEXISTE PLUS AAAA')
+            print("NEXISTE PLUS AAAA")
             self.thumbnail_image = tk.Label(
                 self.thumbnail_frame,
-                bg=COLOR_APP_BG, 
+                bg=COLOR_APP_BG,
                 text="♪",
                 fg=COLOR_APP_FG,
-                font=('TkDefaultFont', 60),
+                font=("TkDefaultFont", 60),
                 width=300,
-                height=300
+                height=300,
             )
             self.sliding_panel.set_frame(self.thumbnail_image)
 
         # Pack à gauche sans padding pour coller au bord
-        self.thumbnail_image.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=0, pady=0)
+        self.thumbnail_image.pack(
+            side=tk.LEFT, fill=tk.BOTH, expand=True, padx=0, pady=0
+        )
 
     # def _show_playlist_menu(self, filepath, button):
     #     """Affiche un menu déroulant pour choisir la playlist"""
     #     import tkinter.ttk as ttk
 
     #     # Créer un menu contextuel
-    #     menu = tk.Menu(self.root, tearoff=0, bg='#3d3d3d', fg='white', 
+    #     menu = tk.Menu(self.root, tearoff=0, bg='#3d3d3d', fg='white',
     #                   activebackground='#4a8fe7', activeforeground='white')
 
     #     # Ajouter les playlists existantes
@@ -1702,7 +1831,6 @@ class MusicPlayer:
     #         # Fallback si on ne peut pas obtenir la position
     #         menu.post(self.root.winfo_pointerx(), self.root.winfo_pointery())
 
-
     def _add_to_specific_playlist(self, filepath, playlist_name):
         """Ajoute un fichier à une playlist spécifique"""
         return tools._add_to_specific_playlist(self, filepath, playlist_name)
@@ -1726,20 +1854,26 @@ class MusicPlayer:
 
     def _bind_mousewheel(self, widget, canvas, func=None):
         """Lie la molette de souris seulement quand le curseur est sur le widget"""
-        widget.bind("<Enter>", lambda e: self._bind_scroll(canvas, func), add='+')
-        widget.bind("<Leave>", lambda e: self._unbind_scroll(canvas), add='+')
+        widget.bind("<Enter>", lambda e: self._bind_scroll(canvas, func), add="+")
+        widget.bind("<Leave>", lambda e: self._unbind_scroll(canvas), add="+")
 
     def _bind_scroll(self, canvas, func=None):
         """Active le défilement pour un canvas spécifique"""
         # Optimisation: Utiliser un délai pour éviter les problèmes de synchronisation
-        if hasattr(self, '_scroll_binding_active') and self._scroll_binding_active:
+        if hasattr(self, "_scroll_binding_active") and self._scroll_binding_active:
             return
         self._scroll_binding_active = True
-        
+
         if func is None:
-            canvas.bind_all("<MouseWheel>", lambda e: self._on_mousewheel(e, canvas), add='+')
-            canvas.bind_all("<Button-4>", lambda e: self._on_mousewheel(e, canvas), add='+')
-            canvas.bind_all("<Button-5>", lambda e: self._on_mousewheel(e, canvas), add='+')
+            canvas.bind_all(
+                "<MouseWheel>", lambda e: self._on_mousewheel(e, canvas), add="+"
+            )
+            canvas.bind_all(
+                "<Button-4>", lambda e: self._on_mousewheel(e, canvas), add="+"
+            )
+            canvas.bind_all(
+                "<Button-5>", lambda e: self._on_mousewheel(e, canvas), add="+"
+            )
         else:
             canvas.bind_all("<MouseWheel>", lambda e: func(e))
             canvas.bind_all("<Button-4>", lambda e: func(e))
@@ -1748,7 +1882,7 @@ class MusicPlayer:
     def _unbind_scroll(self, canvas):
         """Désactive le défilement pour un canvas spécifique"""
         self._scroll_binding_active = False
-        
+
         canvas.unbind_all("<MouseWheel>")
         canvas.unbind_all("<Button-4>")
         canvas.unbind_all("<Button-5>")
@@ -1771,15 +1905,15 @@ class MusicPlayer:
     def show_stats_menu(self):
         """Affiche un menu avec les statistiques d'écoute"""
         return ui_menus.show_stats_menu(self)
-    
+
     def update_all_durations(self):
         """Met à jour les durées de toutes les musiques téléchargées"""
         return tools.update_all_durations(self)
-    
+
     def show_settings_menu(self):
         """Affiche un menu avec les paramètres de configuration"""
         return ui_menus.show_settings_menu(self)
-    
+
     def update_upload_date_from_links(self):
         """Mets à jour les metadatas de tous les fichiers"""
         return tools.update_upload_date_from_links(self)
@@ -1787,7 +1921,7 @@ class MusicPlayer:
     def show_cache_menu(self):
         """Affiche un menu déroulant pour gérer les caches"""
         return ui_menus.show_cache_menu(self)
-    
+
     def select_downloads_folder(self):
         """Permet de changer le dossier de téléchargements et déplacer les fichiers existants"""
         return ui_menus.select_downloads_folder(self)
@@ -1811,19 +1945,19 @@ class MusicPlayer:
     def _resume_song_stats_tracking(self):
         """Reprend le suivi des statistiques"""
         return stats._resume_song_stats_tracking(self)
-    
+
     def _load_downloads_path(self):
         """Charge le chemin personnalisé du dossier de téléchargements"""
         try:
             config_file = os.path.join(os.getcwd(), "downloads_path.txt")
             if os.path.exists(config_file):
-                with open(config_file, 'r', encoding='utf-8') as f:
+                with open(config_file, "r", encoding="utf-8") as f:
                     custom_path = f.read().strip()
                 if custom_path and os.path.exists(custom_path):
                     return custom_path
         except Exception as e:
             print(f"Erreur lors du chargement du chemin personnalisé: {e}")
-        
+
         # Retourner le chemin par défaut si aucun chemin personnalisé n'est trouvé
         default_path = os.path.join(os.getcwd(), "downloads")
         os.makedirs(default_path, exist_ok=True)
@@ -1835,8 +1969,10 @@ class MusicPlayer:
 
     def update_is_in_queue(self, song_item):
         return tools.update_is_in_queue(self, song_item)
-    
-    def select_playlist_item(self, item_frame=None, index=None, auto_scroll=True, is_manual=False):
+
+    def select_playlist_item(
+        self, item_frame=None, index=None, auto_scroll=True, is_manual=False
+    ):
         """Met en surbrillance l'élément sélectionné dans la playlist
 
         Args:
@@ -1844,16 +1980,20 @@ class MusicPlayer:
             index: Index de l'élément à sélectionner (alternatif à item_frame)
             auto_scroll: Si True, fait défiler automatiquement vers l'élément (défaut: True)
         """
-        return search_tab.main_playlist.select_playlist_item(self, item_frame, index, auto_scroll, is_manual)
+        return search_tab.main_playlist.select_playlist_item(
+            self, item_frame, index, auto_scroll, is_manual
+        )
 
     def _set_item_colors(self, item_frame, bg_color, exclude_queue_indicator=False):
         """Change uniquement la couleur de fond des éléments d'un item de playlist"""
-        return tools._set_item_colors(self, item_frame, bg_color, exclude_queue_indicator=exclude_queue_indicator)
+        return tools._set_item_colors(
+            self, item_frame, bg_color, exclude_queue_indicator=exclude_queue_indicator
+        )
 
     def _lighten_color(self, hex_color, factor=0.2):
         """Éclaircit une couleur hexadécimale d'un facteur donné"""
         return tools._lighten_color(self, hex_color, factor)
-    
+
     def get_label_font_size(self, label):
         """Récupère la taille de police d'un label de manière sécurisée"""
         return tools.get_label_font_size(self, label)
@@ -1868,12 +2008,14 @@ class MusicPlayer:
 
     def _is_user_looking_above_current(self, current_index):
         """Vérifie si l'utilisateur regarde au-dessus de l'élément actuel"""
-        return search_tab.main_playlist._is_user_looking_above_current(self, current_index)
+        return search_tab.main_playlist._is_user_looking_above_current(
+            self, current_index
+        )
 
     def _invalidate_loaded_indexes_cache(self):
         """Invalide le cache des index chargés"""
         # return search_tab.main_playlist._invalidate_loaded_indexes_cache(self)
-        if hasattr(self, '_loaded_indexes_cache'):
+        if hasattr(self, "_loaded_indexes_cache"):
             print(f"DEBUG: Invalidation du cache des index chargés")
             self._loaded_indexes_cache = None
 
@@ -1893,9 +2035,23 @@ class MusicPlayer:
         """Une étape de l'animation du titre"""
         return control._animate_title_step(self, frame)
 
-    def _get_scrolled_title_text(self, full_text, scroll_pos, max_width_pixels, font_size=12, font_family='Helvetica'):
+    def _get_scrolled_title_text(
+        self,
+        full_text,
+        scroll_pos,
+        max_width_pixels,
+        font_size=12,
+        font_family="Helvetica",
+    ):
         """Génère le texte visible avec défilement à la position donnée"""
-        return control._get_scrolled_title_text(self, full_text, scroll_pos, max_width_pixels, font_size=font_size, font_family=font_family)
+        return control._get_scrolled_title_text(
+            self,
+            full_text,
+            scroll_pos,
+            max_width_pixels,
+            font_size=font_size,
+            font_family=font_family,
+        )
 
     def toggle_item_selection(self, filepath, frame):
         """Ajoute ou retire un élément de la sélection multiple"""
@@ -1911,7 +2067,9 @@ class MusicPlayer:
 
     def _show_single_file_menu(self, event, filepath, item=None, container=None):
         """Affiche un menu contextuel pour un seul fichier"""
-        return tools._show_single_file_menu(self, event, filepath, container=container, item=item)
+        return tools._show_single_file_menu(
+            self, event, filepath, container=container, item=item
+        )
 
     def _safe_add_to_main_playlist(self, filepath):
         """Version sécurisée de add_to_main_playlist"""
@@ -1932,7 +2090,7 @@ class MusicPlayer:
     def _safe_add_to_queue_from_result(self, item, callback=None):
         """Version sécurisée de _add_to_queue_first_from_result"""
         return tools._safe_add_to_queue_from_result(self, item, callback)
-    
+
     def _safe_add_to_main_playlist_from_result(self, video):
         """Version sécurisée de _add_to_main_playlist_from_result"""
         return tools._safe_add_to_main_playlist_from_result(self, video)
@@ -2042,7 +2200,9 @@ class MusicPlayer:
 
     def _download_youtube_selection_to_queue(self, youtube_urls, queue_position):
         """Télécharge une sélection de vidéos YouTube et les ajoute à la queue"""
-        return tools._download_youtube_selection_to_queue(self, youtube_urls, queue_position)
+        return tools._download_youtube_selection_to_queue(
+            self, youtube_urls, queue_position
+        )
 
     def hide_queue_indicator(self, song_frame):
         """Cache l'indicateur de queue"""
@@ -2059,13 +2219,17 @@ class MusicPlayer:
     def select_library_item_from_filepath(self, current_filepath):
         """Met en surbrillance l'élément sélectionné dans la bibliothèque"""
         # return library_tab.downloads.select_library_item(self, current_filepath)
-        return tools.select_song_item_from_filepath(self, current_filepath, self.downloads_container)
+        return tools.select_song_item_from_filepath(
+            self, current_filepath, self.downloads_container
+        )
 
     def select_playlist_content_item_from_filepath(self, current_filepath):
         """Met en surbrillance l'élément sélectionné dans l'affichage du contenu d'une playlist"""
-        if hasattr(self, 'playlist_content_container'):
+        if hasattr(self, "playlist_content_container"):
             # return library_tab.playlists.select_playlist_content_item(self, current_filepath)
-            return tools.select_song_item_from_filepath(self, current_filepath, self.playlist_content_container)
+            return tools.select_song_item_from_filepath(
+                self, current_filepath, self.playlist_content_container
+            )
 
     def _delete_from_downloads(self, filepath, frame=None):
         """Supprime définitivement un fichier du dossier downloads"""
@@ -2090,7 +2254,7 @@ class MusicPlayer:
         # """Gère le défilement avec la molette de souris"""
         # canvas.configure(state="disabled")
         return inputs._on_mousewheel(self, event, canvas)
-    
+
     def _on_mousewheel_end(self, canvas):
         """Appelée à la fin du défilement pour mettre à jour l'affichage"""
         # canvas.configure(state="normal")
@@ -2115,6 +2279,7 @@ class MusicPlayer:
     def _start_new_search(self):
         """Démarre une nouvelle recherche après avoir annulé la précédente"""
         return search_tab.results._start_new_search(self)
+
     def _perform_initial_search(self, query):
         """Effectue une recherche initiale de 10 résultats seulement"""
         return search_tab.results._perform_initial_search(self, query)
@@ -2131,14 +2296,15 @@ class MusicPlayer:
         """Affiche un lot de 10 résultats"""
         return search_tab.results._display_batch_results(self, batch_number)
 
-
     def _load_more_search_results(self):
         """Charge plus de résultats pour la recherche actuelle (avec lazy loading)"""
         return search_tab.results._load_more_search_results(self)
 
     def _fetch_more_results(self, query, total_count, start_time=None):
         """Récupère plus de résultats depuis YouTube"""
-        return search_tab.results._fetch_more_results(self, query, total_count, start_time)
+        return search_tab.results._fetch_more_results(
+            self, query, total_count, start_time
+        )
 
     def _display_new_results(self, new_results):
         """Affiche les nouveaux résultats obtenus"""
@@ -2161,7 +2327,8 @@ class MusicPlayer:
         if size is None:
             try:
                 from search_tab.config import INTERFACE_CONFIG
-                size = INTERFACE_CONFIG.get('circular_thumbnail_size', (45, 45))
+
+                size = INTERFACE_CONFIG.get("circular_thumbnail_size", (45, 45))
             except ImportError:
                 size = (45, 45)  # Valeur par défaut
         return tools._create_circular_image(self, image, size=size)
@@ -2177,11 +2344,11 @@ class MusicPlayer:
     def _add_search_result(self, video, index):
         """Ajoute un résultat avec un style rectangle uniforme"""
         return search_tab.results._add_search_result(self, video, index)
-    
+
     def _display_search_results_from_cache(self, results):
         """Affiche les résultats de recherche depuis le cache avec optimisation"""
         return search_tab.results._display_search_results_from_cache(self, results)
-    
+
     def _update_scroll_region(self):
         """Met à jour la région de scroll du canvas"""
         return search_tab.results._update_scroll_region(self)
@@ -2220,7 +2387,9 @@ class MusicPlayer:
 
     def _download_and_add_to_playlist_thread(self, video, frame, playlist_name):
         """Thread pour télécharger une vidéo et l'ajouter à une playlist"""
-        return services.downloading._download_and_add_to_playlist_thread(self, video, frame, playlist_name)
+        return services.downloading._download_and_add_to_playlist_thread(
+            self, video, frame, playlist_name
+        )
 
     # def _add_downloaded_to_playlist(self, filepath, thumbnail_path, title, playlist_name, url=None):
     #     """Ajoute un fichier téléchargé à une playlist spécifique (à appeler dans le thread principal)"""
@@ -2247,11 +2416,16 @@ class MusicPlayer:
 
     def _download_youtube_thumbnail(self, video_info, filepath):
         """Télécharge la thumbnail YouTube et l'associe au fichier audio"""
-        return services.downloading._download_youtube_thumbnail(self, video_info, filepath)
+        return services.downloading._download_youtube_thumbnail(
+            self, video_info, filepath
+        )
 
-
-    def download_selected_youtube(self, event=None, add_to_playlist=True, callback=None):
-        return services.downloading.download_selected_youtube(self, event, add_to_playlist, callback)
+    def download_selected_youtube(
+        self, event=None, add_to_playlist=True, callback=None
+    ):
+        return services.downloading.download_selected_youtube(
+            self, event, add_to_playlist, callback
+        )
 
     def _download_youtube_thread(self, url, add_to_playlist=True, callback=None):
         return tools._download_youtube_thread(self, url, add_to_playlist, callback)
@@ -2260,9 +2434,13 @@ class MusicPlayer:
         """Hook pour afficher la progression du téléchargement"""
         return tools._download_progress_hook(self, d)
 
-    def _add_downloaded_file(self, filepath, thumbnail_path, title, url=None, add_to_playlist=True):
+    def _add_downloaded_file(
+        self, filepath, thumbnail_path, title, url=None, add_to_playlist=True
+    ):
         """Ajoute le fichier téléchargé à la main playlist (à appeler dans le thread principal)"""
-        return tools._add_downloaded_file(self, filepath, thumbnail_path, title, url, add_to_playlist)
+        return tools._add_downloaded_file(
+            self, filepath, thumbnail_path, title, url, add_to_playlist
+        )
 
     def _refresh_downloads_library(self, preserve_scroll=False):
         """Met à jour la liste des téléchargements dans l'onglet bibliothèque si il est actif"""
@@ -2336,7 +2514,6 @@ class MusicPlayer:
     def on_song_change(self):
         self.Subtitles.loaded_subtitles = None
 
-
     # def set_position(self, val):
     #     return
     #     if pygame.mixer.music.get_busy() and not self.paused:
@@ -2346,39 +2523,36 @@ class MusicPlayer:
     def set_position(self, val):
         return control.set_position(self, val)
 
-
     def update_time(self):
         # while True:
         stop = False
         try:
             # print('OOOOOO')
             # Vérifier si l'application est fermée
-            if hasattr(self, '_app_destroyed') and self._app_destroyed:
-                print('BREAK1')
+            if hasattr(self, "_app_destroyed") and self._app_destroyed:
+                print("BREAK1")
                 # break
                 stop = True
-            
-            
-            
+
             # Vérifier si pygame mixer est initialisé
             if not pygame.mixer.get_init():
-                print('BREAK2')
+                print("BREAK2")
                 # break
                 stop = True
             # print('AAA', flush=True)
-            
+
             # Ajuster la fréquence de mise à jour selon l'état de déplacement
-            if hasattr(self, 'update_suspended') and self.update_suspended:
+            if hasattr(self, "update_suspended") and self.update_suspended:
                 sleep_time = 1200
             else:
-                sleep_time =  300
+                sleep_time = 300
 
             # print('UWUWWW ', pygame.mixer.music.get_busy(), self.paused, self.user_dragging, self.current_time, self.song_length, flush=True)
             # print(f"Current time: {self.current_time}, Base position: {self.base_position}", flush=True)
             if pygame.mixer.music.get_busy() and not self.paused:
                 if self.Subtitles.subtitles_enabled:
                     self.Subtitles.update_subtitles(self.current_time)
-            
+
             if not self.paused and not self.user_dragging:
                 pygame_pos = pygame.mixer.music.get_pos() / 1000
 
@@ -2386,28 +2560,33 @@ class MusicPlayer:
                 if pygame_pos >= 0:
                     self.current_time = self.base_position + pygame_pos
                 # Sinon garder current_time tel quel
-                
-                if round(self.current_time, 2) >= round(self.song_length - sleep_time/1000, 2):
+
+                if round(self.current_time, 2) >= round(
+                    self.song_length - sleep_time / 1000, 2
+                ):
                     self.current_time = self.song_length
                     self.next_track()
                 # Filtrer les valeurs négatives
                 if self.current_time < 0:
                     self.current_time = 0
-                
+
                 # Suspendre les mises à jour visuelles pendant le déplacement de fenêtre
                 if not self.update_suspended:
                     try:
                         self.progress.config(value=self.current_time)
                         self.current_time_label.config(
-                            text=time.strftime('%M:%S', time.gmtime(self.current_time))
+                            text=time.strftime("%M:%S", time.gmtime(self.current_time))
                         )
 
                     except (tk.TclError, AttributeError) as e:
                         # Interface détruite, arrêter le thread
                         # break
-                        print("DEBUG: update_time musique lancée > Interface détruite, arrêter le thread: ", str(e))
+                        print(
+                            "DEBUG: update_time musique lancée > Interface détruite, arrêter le thread: ",
+                            str(e),
+                        )
                         stop = True
-                    
+
             # Réduire les appels à update_idletasks pendant le déplacement
             if not self.update_suspended:
                 try:
@@ -2415,9 +2594,11 @@ class MusicPlayer:
                 except (tk.TclError, AttributeError):
                     # Interface détruite, arrêter le thread
                     # break
-                    print("DEBUG: update_time musique non lancée > Interface détruite, arrêter le thread")
+                    print(
+                        "DEBUG: update_time musique non lancée > Interface détruite, arrêter le thread"
+                    )
                     stop = True
-                
+
         except (pygame.error, AttributeError) as e:
             print(f"Erreur dans update_time, pygame.error, AttributeError: {e}")
             # Pygame fermé ou erreur, arrêter le thread
@@ -2425,11 +2606,10 @@ class MusicPlayer:
         except Exception as e:
             # Autres erreurs, continuer mais afficher l'erreur
             print(f"Erreur dans update_time: {e}")
-        
+
         # time.sleep(sleep_time)
         if not stop:
             self.root.after(sleep_time, self.update_time)
-
 
     def _show_artist_content(self, artist_name, video_data):
         """Affiche le contenu d'un artiste dans la zone de recherche YouTube - Version optimisée non-bloquante"""
@@ -2438,7 +2618,6 @@ class MusicPlayer:
     def _save_current_search_state(self):
         """Sauvegarde l'état actuel des résultats de recherche"""
         return search_tab.results._save_current_search_state(self)
-
 
     def _show_playlist_content(self, playlist_data, target_tab="sorties"):
         """Affiche le contenu d'une playlist dans une nouvelle interface"""
@@ -2450,7 +2629,9 @@ class MusicPlayer:
 
     def _display_playlist_content(self, videos, playlist_title, target_tab="sorties"):
         """Affiche le contenu d'une playlist avec la même interface que l'onglet Musiques"""
-        return self.artist_tab_manager.display_playlist_content(videos, playlist_title, target_tab)
+        return self.artist_tab_manager.display_playlist_content(
+            videos, playlist_title, target_tab
+        )
 
     def _return_to_releases(self):
         """Retourne à l'affichage des releases dans l'onglet Sorties"""
@@ -2467,18 +2648,31 @@ class MusicPlayer:
     def _return_to_search(self):
         """Retourne instantanément à l'affichage de recherche normal"""
         return self.artist_tab_manager.return_to_search()
+
     def on_closing(self):
         return inputs.on_closing(self)
-    def save_youtube_url_metadata(self, filepath, youtube_url=None, upload_date=None, full_title=None, force_title=False):
+
+    def save_youtube_url_metadata(
+        self,
+        filepath,
+        youtube_url=None,
+        upload_date=None,
+        full_title=None,
+        force_title=False,
+    ):
         """Sauvegarde les métadonnées YouTube étendues pour un fichier téléchargé"""
-        return tools.save_youtube_url_metadata(self, filepath, youtube_url, upload_date, full_title, force_title)
+        return tools.save_youtube_url_metadata(
+            self, filepath, youtube_url, upload_date, full_title, force_title
+        )
 
     def get_youtube_url_from_metadata(self, filepath):
         """Récupère l'URL YouTube originale pour un fichier téléchargé"""
         return tools.get_youtube_metadata(self, filepath)
+
     def get_youtube_metadata(self, filepath):
         """Récupère toutes les métadonnées YouTube pour un fichier téléchargé"""
         return tools.get_youtube_metadata(self, filepath)
+
     def remove_youtube_url_metadata(self, filepath):
         """Supprime l'URL YouTube des métadonnées quand un fichier est supprimé"""
         return tools.remove_youtube_url_metadata(self, filepath)
@@ -2497,14 +2691,18 @@ class MusicPlayer:
 
     def toggle_recommendations(self):
         """Active/désactive le système de recommandations automatiques (ancienne méthode)"""
-        if hasattr(self, 'recommendation_system'):
+        if hasattr(self, "recommendation_system"):
             if self.recommendation_system.enable_auto_recommendations:
                 self.recommendation_system.disable_recommendations()
-                self.recommendation_button.configure(bg_color="#666666")  # Gris pour désactivé
+                self.recommendation_button.configure(
+                    bg_color="#666666"
+                )  # Gris pour désactivé
                 self.status_bar.config(text="Recommandations automatiques désactivées")
             else:
                 self.recommendation_system.enable_recommendations()
-                self.recommendation_button.configure(bg_color="#3d3d3d")  # Couleur normale pour activé
+                self.recommendation_button.configure(
+                    bg_color="#3d3d3d"
+                )  # Couleur normale pour activé
                 self.status_bar.config(text="Recommandations automatiques activées")
                 # Lancer les recommandations pour la chanson en cours si elle existe
                 # self.recommendation_system.manual_recommendations()
@@ -2515,7 +2713,7 @@ class MusicPlayer:
             # Désactiver les recommandations
             self.recommendation_enabled = False
             self.recommendation_button.configure(image=self.icons["recommendation"])
-            if hasattr(self, 'recommendation_system'):
+            if hasattr(self, "recommendation_system"):
                 self.recommendation_system.disable_recommendations()
             self._update_recommendation_button_icon()
             self.status_bar.config(text="Recommandations désactivées")
@@ -2524,38 +2722,42 @@ class MusicPlayer:
             self.recommendation_enabled = True
             self.recommendation_mode = self.last_recommendation_mode
             self._update_recommendation_button_icon()
-            if hasattr(self, 'recommendation_system'):
+            if hasattr(self, "recommendation_system"):
                 self.recommendation_system.enable_recommendations()
                 # self.recommendation_system.manual_recommendations()
-            self.status_bar.config(text=f"Recommandations activées ({self.recommendation_mode})")
+            self.status_bar.config(
+                text=f"Recommandations activées ({self.recommendation_mode})"
+            )
 
     def on_recommendation_right_click(self, event):
         """Gère le clic droit sur le bouton de recommandations - affiche le menu"""
         menu = tk.Menu(self.root, tearoff=0)
         menu.add_command(label="Activer les recommandations", state="disabled")
         menu.add_separator()
-        
+
         # Variables pour les cases à cocher
         sparse_var = tk.BooleanVar()
         add_var = tk.BooleanVar()
-        
+
         # Cocher la bonne option selon le mode actuel
         if self.recommendation_mode == "sparse":
             sparse_var.set(True)
         else:
             add_var.set(True)
-        
+
         menu.add_checkbutton(
-            label="éparses", 
+            label="éparses",
             variable=sparse_var,
-            command=lambda: self._set_recommendation_mode("sparse", sparse_var, add_var)
+            command=lambda: self._set_recommendation_mode(
+                "sparse", sparse_var, add_var
+            ),
         )
         menu.add_checkbutton(
-            label="à la suite", 
+            label="à la suite",
             variable=add_var,
-            command=lambda: self._set_recommendation_mode("add", sparse_var, add_var)
+            command=lambda: self._set_recommendation_mode("add", sparse_var, add_var),
         )
-        
+
         # Afficher le menu à la position du clic
         try:
             menu.tk_popup(event.x_root, event.y_root)
@@ -2571,17 +2773,17 @@ class MusicPlayer:
         else:
             sparse_var.set(False)
             add_var.set(True)
-        
+
         self.recommendation_mode = mode
         self.last_recommendation_mode = mode
         self.recommendation_enabled = True
-        
+
         self._update_recommendation_button_icon()
-        
-        if hasattr(self, 'recommendation_system'):
+
+        if hasattr(self, "recommendation_system"):
             self.recommendation_system.enable_recommendations()
             # self.recommendation_system.manual_recommendations()
-        
+
         self.status_bar.config(text=f"Recommandations activées ({mode})")
 
     def _update_recommendation_button_icon(self):
@@ -2591,29 +2793,35 @@ class MusicPlayer:
                 if self.recommendation_mode == "sparse":
                     self.recommendation_button.configure(
                         image=self.icons["sparse_recommendation"],
-                        bg_color="#4a8fe7"  # Couleur activée (bleu)
+                        bg_color="#4a8fe7",  # Couleur activée (bleu)
                     )
                 else:
                     self.recommendation_button.configure(
                         image=self.icons["add_recommendation"],
-                        bg_color="#4a8fe7"  # Couleur activée (bleu)
+                        bg_color="#4a8fe7",  # Couleur activée (bleu)
                     )
             else:
                 self.recommendation_button.configure(
                     image=self.icons["recommendation"],
-                    bg_color="#3d3d3d"  # Couleur normale
+                    bg_color="#3d3d3d",  # Couleur normale
                 )
         except Exception as e:
-            print("Erreur lors de la mise à jour de l'icône du bouton de recommandations: {e}")
+            print(
+                "Erreur lors de la mise à jour de l'icône du bouton de recommandations: {e}"
+            )
 
     def on_recommendation_hover_enter(self, event):
         """Gère l'entrée de la souris sur le bouton de recommandations"""
         if not self.recommendation_enabled:
             # Afficher un aperçu du dernier mode utilisé
             if self.last_recommendation_mode == "sparse":
-                self.recommendation_button.configure(image=self.icons["sparse_recommendation"])
+                self.recommendation_button.configure(
+                    image=self.icons["sparse_recommendation"]
+                )
             else:
-                self.recommendation_button.configure(image=self.icons["add_recommendation"])
+                self.recommendation_button.configure(
+                    image=self.icons["add_recommendation"]
+                )
 
     def on_recommendation_hover_leave(self, event):
         """Gère la sortie de la souris du bouton de recommandations"""
@@ -2641,28 +2849,27 @@ class MusicPlayer:
         """Nettoie la sélection dans l'affichage des playlists"""
         return clear_current_song_selection_in_playlists(self)
 
-
     # Méthodes de gestion du cache
     def _clear_search_cache(self):
         """Vide le cache des recherches"""
         return _clear_search_cache(self)
-    
+
     def _clear_artist_cache(self):
         """Vide le cache des artistes"""
         return _clear_artist_cache(self)
-    
+
     def _clear_thumbnail_cache(self):
         """Vide le cache des miniatures"""
         return _clear_thumbnail_cache(self)
-    
+
     def _clear_playlist_content_cache(self):
         """Vide le cache des contenus de playlists"""
         return _clear_playlist_content_cache(self)
-    
+
     def _clear_duration_cache(self):
         """Vide le cache des durées"""
         return _clear_duration_cache(self)
-    
+
     def _clear_all_caches(self):
         """Vide tous les caches"""
         return _clear_all_caches(self)
@@ -2671,9 +2878,9 @@ class MusicPlayer:
         """Toggle le statut like de la chanson actuelle (mutuellement exclusif avec favorite)"""
         if not self.main_playlist or self.current_index >= len(self.main_playlist):
             return
-        
+
         current_song = self.main_playlist[self.current_index]
-        
+
         if current_song in self.liked_songs:
             # Retirer des likes
             self.liked_songs.remove(current_song)
@@ -2690,7 +2897,7 @@ class MusicPlayer:
                 # Retirer de la playlist Favorites
                 if current_song in self.playlists["Favorites"]:
                     self.playlists["Favorites"].remove(current_song)
-            
+
             # Ajouter aux likes
             self.liked_songs.add(current_song)
             self.like_button.configure(image=self.icons["like_full"])
@@ -2698,23 +2905,26 @@ class MusicPlayer:
             if current_song not in self.playlists["Liked"]:
                 self.playlists["Liked"].append(current_song)
             self.status_bar.config(text="Ajouté aux titres aimés")
-        
+
         # Sauvegarder la configuration
         self.save_config()
         # Sauvegarder les playlists
         self.save_playlists()
-        
+
         # Rafraîchir l'affichage des playlists si on est dans l'onglet bibliothèque
-        if hasattr(self, 'current_library_tab') and self.current_library_tab == "playlists":
+        if (
+            hasattr(self, "current_library_tab")
+            and self.current_library_tab == "playlists"
+        ):
             self.switch_library_tab("playlists")
 
     def toggle_favorite_current_song(self):
         """Toggle le statut favorite de la chanson actuelle (mutuellement exclusif avec like)"""
         if not self.main_playlist or self.current_index >= len(self.main_playlist):
             return
-        
+
         current_song = self.main_playlist[self.current_index]
-        
+
         if current_song in self.favorite_songs:
             # Retirer des favoris
             self.favorite_songs.remove(current_song)
@@ -2731,7 +2941,7 @@ class MusicPlayer:
                 # Retirer de la playlist Liked
                 if current_song in self.playlists["Liked"]:
                     self.playlists["Liked"].remove(current_song)
-            
+
             # Ajouter aux favoris
             self.favorite_songs.add(current_song)
             self.favorite_button.configure(image=self.icons["favorite_full"])
@@ -2739,45 +2949,49 @@ class MusicPlayer:
             if current_song not in self.playlists["Favorites"]:
                 self.playlists["Favorites"].append(current_song)
             self.status_bar.config(text="Ajouté aux favoris")
-        
+
         # Sauvegarder la configuration
         self.save_config()
         # Sauvegarder les playlists
         self.save_playlists()
-        
+
         # Rafraîchir l'affichage des playlists si on est dans l'onglet bibliothèque
-        if hasattr(self, 'current_library_tab') and self.current_library_tab == "playlists":
+        if (
+            hasattr(self, "current_library_tab")
+            and self.current_library_tab == "playlists"
+        ):
             self.switch_library_tab("playlists")
 
     def update_like_favorite_buttons(self):
         """Met à jour l'état des boutons like et favorite selon la chanson actuelle"""
         if not self.main_playlist or self.current_index >= len(self.main_playlist):
             # Aucune chanson en cours, boutons vides
-            if hasattr(self, 'like_button'):
+            if hasattr(self, "like_button"):
                 self.like_button.configure(image=self.icons["like_empty"])
-            if hasattr(self, 'favorite_button'):
+            if hasattr(self, "favorite_button"):
                 self.favorite_button.configure(image=self.icons["favorite_empty"])
             return
-        
+
         current_song = self.main_playlist[self.current_index]
-        
+
         # Mettre à jour le bouton like
-        if hasattr(self, 'like_button'):
+        if hasattr(self, "like_button"):
             if current_song in self.liked_songs:
                 self.like_button.configure(image=self.icons["like_full"])
             else:
                 self.like_button.configure(image=self.icons["like_empty"])
-        
+
         # Mettre à jour le bouton favorite
-        if hasattr(self, 'favorite_button'):
+        if hasattr(self, "favorite_button"):
             if current_song in self.favorite_songs:
                 self.favorite_button.configure(image=self.icons["favorite_full"])
             else:
                 self.favorite_button.configure(image=self.icons["favorite_empty"])
-    
+
     def change_url_dialog(self, filepath):
         """change l'URL d'un fichier"""
         return tools.change_url_dialog(self, filepath)
+
 
 if __name__ == "__main__":
     root = ctk.CTk()
@@ -2786,4 +3000,3 @@ if __name__ == "__main__":
     player.init()
     root.after(0, player.update_time)
     root.mainloop()
-    
